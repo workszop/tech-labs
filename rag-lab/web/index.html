@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RAG Lab – zbuduj własną bazę wiedzy dla AI</title>
+    <meta name="description" content="Zbuduj własną bazę wiedzy dla AI: interaktywne laboratorium, w którym widać każdy krok działania RAG (Retrieval-Augmented Generation)." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=202611230854" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=202611230854" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png?v=202611230854" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=202611230854" />
+    <meta name="theme-color" content="#FFD500" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" />
+    <!-- Boot gate (edulab): the UI is rendered by JS, so the body stays hidden until the
+         first render is in the DOM and the brand fonts are ready (4 s CSS fallback). -->
+    <style>
+      @keyframes boot-reveal { to { visibility: visible; } }
+      html:not(.app-ready) body { visibility: hidden; animation: boot-reveal 0s 4s forwards; }
+      @media print { html:not(.app-ready) body { visibility: visible; animation: none; } }
+    </style>
+    <noscript><style>html:not(.app-ready) body { visibility: visible; animation: none; }</style></noscript>
+  </head>
+  <body class="edu">
+    <div id="root"></div>
+    <script>
+      // Reveal: first React render in #root + brand fonts (or 1.5 s), then show the page.
+      (function () {
+        var root = document.getElementById('root');
+        var fonts = ['400 1em Outfit', '700 1em Outfit', '400 1em "IBM Plex Sans"', '600 1em "IBM Plex Sans"', '400 1em "Roboto Mono"'];
+        var fontsReady = Promise.race([
+          Promise.all(fonts.map(function (f) { return document.fonts.load(f).catch(function () { return null; }); })),
+          new Promise(function (r) { setTimeout(r, 1500); }),
+        ]);
+        var rendered = new Promise(function (resolve) {
+          if (root.firstChild) return resolve();
+          var mo = new MutationObserver(function () {
+            if (root.firstChild) { mo.disconnect(); resolve(); }
+          });
+          mo.observe(root, { childList: true });
+        });
+        Promise.all([fontsReady, rendered]).then(function () {
+          document.documentElement.classList.add('app-ready');
+        });
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,173 @@
+import { describe, expect, it } from 'vitest'
+import type { ActivateResponse } from '../../shared/api-types'
+import {
+  activate,
+  activateRaw,
+  adminHeaders,
+  api,
+  callWith,
+  createCode,
+  env,
+  expectError,
+  freshIp,
+  jsonInit,
+} from './helpers'
+
+describe('POST /api/activate', () => {
+  it('activates a valid code and returns token + SessionInfo', async () => {
+    const code = await createCode({ label: 'Workshop A' })
+    expect(code.code).toMatch(/^RAG(-[0-9A-HJKMNP-TV-Z]{4}){5}$/)
+    const res = await activateRaw(code.code)
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as ActivateResponse
+    expect(body.token).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(body.session.label).toBe('Workshop A')
+    expect(body.session.sessionRef).toHaveLength(8)
+    expect(Date.parse(body.session.expiresAt)).toBeGreaterThan(Date.now() + 3 * 3600_000)
+    expect(body.session.capabilities).toMatchObject({
+      provider: 'mock',
+      embeddingModel: 'mock-hash-embedding-256',
+      embeddingDimensions: 256,
+      chatModel: 'mock-extractive-chat',
+      maxEmbeddingBatch: 64,
+      maxEmbeddingInputTokens: 2000,
+      maxContextChunks: 10,
+      maxChatInputTokens: 12000,
+      maxQuestionChars: 1000,
+      maxOutputTokens: { min: 64, max: 1024, default: 500 },
+      temperature: { min: 0, max: 1, default: 0.2 },
+      streaming: true,
+    })
+    expect(body.session.usage).toMatchObject({ requestsUsed: 0, requestLimit: 300, tokensUsed: 0, tokenLimit: 300000 })
+  })
+
+  it('stores only the token hash and the code HMAC, never plaintext', async () => {
+    const code = await createCode()
+    const { token } = await activate(code.code)
+    const dump = JSON.stringify([
+      (await env.DB.prepare('SELECT * FROM access_codes').all()).results,
+      (await env.DB.prepare('SELECT * FROM sessions').all()).results,
+    ])
+    expect(dump).not.toContain(token)
+    expect(dump).not.toContain(code.code)
+    expect(dump).not.toContain(code.code.replace(/-/g, '').slice(3))
+  })
+
+  it('normalises input: lowercase, spaces, missing dashes, O→0 and I/L→1', async () => {
+    const code = await createCode({ maxSessions: 10 })
+    const body = code.code.slice(4) // without "RAG-"
+    const variants = [
+      `  ${code.code.toLowerCase()}  `,
+      body.replace(/-/g, ' '),
+      body.replace(/-/g, ''),
+      code.code.replace(/0/g, 'O').replace(/1/g, 'l'),
+    ]
+    for (const v of variants) {
+      const res = await activateRaw(v)
+      expect(res.status, v).toBe(200)
+    }
+  })
+
+  it('rejects unknown and malformed codes with the same invalid_code shape', async () => {
+    const a = await expectError(await activateRaw('RAG-AAAA-BBBB-CCCC-DDDD-EEEE'), 401, 'invalid_code')
+    const b = await expectError(await activateRaw('hello'), 401, 'invalid_code')
+    const c = await expectError(await activateRaw('x'.repeat(500)), 401, 'invalid_code')
+    expect(a).toEqual(b)
+    expect(b).toEqual(c)
+  })
+
+  it('rejects bad bodies with invalid_request', async () => {
+    await expectError(await api('/api/activate', jsonInit('POST', { nope: 1 })), 400, 'invalid_request')
+    await expectError(await api('/api/activate', { method: 'POST', body: '{"code":"x"}' }), 400, 'invalid_request')
+    await expectError(
+      await api('/api/activate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{bad' }),
+      400,
+      'invalid_request',
+    )
+  })
+
+  it('rejects expired codes', async () => {
+    const code = await createCode({ expiresAt: new Date(Date.now() - 60_000).toISOString() })
+    await expectError(await activateRaw(code.code), 403, 'expired_code')
+  })
+
+  it('rejects revoked and disabled codes', async () => {
+    const revoked = await createCode()
+    await api(`/api/admin/codes/${revoked.id}`, { method: 'DELETE', headers: adminHeaders() })
+    await expectError(await activateRaw(revoked.code), 403, 'revoked_code')
+
+    const disabled = await createCode()
+    await api(`/api/admin/codes/${disabled.id}`, jsonInit('PATCH', { status: 'disabled' }, adminHeaders()))
+    await expectError(await activateRaw(disabled.code), 403, 'revoked_code')
+  })
+
+  it('enforces max_sessions (too_many_sessions), and a logout frees a slot', async () => {
+    const code = await createCode({ maxSessions: 2 })
+    const s1 = await activate(code.code)
+    await activate(code.code)
+    await expectError(await activateRaw(code.code), 403, 'too_many_sessions')
+    const out = await api('/api/logout', { method: 'POST', headers: { Authorization: `Bearer ${s1.token}` } })
+    expect(out.status).toBe(204)
+    expect((await activateRaw(code.code)).status).toBe(200)
+  })
+
+  it('max_sessions holds under concurrent activations', async () => {
+    const code = await createCode({ maxSessions: 2 })
+    const results = await Promise.all(Array.from({ length: 6 }, () => activateRaw(code.code)))
+    const statuses = results.map((r) => r.status)
+    expect(statuses.filter((s) => s === 200)).toHaveLength(2)
+    expect(statuses.filter((s) => s === 403)).toHaveLength(4)
+  })
+
+  it('throttles per client IP after ACTIVATION_MAX_ATTEMPTS failures (429 + retryAfterSeconds)', async () => {
+    const ip = freshIp()
+    for (let i = 0; i < 10; i++) {
+      await expectError(await activateRaw('RAG-0000-0000-0000-0000-0000', ip), 401, 'invalid_code')
+    }
+    const res = await activateRaw('RAG-0000-0000-0000-0000-0000', ip)
+    const body = await expectError(res, 429, 'rate_limited')
+    expect(body.error.retryAfterSeconds).toBeGreaterThan(0)
+    expect(body.error.retryAfterSeconds).toBeLessThanOrEqual(900)
+    expect(res.headers.get('Retry-After')).toBe(String(body.error.retryAfterSeconds))
+    // Even a valid code is refused from the throttled IP...
+    const code = await createCode()
+    await expectError(await activateRaw(code.code, ip), 429, 'rate_limited')
+    // ...but works from another network.
+    expect((await activateRaw(code.code, freshIp())).status).toBe(200)
+  })
+
+  it('throttles parallel guessing from one IP (atomic counter)', async () => {
+    const ip = freshIp()
+    const res = await Promise.all(Array.from({ length: 25 }, () => activateRaw('RAG-1111-1111-1111-1111-1111', ip)))
+    const s = res.map((r) => r.status)
+    expect(s.filter((x) => x === 401)).toHaveLength(10)
+    expect(s.filter((x) => x === 429)).toHaveLength(15)
+  })
+
+  it('successful activations do not consume the IP failure budget', async () => {
+    const ip = freshIp()
+    const code = await createCode({ maxSessions: 20 })
+    for (let i = 0; i < 12; i++) expect((await activateRaw(code.code, ip)).status).toBe(200)
+  })
+
+  it('applies a global failed-attempt ceiling per minute', async () => {
+    const overrides = { ACTIVATION_GLOBAL_FAILURES_PER_MINUTE: '3' }
+    let limited: Response | null = null
+    for (let i = 0; i < 10 && !limited; i++) {
+      const r = await callWith(overrides, '/api/activate', jsonInit('POST', { code: 'nope' }, { 'CF-Connecting-IP': freshIp() }))
+      if (r.status === 429) limited = r
+      else expect(r.status).toBe(401)
+    }
+    expect(limited).not.toBeNull()
+    const body = await expectError(limited!, 429, 'rate_limited')
+    expect(body.error.retryAfterSeconds).toBeLessThanOrEqual(60)
+  })
+
+  it('stores a peppered hash of the IP, not the raw IP', async () => {
+    const ip = '203.0.113.77'
+    await activateRaw('RAG-2222-2222-2222-2222-2222', ip)
+    const { results } = await env.DB.prepare('SELECT key FROM rate_limits').all<{ key: string }>()
+    expect(results.some((r) => r.key.includes(ip))).toBe(false)
+    expect(results.some((r) => r.key.startsWith('act:ip:'))).toBe(true)
+  })
+})
