@@ -1,6 +1,6 @@
-# Builds RAG Lab (rag-lab/web) and publishes it to GitHub Pages at
-#   https://<user>.github.io/<repo>/rag-lab/
-# The repository root page (index.html) lists the labs.
+# Builds RAG Lab (rag-lab/web) and publishes it to GitHub Pages at the site root
+# (custom domain https://rag-lab.warsztaty-ai.com/). The old address /rag-lab/
+# keeps working through redirect.html.
 #
 # One-time setup (repository Settings):
 #   - Pages → Build and deployment → Source: "GitHub Actions"
@@ -13,7 +13,7 @@ name: RAG Lab → GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['rag-lab/**', '.github/workflows/rag-lab-pages.yml', 'index.html']
+    paths: ['rag-lab/**', '.github/workflows/rag-lab-pages.yml', 'redirect.html']
   pull_request:
     paths: ['rag-lab/**', '.github/workflows/rag-lab-pages.yml']
   workflow_dispatch:
@@ -46,13 +46,14 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE_URL: ${{ vars.RAG_LAB_API_BASE_URL }}
-      - name: Assemble site (root page + RAG Lab)
+      - name: Assemble site (RAG Lab at the root, redirect at /rag-lab/)
         working-directory: .
         run: |
           mkdir -p _site
-          cp index.html .nojekyll _site/
+          cp -r rag-lab/web/dist/. _site/
+          cp .nojekyll _site/
           mkdir -p _site/rag-lab
-          cp -r rag-lab/web/dist/. _site/rag-lab/
+          cp redirect.html _site/rag-lab/index.html
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:
@@ -85,7 +86,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}rag-lab/
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4

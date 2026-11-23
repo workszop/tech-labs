@@ -42,7 +42,7 @@
     "CHAT_INPUT_PRICE_PER_MTOK": "0.15",
     "CHAT_OUTPUT_PRICE_PER_MTOK": "0.60",
 
-    "ALLOWED_ORIGINS": "https://workszop.github.io",
+    "ALLOWED_ORIGINS": "https://rag-lab.warsztaty-ai.com,https://workszop.github.io",
     // Cloudflare Access for /api/admin/* (leave empty to use only ADMIN_TOKEN).
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": "",

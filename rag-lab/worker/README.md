@@ -92,7 +92,7 @@ Generate secrets with `node -e "console.log(require('crypto').randomBytes(32).to
 | `EMBEDDING_DIMENSIONS` | `1536` | vectors are validated against it (mock: always 256) |
 | `EMBED_TIMEOUT_MS` / `CHAT_TIMEOUT_MS` | 20000 / 60000 | → `upstream_timeout` |
 | `*_PRICE_PER_MTOK` | 0.02 / 0.15 / 0.60 | USD per 1M tokens (embedding, chat input, chat output) |
-| `ALLOWED_ORIGINS` | `https://workszop.github.io` | comma list, exact match |
+| `ALLOWED_ORIGINS` | `https://rag-lab.warsztaty-ai.com,https://workszop.github.io` | comma list, exact match |
 | `SESSION_TTL_MINUTES` | 240 | absolute session lifetime (never beyond code expiry) |
 | `SESSION_IDLE_TIMEOUT_MINUTES` | 0 (off) | idle timeout using sliding `last_activity_at` |
 | `RATE_LIMIT_PER_MINUTE` | 30 | per session, embeddings + chat |
