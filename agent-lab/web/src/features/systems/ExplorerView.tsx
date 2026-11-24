@@ -19,7 +19,7 @@ export interface ViewState {
 
 const SHOW: Record<NonNullable<Column<unknown>['show']>, string> = {
   always: '',
-  md: 'hidden @lg:table-cell',
+  md: 'hidden @[26rem]:table-cell',
   lg: 'hidden @3xl:table-cell',
 }
 
@@ -48,7 +48,7 @@ export function ExplorerView({ view, data, loaded, state, onChange }: { view: Vi
             type="search"
             value={state.query}
             onChange={(e) => onChange({ ...state, query: e.target.value })}
-            placeholder={tx.search.placeholder}
+            placeholder={tx.searchPlaceholders[view]}
             className="h-9 w-full rounded-md border border-input bg-card pl-8 pr-8 text-[13.5px] text-foreground placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
             data-testid="explorer-search"
           />
@@ -105,7 +105,7 @@ export function ExplorerView({ view, data, loaded, state, onChange }: { view: Vi
             </div>
           )
         ) : (
-          <table className="w-full border-collapse text-[13px]" data-testid="explorer-table">
+          <table aria-label={tx.views[view]} className="w-full border-collapse text-[13px]" data-testid="explorer-table">
             <thead className="sticky top-0 z-[1]">
               <tr>
                 {cols.map((c) => (

@@ -9,7 +9,7 @@ import { useLang, useT } from '@/i18n'
 import { kbDocuments } from '@/data/kb'
 import type { Customer, Interaction, Order, Product, ServiceCase, Shipment, Ticket as TicketRow, Warranty } from '@/data/company/types'
 import { useTable } from '@/sim/db'
-import type { ExplorerData } from './model'
+import { customerName, productModel, shortModel, type ExplorerData } from './model'
 import { pushRecord, type RecordKind, type RecordRef } from './recordNav'
 
 // ---------------------------------------------------------------- formatting (active language)
@@ -148,8 +148,11 @@ export function Links({ refs, data }: { refs: RecordRef[]; data: ExplorerData })
 }
 
 function chipLabel(r: RecordRef, data: ExplorerData): string | undefined {
-  if (r.kind === 'customer') return data.customers.find((c) => c.id === r.id)?.name
-  if (r.kind === 'product') return data.products.find((p) => p.id === r.id)?.model.replace(/^Northstar\s+/, '')
+  if (r.kind === 'customer') return customerName(data, r.id) ?? undefined
+  if (r.kind === 'product') {
+    const m = productModel(data, r.id)
+    return m ? shortModel(m) : undefined
+  }
   if (r.kind === 'document') return data.docs.find((d) => d.id === r.id)?.title
   return undefined
 }

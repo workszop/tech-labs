@@ -84,8 +84,21 @@ export interface ViewSpec<T extends { id: string }> {
 
 const loc = (l: Localized | null | undefined, lang: Lang) => (l ? l[lang] : null)
 const byDesc = <T,>(key: (r: T) => string) => (a: T, b: T) => key(b).localeCompare(key(a)) || 0
-const nameOf = (data: ExplorerData, id: string) => data.customers.find((c) => c.id === id)?.name ?? null
-const modelOf = (data: ExplorerData, id: string) => data.products.find((p) => p.id === id)?.model ?? null
+
+/** Name of a customer, or null for an unknown ID. */
+export function customerName(data: Pick<ExplorerData, 'customers'>, id: string): string | null {
+  return data.customers.find((c) => c.id === id)?.name ?? null
+}
+/** Full model name of a product ("Northstar Barista Pro 500"), or null for an unknown ID. */
+export function productModel(data: Pick<ExplorerData, 'products'>, id: string): string | null {
+  return data.products.find((p) => p.id === id)?.model ?? null
+}
+/** Drops the brand prefix ("Northstar ") everywhere in a text, for compact table cells and chips. */
+export function shortModel(text: string): string {
+  return text.replace(/Northstar\s+/g, '')
+}
+const nameOf = customerName
+const modelOf = productModel
 
 function mine<T>(owner: (r: T) => string | null): FilterSpec<T> {
   return { key: 'mine', options: ['all', 'yes'], default: 'all', toggle: true, test: (r, v, ctx) => v !== 'yes' || owner(r) === ctx.activeCustomerId }

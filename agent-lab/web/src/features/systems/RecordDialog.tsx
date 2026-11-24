@@ -17,7 +17,7 @@ import { useStore } from '@/state/store'
 import { EmptyState, IconBadge } from '../common'
 import { useSwitchCustomer } from './ChatIdentity'
 import { DocumentView } from './DocumentView'
-import { findRecord, linksOf, ownerOf, type ExplorerData } from './model'
+import { customerName, findRecord, linksOf, ownerOf, productModel, type ExplorerData } from './model'
 import { backRecord, closeRecord, useRecordStack, type RecordKind, type RecordRef } from './recordNav'
 import { ActiveMark, KIND_ICON, Links, MonoLabel, RecordLink, StatusChip, TONES, fmtDate, fmtDateTime, fmtEur, useExplorerData } from './ui'
 
@@ -140,12 +140,12 @@ function RecordFields({ kind, record, data }: { kind: RecordKind; record: unknow
   const e = tx.enums
   const cust = (id: string) => (
     <span className="inline-flex flex-wrap items-center gap-x-1.5">
-      <RecordLink refTo={{ kind: 'customer', id }} /> {data.customers.find((c) => c.id === id)?.name}
+      <RecordLink refTo={{ kind: 'customer', id }} /> {customerName(data, id)}
     </span>
   )
   const prod = (id: string) => (
     <span className="inline-flex flex-wrap items-center gap-x-1.5">
-      <RecordLink refTo={{ kind: 'product', id }} /> {data.products.find((p) => p.id === id)?.model}
+      <RecordLink refTo={{ kind: 'product', id }} /> {productModel(data, id)}
     </span>
   )
   const link = (kind: RecordKind, id: string | null | undefined) => (id ? <RecordLink refTo={{ kind, id }} /> : '-')
@@ -349,7 +349,7 @@ function OrderLines({ order, data, tx }: { order: Order; data: ExplorerData; tx:
             {order.lines.map((l, i) => (
               <tr key={i} className={cn('border-t border-hairline', i % 2 === 1 && 'bg-subtle')}>
                 <td className="px-3 py-1.5">
-                  <RecordLink refTo={{ kind: 'product', id: l.productId }} /> <span className="text-foreground">{data.products.find((p) => p.id === l.productId)?.model}</span>
+                  <RecordLink refTo={{ kind: 'product', id: l.productId }} /> <span className="text-foreground">{productModel(data, l.productId)}</span>
                 </td>
                 <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[12px]">{l.serialNumber ?? '-'}</td>
                 <td className="whitespace-nowrap px-3 py-1.5">{l.warrantyId ? <RecordLink refTo={{ kind: 'warranty', id: l.warrantyId }} /> : '-'}</td>

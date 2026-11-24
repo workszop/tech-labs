@@ -52,6 +52,16 @@ export const shell = {
       error: 'Błąd',
       tooltip: 'Zanim agent przeszuka dokumenty serwisowe, ich fragmenty są zamieniane na wektory (embeddingi) przez serwer i zapisywane w tej przeglądarce.',
     },
+    mockBadgeShort: 'Demo offline',
+    status: {
+      button: 'Stan laboratorium',
+      title: 'Stan laboratorium',
+      ok: 'Wszystko gotowe.',
+      warn: 'Jeszcze nie wszystko gotowe, szczegóły poniżej.',
+      danger: 'Coś wymaga uwagi, szczegóły poniżej.',
+      model: 'Model AI',
+      quota: 'Limit AI',
+    },
     logout: 'Wyloguj',
   },
 

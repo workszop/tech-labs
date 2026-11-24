@@ -92,7 +92,7 @@ let state: AppState = {
   auth: { status: 'locked', session: null, notice: null },
   usage: null,
   settings: typeof window === 'undefined' ? DEFAULT_SETTINGS : loadPrefs(),
-  ui: { mobileTab: 'workspace' },
+  ui: { mobileTab: 'chat' },
   ready: false,
   activeCustomerId: DEFAULT_CUSTOMER_ID,
   enabledTools: [...DEFAULT_TOOLS],

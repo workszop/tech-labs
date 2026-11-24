@@ -62,8 +62,23 @@ export const systems: Dict['systems'] = {
 
   search: {
     label: 'Szukaj',
-    placeholder: 'Szukaj po ID, nazwie, numerze seryjnym…',
     clear: 'Wyczyść wyszukiwanie',
+  },
+
+  searchPlaceholders: {
+    customers: 'Szukaj po nazwisku, ID, e-mailu, mieście…',
+    orders: 'Szukaj po zamówieniu, kliencie, produkcie, numerze seryjnym…',
+    products: 'Szukaj po modelu, ID, opisie…',
+    warranties: 'Szukaj po numerze seryjnym, ID, produkcie, kliencie…',
+    shipments: 'Szukaj po przesyłce, numerze śledzenia, zawartości…',
+    returns: 'Szukaj po przesyłce, numerze śledzenia, zawartości…',
+    parts: 'Szukaj po przesyłce, sprawie, części…',
+    profiles: 'Szukaj po nazwisku, ID, notatkach…',
+    interactions: 'Szukaj po temacie, podsumowaniu, kliencie…',
+    complaints: 'Szukaj po temacie, podsumowaniu, kliencie…',
+    cases: 'Szukaj po sprawie, numerze seryjnym, usterce, kodzie błędu…',
+    tickets: 'Szukaj po zgłoszeniu, problemie, kliencie, produkcie…',
+    documents: 'Szukaj w tytule, produktach lub treści dokumentu…',
   },
 
   filters: {

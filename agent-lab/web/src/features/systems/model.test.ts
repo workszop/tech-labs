@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { COMPANY_SEED } from '@/data/company'
 import type { Ticket } from '@/data/company/types'
 import { kbDocuments } from '@/data/kb'
-import { GROUPS, VIEW_IDS, findRecord, linksOf, matchesQuery, ownerOf, recordKindOf, viewRows, type ExplorerData } from './model'
+import { GROUPS, VIEW_IDS, customerName, findRecord, productModel, shortModel, linksOf, matchesQuery, ownerOf, recordKindOf, viewRows, type ExplorerData } from './model'
 
 const data: ExplorerData = { ...structuredClone(COMPANY_SEED), docs: kbDocuments('en') }
 const opts = { lang: 'en' as const, query: '', filters: {}, activeCustomerId: 'CUST-1042' }
@@ -162,5 +162,20 @@ describe('records and links', () => {
     expect(ownerOf({ kind: 'customer', id: 'CUST-1042' }, data)).toBe('CUST-1042')
     expect(ownerOf({ kind: 'product', id: 'PRD-COFFEE-1' }, data)).toBeNull()
     expect(findRecord({ kind: 'order', id: 'ORD-9999-0000' }, data)).toBeNull()
+  })
+})
+
+describe('shared lookups', () => {
+  it('resolves customer names and product models, null for unknown IDs', () => {
+    expect(customerName(data, 'CUST-1042')).toBe('Emma Wilson')
+    expect(customerName(data, 'CUST-9999')).toBeNull()
+    expect(productModel(data, 'PRD-COFFEE-1')).toBe('Northstar Barista Pro 500')
+    expect(productModel(data, 'PRD-NOPE-1')).toBeNull()
+  })
+
+  it('shortModel drops the brand prefix everywhere in a text', () => {
+    expect(shortModel('Northstar Barista Pro 500')).toBe('Barista Pro 500')
+    expect(shortModel('1 × Northstar Home Hub, 2 × Northstar SmartPlug Duo')).toBe('1 × Home Hub, 2 × SmartPlug Duo')
+    expect(shortModel('Brush motor module')).toBe('Brush motor module')
   })
 })

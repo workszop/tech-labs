@@ -57,9 +57,24 @@ export const systems = {
 
   search: {
     label: 'Search',
-    placeholder: 'Search by ID, name, serial number…',
     clear: 'Clear search',
   },
+
+  searchPlaceholders: {
+    customers: 'Search name, ID, e-mail, city…',
+    orders: 'Search order ID, customer, product, serial…',
+    products: 'Search model, ID, description…',
+    warranties: 'Search serial number, ID, product, customer…',
+    shipments: 'Search shipment, tracking number, contents…',
+    returns: 'Search shipment, tracking number, contents…',
+    parts: 'Search shipment, case, part…',
+    profiles: 'Search name, ID, notes…',
+    interactions: 'Search subject, summary, customer…',
+    complaints: 'Search subject, summary, customer…',
+    cases: 'Search case, serial, fault, error code…',
+    tickets: 'Search ticket, issue, customer, product…',
+    documents: 'Search title, product or document text…',
+  } satisfies Record<ViewId, string>,
 
   filters: {
     all: 'All',

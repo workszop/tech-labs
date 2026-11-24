@@ -47,6 +47,16 @@ export const shell = {
       error: 'Error',
       tooltip: 'Before the agent can search the service documents, their chunks are turned into vectors (embeddings) through the server and stored in this browser.',
     },
+    mockBadgeShort: 'Offline demo',
+    status: {
+      button: 'Lab status',
+      title: 'Lab status',
+      ok: 'Everything is ready.',
+      warn: 'Not everything is ready yet: see below.',
+      danger: 'Something needs your attention: see below.',
+      model: 'AI model',
+      quota: 'AI allowance',
+    },
     logout: 'Log out',
   },
 

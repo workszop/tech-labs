@@ -41,11 +41,11 @@ export function SystemsPanel() {
                 type="button"
                 onClick={() => setGroup(g.id)}
                 aria-current={on ? 'true' : undefined}
-                className={cn('flex min-w-0 cursor-pointer items-center gap-2 rounded-full py-1 pl-1 pr-2.5 text-left text-[12.5px] font-semibold leading-tight transition-colors', on ? 'bg-primary text-primary-foreground' : 'bg-card text-[var(--ink-2)] hover:bg-muted hover:text-foreground')}
+                className={cn('flex min-h-9 min-w-0 cursor-pointer items-center gap-2 rounded-2xl py-1 pl-3 pr-2.5 @sm:rounded-full @sm:pl-1 text-left text-[12.5px] font-semibold leading-tight transition-colors', on ? 'bg-primary text-primary-foreground' : 'bg-card text-[var(--ink-2)] hover:bg-muted hover:text-foreground')}
                 data-group={g.id}
               >
-                <span aria-hidden="true" className="inline-grid size-7 shrink-0 place-items-center rounded-full bg-doc text-[var(--blue-ink)] [&_svg]:size-4"><Icon /></span>
-                <span className="min-w-0 truncate">{tx.groups[g.id]}</span>
+                <span aria-hidden="true" className="hidden size-7 shrink-0 place-items-center rounded-full bg-doc text-[var(--blue-ink)] @sm:inline-grid [&_svg]:size-4"><Icon /></span>
+                <span className="min-w-0 @sm:truncate">{tx.groups[g.id]}</span>
               </button>
             )
           })}
@@ -88,9 +88,10 @@ export function SystemsPanel() {
       />
 
       <Tooltip content={tx.panel.noticeTooltip} side="top">
-        <p tabIndex={0} className="flex shrink-0 cursor-help items-center gap-1.5 border-t border-hairline bg-subtle px-3 py-1.5 text-[11.5px] leading-snug text-[var(--ink-2)]" data-testid="sim-notice">
+        <p className="flex shrink-0 cursor-help items-center gap-1.5 border-t border-hairline bg-subtle px-3 py-1.5 text-[11.5px] leading-snug text-[var(--ink-2)]" data-testid="sim-notice">
           <Info aria-hidden="true" className="size-3.5 shrink-0" />
           <span className="min-w-0">{tx.panel.notice}</span>
+          <span className="sr-only"> {tx.panel.noticeTooltip}</span>
         </p>
       </Tooltip>
     </section>

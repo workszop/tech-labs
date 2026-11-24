@@ -40,11 +40,6 @@ export default function App() {
     document.documentElement.lang = lang
   }, [lang])
 
-  // On a narrow screen the app opens on the chat, the first tab.
-  useEffect(() => {
-    if (!window.matchMedia(DESKTOP_QUERY).matches) setUi({ mobileTab: 'chat' })
-  }, [])
-
   const systems = <SystemsPanel />
   const workspace = <WorkspacePanel />
   const chat = <ChatPanel />

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { UserRoundCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -49,6 +49,7 @@ export function ChatIdentity({ customers }: { customers: Customer[] }) {
   const tx = useT().systems.chatIdentity
   const activeId = useStore((s) => s.activeCustomerId)
   const { request, dialog } = useSwitchCustomer()
+  const hintId = useId()
   return (
     <div className="flex items-center gap-3 border-b border-hairline bg-subtle px-3 py-2.5" data-testid="chat-identity">
       <span aria-hidden="true" className="inline-grid size-[34px] shrink-0 place-items-center rounded-md bg-foreground text-[var(--yellow)]">
@@ -64,13 +65,14 @@ export function ChatIdentity({ customers }: { customers: Customer[] }) {
           }}
           className="mt-1 h-8 w-full min-w-0 cursor-pointer rounded-md border border-input bg-card px-2 text-[13px] font-semibold text-foreground"
           title={tx.hint}
-          aria-description={tx.hint}
+          aria-describedby={hintId}
           data-testid="chat-identity-select"
         >
           {customers.map((c) => (
             <option key={c.id} value={c.id}>{c.name} · {c.id}</option>
           ))}
         </select>
+        <span id={hintId} className="sr-only">{tx.hint}</span>
       </label>
       {dialog}
     </div>
