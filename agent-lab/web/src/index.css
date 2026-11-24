@@ -1,0 +1,371 @@
+@import 'tailwindcss';
+@import '@xyflow/react/dist/style.css';
+
+/* ============================================================
+   Service Agent Lab - edulab "Editorial Color" foundation
+   1. edulab tokens (verbatim copy of edustyl tokens/colors_and_type.css, :root part)
+   2. app aliases (data colours, tints, names read by inline SVG / JS)
+   3. Tailwind theme remap: existing utilities resolve to edulab tokens
+   4. base, focus ring, app component classes
+   Light only: edulab has no dark theme, so there is no dark variant block.
+   ============================================================ */
+
+/* ---------- 1. edulab tokens (do not edit here; source: ~/.claude/skills/edustyl) ---------- */
+/* ============================================================
+   edulab - Colors & Type foundation
+   Fonts (Outfit, IBM Plex Sans, Roboto Mono) load from Google Fonts
+   via the <link> tags in tokens/head.html - paste that into <head>.
+   No @import here: it chains requests and blocks rendering.
+   ============================================================ */
+
+:root {
+  /* ---- Brand fonts ---- */
+  --font-display: 'Outfit', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-sans:    'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-mono:    'Roboto Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ============================================================
+     RAW COLOR TOKENS
+     ============================================================ */
+
+  /* Paper - page background is white; the stone steps are bands / wells.
+     Warm neutral grey (no yellow cast) so yellow and the colour blocks stay the
+     loudest thing on the page. Stone v2 (2026-10-10) replaced the cream sand
+     (#FBF7E6 / #F5EDCB), which at 1.07:1 on white did not read as a surface. */
+  --paper:    #FFFFFF;   /* page background (white)                       */
+  --paper-2:  #F5F3F0;   /* stone band: alternating sections, card heads   */
+  --paper-3:  #EAE6E0;   /* deepest stone: wells, table heads, bar tracks  */
+  --surface:  #FFFFFF;   /* cards & sheets                                */
+
+  /* Ink - warm near-black text & lines */
+  --ink:      #1C1917;   /* primary text                                    */
+  --ink-2:    #44403C;   /* secondary text, 10.3:1 on white                 */
+  --ink-3:    #625B53;   /* muted / placeholder: >= 4.5:1 on every paper step */
+  --line:     #E0DBD3;   /* hairline: dividers, table rows, card heads      */
+  --line-2:   #C9C2B7;   /* stronger: card contours, section rules          */
+  --line-strong: #857C69;/* control boundaries (inputs, ghost buttons,
+                            answer options): >= 3:1 on paper steps (WCAG 1.4.11) */
+
+  /* ---- Brand: Yellow main · Blue + Green secondary · Red danger ----
+     Plain saturated colours. The base colour (--blue) is for large fills,
+     illustrations and large text (>= 24px, or 19px bold). "-soft" is the
+     solid fill for chips and panels that carry small text: it is the
+     AA shade (= "-600"), so its "-ink" (white; dark ink on yellow) reaches
+     4.5:1. A colour used AS text goes only on white and uses "-600".
+     Never colour-on-colour (no green text on green).
+     Gate: python3 scripts/check-contrast.py */
+
+  /* Yellow - primary (buttons, progress, values on dark panels) */
+  --yellow:      #FFD500;
+  --yellow-600:  #F0C800;  /* hover / press          */
+  --yellow-soft: #FFD500;  /* chip / panel fill      */
+  --yellow-ink:  #1C1917;  /* text on yellow         */
+
+  /* Blue - secondary (panels, chips, correct / selected state) */
+  --blue:      #1E8FC2;
+  --blue-600:  #177AA8;
+  --blue-soft: #177AA8;   /* = blue-600, white text 4.8:1 */
+  --blue-ink:  #FFFFFF;
+
+  /* Green - secondary support (chips, success) */
+  --green:      #00A651;
+  --green-600:  #078342;  /* hover / press, AA text shade */
+  --green-soft: #078342;  /* = green-600, white text 4.9:1 */
+  --green-ink:  #FFFFFF;
+
+  /* Red - danger / important / wrong (use sparingly) */
+  --red:      #E5322D;
+  --red-600:  #C92823;
+  --red-soft: #C92823;   /* = red-600, white text 5.5:1 */
+  --red-ink:  #FFFFFF;
+
+  /* Grape - 5th category tone (colour-coded groups), from the play palette */
+  --grape:      #7A5AC2;
+  --grape-soft: #7A5AC2;  /* white text 5.2:1 */
+  --grape-ink:  #FFFFFF;
+
+  /* Legacy role aliases - older edulab apps use these names */
+  --marigold: var(--yellow); --marigold-600: var(--yellow-600); --marigold-soft: var(--yellow-soft); --marigold-ink: var(--yellow-ink);
+  --teal:     var(--blue);   --teal-600:     var(--blue-600);   --teal-soft:     var(--blue-soft);   --teal-ink:     var(--blue-ink);
+  --sky:      var(--green);                                     --sky-soft:      var(--green-soft);  --sky-ink:      var(--green-ink);
+  --coral:    var(--red);    --coral-600:    var(--red-600);    --coral-soft:    var(--red-soft);    --coral-ink:    var(--red-ink);
+
+  /* Play palette - subject/category colours in the kids app */
+  --play-sun:    #FFD500;
+  --play-grass:  #00A651;
+  --play-berry:  #C6478B;
+  --play-grape:  #7A5AC2;
+  --play-sky:    #1E8FC2;
+  --play-coral:  #E5322D;
+
+  /* ---- Semantic ---- */
+  --success:      #00A651;  --success-soft: #078342;  --success-ink: #FFFFFF;
+  --warning:      #FFD500;  --warning-soft: #FFD500;  --warning-ink: #1C1917;
+  --danger:       #E5322D;  --danger-soft:  #C92823;  --danger-ink:  #FFFFFF;
+  --info:         #1E8FC2;  --info-soft:    #177AA8;  --info-ink:    #FFFFFF;
+
+  /* ---- Functional aliases ---- */
+  --bg:        var(--paper);
+  --fg:        var(--ink);
+  --fg-muted:  var(--ink-2);
+  --primary:   var(--yellow);
+  --on-primary:#1C1917;      /* dark text on yellow */
+  /* White gap + ink band: >= 3:1 on paper, sand, yellow and every chip fill.
+     Pair with `outline: 3px solid transparent` so forced-colours mode still shows focus. */
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 5px var(--ink);
+  /* Range-slider track */
+  --track: color-mix(in srgb, var(--ink) 24%, transparent);
+
+  /* ============================================================
+     SPACING  (4pt base)
+     ============================================================ */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px; --sp-20: 80px; --sp-24: 96px;
+
+  /* ---- Radii (friendly, generous) ---- */
+  /* Page gutter (user decision 2026-11-07): content ~70% of the viewport on wide screens
+     (15% margin each side from ~1280px), never squeezed below 900px, 16-72px on phones/tablets.
+     Every full-width band, header row, page head and footer pads its content with it. */
+  --gutter: max(clamp(16px, 4vw, 72px), min(15vw, calc((100vw - 900px) / 2)));
+  --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px; --r-pill: 999px;
+
+  /* ---- Elevation - warm, low, soft ---- */
+  --shadow-sm: 0 1px 2px rgba(33,30,26,.10), 0 2px 6px rgba(33,30,26,.06);
+  --shadow-md: 0 6px 18px rgba(33,30,26,.12), 0 1px 3px rgba(33,30,26,.08);
+  --shadow-lg: 0 16px 40px rgba(33,30,26,.12), 0 3px 8px rgba(33,30,26,.06);
+  --shadow-primary:  0 8px 22px color-mix(in srgb, var(--yellow) 30%, transparent);
+  --shadow-marigold: var(--shadow-primary);   /* legacy alias */
+
+  /* ============================================================
+     TYPE SCALE (semantic sizes)
+     ============================================================ */
+  --display-font:  clamp(48px, 6vw, 72px);
+  --h1: 44px; --h2: 33px; --h3: 25px; --h4: 19px;
+  --body-lg: 18px; --body: 16px; --body-sm: 14px;
+  --caption: 13px; --overline: 12px;
+}
+
+/* ---------- 2. App aliases ----------
+   Two data colours stay apart: "doc" (documents, chunks) = blue, "query" (the user's question) = grape.
+   -text  : the colour used AS text. One step darker than -600 so it passes 4.5:1 on white,
+            on both stone steps and on its own -tint well.
+   -tint  : light well that carries normal ink text (the app's bg-*-soft utilities).
+            Solid chips use the edulab -soft fill + -ink text instead (see components/ui/badge.tsx).
+   Names below never shadow an edulab token (the contrast gate reads every :root block). */
+:root {
+  --doc-text:    color-mix(in srgb, var(--blue-600) 82%, var(--ink));
+  --query-text:  color-mix(in srgb, var(--grape) 80%, var(--ink));
+  --ok-text:     color-mix(in srgb, var(--green-600) 82%, var(--ink));
+  --danger-text: color-mix(in srgb, var(--red-600) 85%, var(--ink));
+  --warn-text:   color-mix(in srgb, var(--yellow-600) 42%, var(--ink));
+
+  --doc-tint:    color-mix(in srgb, var(--blue) 12%, var(--paper));
+  --query-tint:  color-mix(in srgb, var(--grape) 12%, var(--paper));
+  --ok-tint:     color-mix(in srgb, var(--green) 12%, var(--paper));
+  --danger-tint: color-mix(in srgb, var(--red) 10%, var(--paper));
+  --warn-tint:   color-mix(in srgb, var(--yellow) 28%, var(--paper));
+
+  --danger-600-press: color-mix(in srgb, var(--red-600) 86%, var(--ink));
+
+  /* Names that feature code reads directly (inline SVG stroke="var(--doc)",
+     getComputedStyle in the vector map, React Flow edge styles). */
+  --doc:              var(--blue-600);
+  --query:            var(--grape);
+  --ok:               var(--green-600);
+  --border:           var(--line-2);
+  --foreground:       var(--ink);
+  --muted-foreground: var(--ink-3);
+
+  color-scheme: light;
+}
+
+/* ---------- 3. Tailwind theme remap ---------- */
+
+/* Keys that share their name with an edulab token: point the utility at the token
+   and emit nothing (reference), so the token in :root stays the single definition. */
+@theme inline reference {
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --shadow-2xs: var(--shadow-sm);
+  --shadow-xs: var(--shadow-sm);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-lg);
+  --shadow-2xl: var(--shadow-lg);
+}
+
+@theme inline {
+  /* surfaces and text */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--ink);
+  --color-subtle: var(--paper-2);
+  --color-muted: var(--paper-3);
+  --color-muted-foreground: var(--ink-3);
+  --color-secondary: var(--paper-3);
+  --color-secondary-foreground: var(--ink);
+  --color-accent: var(--paper-2);
+  --color-accent-foreground: var(--ink);
+  --color-white: var(--paper);
+  --color-black: var(--ink);
+
+  /* lines */
+  --color-border: var(--line-2);
+  --color-hairline: var(--line);
+  --color-input: var(--line-strong);
+  --color-ring: var(--ink);
+
+  /* primary = yellow, always with dark text; as text or contour on white it is ink */
+  --color-primary: var(--yellow);
+  --color-primary-foreground: var(--on-primary);
+  --text-color-primary: var(--ink);
+  --border-color-primary: var(--ink);
+
+  /* data + state colours. --color-* feeds border / ring / fill / stroke,
+     --background-color-* the solid fill (white text, dark on yellow),
+     --text-color-* the colour as text. */
+  --color-doc: var(--blue-600);
+  --background-color-doc: var(--blue-soft);
+  --text-color-doc: var(--doc-text);
+  --color-doc-soft: var(--doc-tint);
+
+  --color-query: var(--grape);
+  --background-color-query: var(--grape-soft);
+  --text-color-query: var(--query-text);
+  --color-query-soft: var(--query-tint);
+
+  --color-ok: var(--green-600);
+  --background-color-ok: var(--green-soft);
+  --text-color-ok: var(--ok-text);
+  --color-ok-soft: var(--ok-tint);
+
+  --color-warn: var(--warn-text);
+  --background-color-warn: var(--yellow-soft);
+  --text-color-warn: var(--warn-text);
+  --color-warn-soft: var(--warn-tint);
+
+  --color-danger: var(--red-600);
+  --background-color-danger: var(--red-soft);
+  --text-color-danger: var(--danger-text);
+  --color-danger-soft: var(--danger-tint);
+
+  /* radii: one step more generous than the old 6 / 8 / 10 */
+  --radius-sm: var(--r-xs);
+  --radius-md: var(--r-sm);
+  --radius-lg: var(--r-md);
+  --radius-xl: var(--r-lg);
+  --radius-2xl: var(--r-xl);
+  --radius-3xl: var(--r-xl);
+}
+
+/* ---------- 4. Base ---------- */
+@layer base {
+  * { border-color: var(--line-2); }
+  html, body, #root { height: 100%; }
+  html { color-scheme: light; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Headings speak in the display face; sizes stay with the utilities in the markup. */
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.015em; color: var(--ink); }
+  code, kbd, samp, pre { font-family: var(--font-mono); }
+  ::selection { background: var(--yellow); color: var(--yellow-ink); }
+}
+
+/* Focus ring: white gap + ink band on every interactive element. Unlayered on purpose,
+   so it also wins over shadow / ring utilities on the focused element. Containers that
+   only receive programmatic focus (dialog, tab panel) stay quiet. */
+:focus-visible:not([role='dialog'], [role='tabpanel']) { outline: 3px solid transparent; outline-offset: 2px; box-shadow: var(--focus-ring); }
+
+@layer components {
+  /* edulab semantic classes (class forms only; the :where(.edu) element defaults are
+     left out because unlayered element rules would override the size utilities) */
+  .edu-display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--display-font);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+  .edu-h1 {
+    font-family: var(--font-display);
+    font-weight: 700; font-size: var(--h1);
+    line-height: 1.06; letter-spacing: -0.02em; color: var(--ink);
+  }
+  .edu-h2 {
+    font-family: var(--font-display);
+    font-weight: 700; font-size: var(--h2);
+    line-height: 1.12; letter-spacing: -0.015em; color: var(--ink);
+  }
+  .edu-h3 {
+    font-family: var(--font-display);
+    font-weight: 700; font-size: var(--h3);
+    line-height: 1.2; letter-spacing: -0.01em; color: var(--ink);
+  }
+  .edu-h4 {
+    font-family: var(--font-sans);
+    font-weight: 700; font-size: var(--h4);
+    line-height: 1.3; color: var(--ink);
+  }
+  .edu-p, .edu-body {
+    font-family: var(--font-sans);
+    font-weight: 400; font-size: var(--body);
+    line-height: 1.6; color: var(--ink-2);
+  }
+  .edu-body-lg { font-family: var(--font-sans); font-size: var(--body-lg); line-height: 1.6; color: var(--ink-2); }
+  .edu-small  { font-family: var(--font-sans); font-size: var(--body-sm); line-height: 1.5; color: var(--ink-2); }
+  .edu-caption{ font-family: var(--font-sans); font-size: var(--caption); line-height: 1.45; color: var(--ink-3); }
+
+  /* Overline - mono, tracked; functional labels only (never above page/section titles) */
+  .edu-overline {
+    font-family: var(--font-mono);
+    font-weight: 500; font-size: var(--overline);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink);
+  }
+  .edu-mono {
+    font-family: var(--font-mono);
+    font-size: 0.92em; color: var(--ink);
+    background: var(--paper-3); padding: 0.12em 0.4em; border-radius: var(--r-xs);
+  }
+
+  /* Solid colour blocks (callouts, stat cards, chips): set background: var(--X-soft) and
+     color: var(--X-ink) on the block, add .edu-block, and every heading/paragraph inside
+     inherits that text colour instead of the default ink. */
+  .edu-block, .edu-block h1, .edu-block h2, .edu-block h3, .edu-block h4, .edu-block p,
+  .edu-block li, .edu-block small { color: inherit; }
+
+  body.edu { background: var(--paper); color: var(--ink); font-family: var(--font-sans); }
+
+  /* app helpers */
+  .scroll-thin { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+  .kbd { font-family: var(--font-mono); font-size: 11px; }
+  /* chunk overlap: solid yellow carries dark ink */
+  .mark-overlap { background: var(--yellow); color: var(--yellow-ink); border-radius: var(--r-xs); }
+  /* cited passage: green well, ink text, full 1px contour */
+  .mark-hit { background: var(--ok-tint); color: var(--ink); border-radius: var(--r-xs); box-shadow: 0 0 0 1px var(--green-600); }
+  .react-flow__attribution { display: none; }
+  .react-flow { --xy-background-color: transparent; }
+  /* running step: a crisp full-contour yellow band that breathes (no blur, no glow) */
+  @keyframes rl-pulse { 0%,100% { box-shadow: 0 0 0 2px var(--yellow); } 50% { box-shadow: 0 0 0 5px var(--yellow); } }
+  .rl-processing { animation: rl-pulse 1.4s ease-in-out infinite; }
+  /* panel spotlight (lib/reveal.ts): full contour for ~2 s, ink band with a yellow band inside */
+  @keyframes rl-spot { 0%,70% { opacity: 1; } 100% { opacity: 0; } }
+  .rl-spotlight { position: relative; }
+  .rl-spotlight::after { content: ''; position: absolute; inset: 0; z-index: 20; pointer-events: none; border: 2px solid var(--ink); outline: 4px solid var(--yellow); outline-offset: -6px; animation: rl-spot 1.8s ease-out forwards; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .rl-spotlight::after { animation: none !important; }
+}

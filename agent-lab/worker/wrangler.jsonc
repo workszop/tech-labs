@@ -1,0 +1,64 @@
+// Service Agent Lab API gateway — Cloudflare Worker configuration.
+// Secrets (never put them here):  wrangler secret put CODE_PEPPER | ADMIN_TOKEN | PROVIDER_API_KEY
+// Local dev: copy .dev.vars.example → .dev.vars (sets PROVIDER=mock + dev secrets, overrides the vars below).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "agent-lab-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+
+  // Daily cleanup of expired sessions and stale rate-limit windows (UTC).
+  "triggers": { "crons": ["17 3 * * *"] },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agent-lab",
+      "database_id": "REPLACE_WITH_D1_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Optional extra per-session limiter (Workers Rate Limiting binding). D1 limiting works without it.
+  // "ratelimits": [
+  //   { "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } }
+  // ],
+
+  // PROVIDER=mock runs the offline demo models (no API key, no cost). For real models set
+  // PROVIDER to "openai-compatible" and run `wrangler secret put PROVIDER_API_KEY`.
+  "vars": {
+    "PROVIDER": "mock",
+    "PROVIDER_BASE_URL": "https://api.openai.com/v1",
+    "EMBEDDING_MODEL": "text-embedding-3-small",
+    "EMBEDDING_DIMENSIONS": "1536",
+    "CHAT_MODEL": "gpt-4o-mini",
+    "ALLOWED_MODELS": "text-embedding-3-small,gpt-4o-mini",
+    "EMBED_TIMEOUT_MS": "20000",
+    "CHAT_TIMEOUT_MS": "60000",
+
+    "EMBEDDING_PRICE_PER_MTOK": "0.02",
+    "CHAT_INPUT_PRICE_PER_MTOK": "0.15",
+    "CHAT_OUTPUT_PRICE_PER_MTOK": "0.60",
+
+    "ALLOWED_ORIGINS": "https://tech-labs.warsztaty-ai.com,https://workszop.github.io",
+    // Cloudflare Access for /api/admin/* (leave empty to use only ADMIN_TOKEN).
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+
+    "SESSION_TTL_MINUTES": "240",
+    "SESSION_IDLE_TIMEOUT_MINUTES": "0",
+    "RATE_LIMIT_PER_MINUTE": "30",
+    "ACTIVATION_MAX_ATTEMPTS": "10",
+    "ACTIVATION_WINDOW_SECONDS": "900",
+    "ACTIVATION_GLOBAL_FAILURES_PER_MINUTE": "60",
+    "ACTIVATION_MIN_RESPONSE_MS": "250",
+
+    "DEFAULT_REQUEST_LIMIT": "300",
+    "DEFAULT_TOKEN_LIMIT": "300000",
+    "DEFAULT_MAX_SESSIONS": "3",
+
+    "CLEANUP_RETENTION_DAYS": "7"
+  }
+}
