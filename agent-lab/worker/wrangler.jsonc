@@ -16,7 +16,7 @@
     {
       "binding": "DB",
       "database_name": "agent-lab",
-      "database_id": "REPLACE_WITH_D1_ID",
+      "database_id": "b4863e49-8fdc-4cf9-879b-45cda80197d0",
       "migrations_dir": "migrations"
     }
   ],
