@@ -7,12 +7,18 @@ import { cn } from '@/lib/utils'
 import { useLang, useT } from '@/i18n'
 import { ActivationScreen } from '@/features/ActivationScreen'
 import { Header } from '@/features/Header'
-import { PlaceholderPanel } from '@/features/PlaceholderPanel'
+import { SystemsPanel } from '@/features/systems/SystemsPanel'
+import { RecordDialogHost } from '@/features/systems/RecordDialog'
+import { WorkspacePanel } from '@/features/workspace/WorkspacePanel'
+import { ChatPanel } from '@/features/chat/ChatPanel'
+
+/** Three resizable panels from this width; below it the app shows one panel at a time with tabs. */
+const DESKTOP_QUERY = '(min-width: 1100px)'
 
 function useIsDesktop() {
-  const [desk, setDesk] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
+  const [desk, setDesk] = useState(() => window.matchMedia(DESKTOP_QUERY).matches)
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)')
+    const mq = window.matchMedia(DESKTOP_QUERY)
     const fn = () => setDesk(mq.matches)
     mq.addEventListener('change', fn)
     return () => mq.removeEventListener('change', fn)
@@ -34,9 +40,14 @@ export default function App() {
     document.documentElement.lang = lang
   }, [lang])
 
-  const systems = <PlaceholderPanel panel="systems" tone="doc" icon={<Database />} title={tx.panels.systems.title} text={tx.panels.systems.empty} />
-  const workspace = <PlaceholderPanel panel="workspace" tone="query" icon={<Bot />} title={tx.panels.workspace.title} text={tx.panels.workspace.empty} />
-  const chat = <PlaceholderPanel panel="chat" tone="stone" icon={<MessageSquare />} title={tx.panels.chat.title} text={tx.panels.chat.empty} />
+  // On a narrow screen the app opens on the chat, the first tab.
+  useEffect(() => {
+    if (!window.matchMedia(DESKTOP_QUERY).matches) setUi({ mobileTab: 'chat' })
+  }, [])
+
+  const systems = <SystemsPanel />
+  const workspace = <WorkspacePanel />
+  const chat = <ChatPanel />
 
   return (
     <TooltipProvider>
@@ -47,26 +58,26 @@ export default function App() {
           <Header />
           {desktop ? (
             <Group orientation="horizontal" className="min-h-0 flex-1">
-              <Panel defaultSize="22" minSize="15" maxSize="34" className="bg-card">{systems}</Panel>
+              <Panel defaultSize="30" minSize="320px" maxSize="50" className="bg-card">{systems}</Panel>
               <Handle />
-              <Panel defaultSize="48" minSize="30">{workspace}</Panel>
+              <Panel defaultSize="41" minSize="360px">{workspace}</Panel>
               <Handle />
-              <Panel defaultSize="30" minSize="20" maxSize="42" className="bg-card">{chat}</Panel>
+              <Panel defaultSize="29" minSize="320px" maxSize="42" className="bg-card">{chat}</Panel>
             </Group>
           ) : (
             <>
               <main className="min-h-0 flex-1 bg-card">
-                <div className={cn('h-full', mobileTab !== 'systems' && 'hidden')}>{systems}</div>
-                <div className={cn('h-full bg-background', mobileTab !== 'workspace' && 'hidden')}>{workspace}</div>
                 <div className={cn('h-full', mobileTab !== 'chat' && 'hidden')}>{chat}</div>
+                <div className={cn('h-full bg-background', mobileTab !== 'workspace' && 'hidden')}>{workspace}</div>
+                <div className={cn('h-full', mobileTab !== 'systems' && 'hidden')}>{systems}</div>
               </main>
               <nav className="grid shrink-0 grid-cols-3 gap-1 border-t bg-card px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5" aria-label={tx.app.sections}>
                 {([
-                  ['systems', tx.app.tabSystems, <Database key="s" />],
-                  ['workspace', tx.app.tabWorkspace, <Bot key="w" />],
                   ['chat', tx.app.tabChat, <MessageSquare key="c" />],
+                  ['workspace', tx.app.tabWorkspace, <Bot key="w" />],
+                  ['systems', tx.app.tabSystems, <Database key="s" />],
                 ] as const).map(([id, label, icon]) => (
-                  <button key={id} onClick={() => setUi({ mobileTab: id })} className={cn('flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11.5px] transition-colors cursor-pointer [&_svg]:size-5', mobileTab === id ? 'bg-primary font-semibold text-primary-foreground' : 'text-[var(--ink-2)] hover:bg-muted')} aria-current={mobileTab === id}>
+                  <button key={id} onClick={() => setUi({ mobileTab: id })} className={cn('flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11.5px] transition-colors cursor-pointer [&_svg]:size-5', mobileTab === id ? 'bg-primary font-semibold text-primary-foreground' : 'text-[var(--ink-2)] hover:bg-muted')} aria-current={mobileTab === id} data-tab={id}>
                     {icon}
                     {label}
                   </button>
@@ -74,6 +85,7 @@ export default function App() {
               </nav>
             </>
           )}
+          <RecordDialogHost />
         </div>
       )}
     </TooltipProvider>

@@ -1,0 +1,211 @@
+// Polskie teksty eksploratora systemów firmy (lewy panel) i okna rekordu / dokumentu.
+// Kształt musi być identyczny z en/systems.ts.
+import type { Dict } from '../en'
+
+function plural(n: number, one: string, few: string, many: string): string {
+  const m10 = n % 10
+  const m100 = n % 100
+  if (n === 1) return one
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few
+  return many
+}
+const p = (n: number, one: string, few: string, many: string) => `${n} ${plural(n, one, few, many)}`
+
+export const systems: Dict['systems'] = {
+  panel: {
+    title: 'Systemy firmy',
+    subtitle: 'Northstar Appliances · dane dostępne dla agenta',
+    groupsLabel: 'Systemy firmy',
+    viewsLabel: 'Widoki',
+    notice: 'Symulacja w Twojej przeglądarce, nie produkcyjny backend.',
+    noticeTooltip: 'Wszystkie rekordy są fikcyjne i zapisane w tej przeglądarce (IndexedDB). Narzędzia agenta czytają i zapisują dokładnie te tabele. Prawdziwa firma trzymałaby je za zabezpieczonym serwerem.',
+  },
+
+  groups: {
+    sales: 'Klienci i zamówienia',
+    logistics: 'Logistyka',
+    crm: 'CRM',
+    knowledge: 'Baza wiedzy serwisu',
+  },
+
+  views: {
+    customers: 'Klienci',
+    orders: 'Zamówienia',
+    products: 'Produkty',
+    warranties: 'Gwarancje',
+    shipments: 'Przesyłki',
+    returns: 'Zwroty',
+    parts: 'Części zamienne',
+    profiles: 'Profile',
+    interactions: 'Kontakty',
+    complaints: 'Reklamacje',
+    cases: 'Sprawy serwisowe',
+    tickets: 'Zgłoszenia',
+    documents: 'Dokumenty',
+  },
+
+  viewHints: {
+    customers: 'Dane klientów. Czyta je get_customer_profile.',
+    orders: 'Zamówienia z pozycjami i numerami seryjnymi. Czyta je get_customer_orders.',
+    products: 'Katalog produktów. Czyta go get_product_details.',
+    warranties: 'Jedna gwarancja na egzemplarz; check_warranty sprawdza ją według daty symulacji.',
+    shipments: 'Przesyłki z datowanymi zdarzeniami. Czytają je get_shipments i track_shipment.',
+    returns: 'Paczki odesłane przez klientów.',
+    parts: 'Części zamienne wysłane w ramach spraw serwisowych.',
+    profiles: 'Co CRM wie o każdym kliencie. Czyta to get_crm_history.',
+    interactions: 'Rozmowy, e-maile, czaty i wizyty w sklepie, od najnowszych.',
+    complaints: 'Kontakty zapisane jako reklamacje.',
+    cases: 'Naprawy i sprawy serwisowe. Czyta je get_service_case.',
+    tickets: 'Zgłoszenia serwisowe utworzone przez agenta po Twojej zgodzie.',
+    documents: 'Dokumenty serwisowe według rangi. search_service_knowledge przeszukuje ich fragmenty.',
+  },
+
+  search: {
+    label: 'Szukaj',
+    placeholder: 'Szukaj po ID, nazwie, numerze seryjnym…',
+    clear: 'Wyczyść wyszukiwanie',
+  },
+
+  filters: {
+    all: 'Wszystkie',
+    labels: {
+      status: 'Status',
+      type: 'Typ',
+      segment: 'Segment',
+      category: 'Kategoria',
+      production: 'Produkcja',
+      channel: 'Kanał',
+      priority: 'Priorytet',
+      authority: 'Ranga',
+      cases: 'Sprawy',
+    },
+    mine: 'Tylko klient z czatu',
+    mineTooltip: 'Pokaż tylko rekordy klienta zalogowanego w czacie.',
+    unresolved: 'Nierozwiązane',
+    withOpenCases: 'Z otwartymi sprawami',
+    current: 'W produkcji',
+    discontinued: 'Wycofane',
+  },
+
+  count: (shown: number, total: number) => (shown === total ? p(total, 'rekord', 'rekordy', 'rekordów') : `${shown} z ${total}`),
+  loading: 'Wczytywanie rekordów…',
+  empty: { title: 'Nic nie znaleziono', body: 'Żaden rekord nie pasuje do wyszukiwania ani filtrów.', reset: 'Wyczyść wyszukiwanie i filtry' },
+  emptyTickets: { title: 'Brak zgłoszeń', body: 'Gdy agent utworzy zgłoszenie serwisowe po Twojej zgodzie, od razu pojawi się tutaj.' },
+
+  columns: {
+    id: 'ID',
+    name: 'Nazwa',
+    customer: 'Klient',
+    segment: 'Segment',
+    since: 'Klient od',
+    date: 'Data',
+    status: 'Status',
+    total: 'Wartość',
+    model: 'Model',
+    price: 'Cena',
+    production: 'Produkcja',
+    product: 'Produkt',
+    ends: 'Koniec',
+    contents: 'Zawartość',
+    type: 'Typ',
+    eta: 'Dostawa',
+    case: 'Sprawa',
+    interactions: 'Kontakty',
+    openCases: 'Otwarte sprawy',
+    lastContact: 'Ostatni kontakt',
+    subject: 'Temat',
+    fault: 'Usterka',
+    opened: 'Otwarta',
+    issue: 'Problem',
+    priority: 'Priorytet',
+    created: 'Utworzone',
+    title: 'Tytuł',
+    appliesTo: 'Dotyczy',
+    effective: 'Obowiązuje od',
+  },
+
+  enums: {
+    orderStatus: { delivered: 'Dostarczone', in_transit: 'W drodze', awaiting_pickup: 'Do odbioru', returned: 'Zwrócone', cancelled: 'Anulowane' },
+    shipmentStatus: { delivered: 'Doręczona', in_transit: 'W drodze', delayed: 'Opóźniona', awaiting_pickup: 'Do odbioru', returned: 'Zwrócona' },
+    shipmentType: { order_delivery: 'Dostawa zamówienia', replacement_part: 'Część zamienna', return: 'Zwrot' },
+    caseStatus: { open: 'Otwarta', waiting_for_part: 'Czeka na część', in_repair: 'W naprawie', escalated: 'Eskalowana', resolved: 'Rozwiązana' },
+    warrantyStatus: { active: 'Aktywna', expired: 'Wygasła', void: 'Unieważniona' },
+    channel: { phone: 'Telefon', email: 'E-mail', chat: 'Czat', store: 'Sklep' },
+    orderChannel: { online: 'Sklep internetowy', store: 'Sklep stacjonarny', partner: 'Partner handlowy' },
+    interactionType: { inquiry: 'Pytanie', service_request: 'Prośba o serwis', complaint: 'Reklamacja', follow_up: 'Kontynuacja', feedback: 'Opinia' },
+    priority: { low: 'Niski', normal: 'Normalny', high: 'Wysoki', urgent: 'Pilny' },
+    ticketStatus: { open: 'Otwarte' },
+    category: { coffee_machine: 'Ekspresy do kawy', vacuum_cleaner: 'Odkurzacze', air_purifier: 'Oczyszczacze powietrza', kitchen_appliance: 'Sprzęt kuchenny', smart_home: 'Inteligentny dom' },
+    segment: { consumer: 'Klient indywidualny', small_business: 'Mała firma' },
+    productKind: { appliance: 'Urządzenie', accessory: 'Akcesorium' },
+    authority: { manual: 'Instrukcje ogólne', model_specific: 'Instrukcje dla modelu', service_bulletin: 'Biuletyny serwisowe', warranty_policy: 'Gwarancja i zasady', support_procedure: 'Procedury obsługi' },
+    authorityOne: { manual: 'Instrukcja ogólna', model_specific: 'Instrukcja dla modelu', service_bulletin: 'Biuletyn serwisowy', warranty_policy: 'Zasady gwarancji', support_procedure: 'Procedura obsługi' },
+    docStatus: { current: 'Aktualny', superseded: 'Zastąpiony' },
+    language: { pl: 'polski', en: 'angielski' },
+    eventCode: {
+      label_created: 'Utworzono etykietę', picked_up: 'Odebrano od nadawcy', arrived_hub: 'W sortowni', departed_hub: 'Wyjechała z sortowni', out_for_delivery: 'Wydana do doręczenia', delivered: 'Doręczona',
+      delayed: 'Opóźnienie', ready_for_pickup: 'Gotowa do odbioru', not_collected: 'Nieodebrana', returned_to_sender: 'Zwrócona do nadawcy', dropped_off: 'Nadana', received_at_warehouse: 'Przyjęta w magazynie',
+    },
+  },
+
+  chatIdentity: {
+    banner: 'Zalogowany w czacie',
+    hint: 'Agent obsługuje tego klienta i może czytać tylko jego rekordy.',
+    inChat: 'W czacie',
+    marker: 'Należy do klienta zalogowanego w czacie',
+    signIn: 'Zaloguj w czacie jako ten klient',
+    signedIn: 'Zalogowany w czacie',
+    confirmTitle: (name: string) => `Przełączyć czat na klienta ${name}?`,
+    confirmBody: 'Agent zacznie obsługiwać innego klienta, więc obecna rozmowa się zakończy i zacznie nowa. Wcześniejsze przebiegi zostaną w przestrzeni agenta.',
+    confirm: 'Przełącz klienta',
+    cancel: 'Anuluj',
+  },
+
+  record: {
+    kinds: {
+      order: 'Zamówienie', customer: 'Klient', product: 'Produkt', warranty: 'Gwarancja', shipment: 'Przesyłka', case: 'Sprawa serwisowa', interaction: 'Kontakt', ticket: 'Zgłoszenie serwisowe', document: 'Dokument',
+    },
+    linked: 'Powiązane rekordy',
+    noLinks: 'Brak powiązanych rekordów.',
+    backTo: (id: string) => `Wróć do ${id}`,
+    open: (id: string) => `Otwórz ${id}`,
+    notFound: 'Ten rekord nie istnieje.',
+    notFoundBody: (id: string) => `W symulowanych systemach nie ma rekordu o ID ${id}.`,
+    fields: {
+      id: 'ID', name: 'Imię i nazwisko', email: 'E-mail', phone: 'Telefon', address: 'Adres', preferredLanguage: 'Preferowany język', segment: 'Segment', customerSince: 'Klient od', notes: 'Notatki',
+      customer: 'Klient', date: 'Data', channel: 'Kanał', status: 'Status', total: 'Wartość',
+      model: 'Model', category: 'Kategoria', kind: 'Rodzaj', serialPrefix: 'Prefiks numeru seryjnego', warrantyMonths: 'Gwarancja', priceEur: 'Cena', launchYear: 'Premiera', production: 'Produkcja', description: 'Opis',
+      serialNumber: 'Numer seryjny', product: 'Produkt', order: 'Zamówienie', startDate: 'Początek', endDate: 'Koniec', daysRemaining: 'Pozostało', voided: 'Unieważnienie', transfer: 'Przekazanie',
+      type: 'Typ', carrier: 'Przewoźnik', trackingNumber: 'Numer śledzenia', contents: 'Zawartość', from: 'Skąd', to: 'Dokąd', shippedDate: 'Nadano', estimatedDelivery: 'Przewidywana dostawa', deliveredDate: 'Doręczono', case: 'Sprawa serwisowa',
+      openedDate: 'Otwarta', errorCode: 'Kod błędu', fault: 'Usterka', coveredByWarranty: 'W ramach gwarancji', promisedDate: 'Obiecany termin', resolvedDate: 'Rozwiązana', resolution: 'Rozwiązanie', warranty: 'Gwarancja',
+      subject: 'Temat', summary: 'Podsumowanie', outcome: 'Wynik', handledBy: 'Obsługa',
+      issueDescription: 'Opis problemu', priority: 'Priorytet', createdDate: 'Utworzone', createdBy: 'Autor',
+    },
+    months: (n: number) => p(n, 'miesiąc', 'miesiące', 'miesięcy'),
+    days: (n: number) => p(n, 'dzień', 'dni', 'dni'),
+    yes: 'Tak',
+    no: 'Nie',
+    agent: 'Agent AI',
+    promisedPassed: 'termin minął',
+    transferFrom: (id: string, date: string) => `od ${id}, ${date}`,
+    voidedOn: (date: string, reason: string) => `${date}: ${reason}`,
+    lines: 'Pozycje zamówienia',
+    lineQty: 'Szt.',
+    lineUnit: 'Cena jedn.',
+    events: 'Zdarzenia przesyłki',
+    history: 'Historia sprawy',
+  },
+
+  doc: {
+    tabText: 'Treść',
+    tabChunks: (n: number | null) => (n === null ? 'Fragmenty' : `Fragmenty (${n})`),
+    loadingChunks: 'Dzielenie dokumentu na fragmenty…',
+    chunksError: 'Nie udało się wyznaczyć fragmentów.',
+    chunksIntro: 'Wyszukiwarka wiedzy porównuje pytanie z tymi fragmentami, a nie z całym dokumentem. Każdy fragment zaczyna się od nagłówka swojej sekcji.',
+    tokens: (n: number) => p(n, 'token', 'tokeny', 'tokenów'),
+    chunk: (i: number) => `Fragment ${i + 1}`,
+    allProducts: 'Wszystkie produkty',
+    meta: { authority: 'Ranga', status: 'Status', effective: 'Obowiązuje od', appliesTo: 'Dotyczy' },
+    supersededNote: (id: string) => `Ten dokument został zastąpiony przez ${id}. Agent powinien opierać się na aktualnym dokumencie.`,
+  },
+}

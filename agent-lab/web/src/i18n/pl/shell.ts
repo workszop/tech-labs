@@ -23,12 +23,11 @@ export const shell = {
   app: {
     sections: 'Sekcje',
     tabSystems: 'Systemy',
-    tabWorkspace: 'Przestrzeń agenta',
+    tabWorkspace: 'Agent',
     tabChat: 'Czat',
   },
 
   panels: {
-    systems: { title: 'Systemy firmy', empty: 'Tu pojawią się systemy firmy, z których może czytać agent.' },
     workspace: { title: 'Przestrzeń agenta', empty: 'Tu pojawią się kroki agenta i wywołania narzędzi.' },
     chat: { title: 'Czat z klientem', empty: 'Tu pojawi się rozmowa z klientem.' },
   },
@@ -42,6 +41,34 @@ export const shell = {
       `Zapytania ${u.requestsUsed}/${u.requestLimit} · Tokeny ${u.tokensUsed}/${u.tokenLimit} · szac. ${u.cost}`,
     tokensLeft: (formatted: string, n: number) => `${plural(n, 'został', 'zostały', 'zostało')} ${formatted} ${tokeny(n)}`,
     activate: 'Aktywuj',
+    simDate: 'Data symulacji',
+    simDateTooltip: 'Systemy firmy żyją w tym dniu: gwarancje, dostawy i obiecane terminy są liczone względem tej daty, a nie Twojego zegara.',
+    kb: {
+      label: 'Baza wiedzy',
+      idle: 'Niezaindeksowana',
+      checking: 'Sprawdzanie…',
+      indexing: (done: number, total: number) => `Indeksowanie ${done}/${total}`,
+      ready: 'Gotowa',
+      error: 'Błąd',
+      tooltip: 'Zanim agent przeszuka dokumenty serwisowe, ich fragmenty są zamieniane na wektory (embeddingi) przez serwer i zapisywane w tej przeglądarce.',
+    },
+    logout: 'Wyloguj',
+  },
+
+  reset: {
+    button: 'Reset',
+    menuLabel: 'Opcje resetu',
+    newConversation: 'Nowa rozmowa',
+    newConversationHint: 'Czyści czat. Dane firmy i wcześniejsze przebiegi zostają.',
+    resetAll: 'Zresetuj wszystko',
+    resetAllHint: 'Przywraca dane firmy, usuwa zgłoszenia i przebiegi, włącza z powrotem wszystkie narzędzia.',
+    confirmNewTitle: 'Zacząć nową rozmowę?',
+    confirmNewBody: 'Obecny czat z klientem zostanie wyczyszczony, a agent zacznie bez historii rozmowy. Dane firmy i wcześniejsze przebiegi zostają.',
+    confirmResetTitle: 'Zresetować wszystko?',
+    confirmResetBody: 'Dane firmy wrócą do stanu początkowego (zgłoszenia utworzone przez agenta znikną), przebiegi i rozmowa zostaną usunięte, a wszystkie narzędzia znów włączone. Język i indeks bazy wiedzy zostają.',
+    confirmNew: 'Zacznij nową rozmowę',
+    confirmReset: 'Zresetuj wszystko',
+    cancel: 'Anuluj',
   },
 
   activation: {

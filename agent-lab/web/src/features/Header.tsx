@@ -9,6 +9,8 @@ import { useT } from '@/i18n'
 import { Logo } from './Logo'
 import { LangSwitch } from './LangSwitch'
 import { fmtNumber, fmtUsd } from './common'
+import { KbStatus, LogoutButton, ResetMenu, SimDate } from './HeaderControls'
+import { LearnButton } from './learn/LearnButton'
 
 /** edulab top menu: solid white full-bleed bar, ink mark + wordmark, then the app name. */
 export function Header() {
@@ -26,13 +28,15 @@ export function Header() {
       </div>
       <span aria-hidden="true" className="hidden h-9 w-px shrink-0 bg-border sm:block" />
       <div className="min-w-0">
-        <div className="truncate font-display text-[18px] font-bold leading-tight tracking-[-0.01em]">{tx.product}</div>
-        <div className="hidden truncate text-[12.5px] leading-tight text-[var(--ink-2)] md:block">{tx.tagline}</div>
+        <div className="truncate font-display text-[16px] font-bold leading-tight tracking-[-0.01em] sm:text-[18px]">{tx.product}</div>
+        <div className="hidden truncate text-[12.5px] leading-tight text-[var(--ink-2)] 2xl:block">{tx.tagline}</div>
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <SimDate />
+        <KbStatus />
         {provider === 'mock' && (
           <Tooltip content={tx.mockTooltip}>
-            <span className="hidden min-[480px]:inline-flex"><Badge variant="warn">{tx.mockBadge}</Badge></span>
+            <span tabIndex={0} className="hidden xl:inline-flex"><Badge variant="warn">{tx.mockBadge}</Badge></span>
           </Tooltip>
         )}
         {usage && (
@@ -45,7 +49,7 @@ export function Header() {
               cost: fmtUsd(usage.estimatedCostUsd),
             })}
           >
-            <div className="hidden items-center gap-2 rounded-full px-2.5 py-1.5 font-mono text-[11.5px] text-[var(--ink-2)] lg:flex" data-testid="usage-meter">
+            <div tabIndex={0} className="hidden items-center gap-2 rounded-full px-2.5 py-1.5 font-mono text-[11.5px] text-[var(--ink-2)] xl:flex" data-testid="usage-meter">
               <Gauge className="size-3.5" />
               <span className="block h-2 w-20 overflow-hidden rounded-full bg-foreground">
                 <span className="block h-full bg-primary" style={{ width: `${pct}%` }} />
@@ -59,7 +63,10 @@ export function Header() {
             <KeyRound /> {tx.activate}
           </Button>
         )}
+        <LearnButton />
+        <ResetMenu />
         <LangSwitch />
+        {status === 'active' && <LogoutButton />}
       </div>
     </header>
   )

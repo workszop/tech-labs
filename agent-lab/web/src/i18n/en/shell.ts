@@ -18,12 +18,11 @@ export const shell = {
   app: {
     sections: 'Sections',
     tabSystems: 'Systems',
-    tabWorkspace: 'Workspace',
+    tabWorkspace: 'Agent',
     tabChat: 'Chat',
   },
 
   panels: {
-    systems: { title: 'Company systems', empty: 'The company systems the agent can read will appear here.' },
     workspace: { title: 'Agent workspace', empty: 'The agent’s steps and tool calls will appear here.' },
     chat: { title: 'Customer chat', empty: 'The conversation with the customer will appear here.' },
   },
@@ -37,6 +36,34 @@ export const shell = {
       `Requests ${u.requestsUsed}/${u.requestLimit} · Tokens ${u.tokensUsed}/${u.tokenLimit} · est. ${u.cost}`,
     tokensLeft: (formatted: string, _n: number) => `${formatted} tokens left`,
     activate: 'Activate',
+    simDate: 'Simulation date',
+    simDateTooltip: 'The company systems live on this date: warranties, deliveries and promised dates are checked against it, not against your clock.',
+    kb: {
+      label: 'Knowledge base',
+      idle: 'Not indexed',
+      checking: 'Checking…',
+      indexing: (done: number, total: number) => `Indexing ${done}/${total}`,
+      ready: 'Ready',
+      error: 'Error',
+      tooltip: 'Before the agent can search the service documents, their chunks are turned into vectors (embeddings) through the server and stored in this browser.',
+    },
+    logout: 'Log out',
+  },
+
+  reset: {
+    button: 'Reset',
+    menuLabel: 'Reset options',
+    newConversation: 'New conversation',
+    newConversationHint: 'Clears the chat. Company data and earlier runs stay.',
+    resetAll: 'Reset everything',
+    resetAllHint: 'Restores the company data, removes tickets and runs, turns all tools back on.',
+    confirmNewTitle: 'Start a new conversation?',
+    confirmNewBody: 'The current chat with the customer is cleared and the agent starts without its history. Company data and earlier runs stay.',
+    confirmResetTitle: 'Reset everything?',
+    confirmResetBody: 'The company data returns to its original state (tickets created by the agent are removed), the runs and the conversation are deleted and all tools are switched on again. The language and the knowledge base index are kept.',
+    confirmNew: 'Start new conversation',
+    confirmReset: 'Reset everything',
+    cancel: 'Cancel',
   },
 
   activation: {
