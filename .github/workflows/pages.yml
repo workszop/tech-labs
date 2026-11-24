@@ -1,0 +1,167 @@
+# Builds every lab and publishes the whole site to GitHub Pages
+# (custom domain https://tech-labs.warsztaty-ai.com/). A repository has exactly one
+# Pages deployment, so this one workflow assembles the site:
+#   /             labs index (index.html)
+#   /rag-lab/     RAG Lab (rag-lab/web)
+#   /agent-lab/   Service Agent Lab (agent-lab/web)
+#
+# One-time setup (repository Settings):
+#   - Pages -> Build and deployment -> Source: "GitHub Actions"
+#   - Secrets and variables -> Actions -> Variables (variables, not secrets: the values
+#     are embedded in public JavaScript anyway; never put provider API keys here):
+#       RAG_LAB_API_BASE_URL   = public URL of the RAG Lab Worker,
+#                                e.g. https://rag-lab-api.<account>.workers.dev
+#       AGENT_LAB_API_BASE_URL = public URL of the Service Agent Lab Worker,
+#                                e.g. https://agent-lab-api.<account>.workers.dev
+#     A lab whose variable is not set yet still builds and deploys; it then shows
+#     its "cannot reach the server" state until the variable is added and the
+#     workflow runs again.
+name: Tech Labs -> GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['rag-lab/**', 'agent-lab/**', 'index.html', '.github/workflows/pages.yml']
+  pull_request:
+    paths: ['rag-lab/**', 'agent-lab/**', 'index.html', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# The group name is kept from the former rag-lab-pages.yml, so runs of the old and
+# the new workflow never overlap.
+concurrency:
+  group: rag-lab-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rag-lab-web:
+    name: RAG Lab web - typecheck, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rag-lab/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rag-lab/web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.RAG_LAB_API_BASE_URL }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rag-lab-dist
+          path: rag-lab/web/dist
+          retention-days: 1
+          if-no-files-found: error
+
+  rag-lab-worker:
+    name: RAG Lab Worker - typecheck and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rag-lab/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rag-lab/worker/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  agent-lab-web:
+    name: Service Agent Lab web - typecheck, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-lab/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: agent-lab/web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.AGENT_LAB_API_BASE_URL }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-lab-dist
+          path: agent-lab/web/dist
+          retention-days: 1
+          if-no-files-found: error
+
+  agent-lab-worker:
+    name: Service Agent Lab Worker - typecheck and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-lab/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: agent-lab/worker/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  site:
+    name: Assemble the site
+    needs: [rag-lab-web, rag-lab-worker, agent-lab-web, agent-lab-worker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rag-lab-dist
+          path: build/rag-lab
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-lab-dist
+          path: build/agent-lab
+      - name: Labs index at the root, RAG Lab at /rag-lab/, Service Agent Lab at /agent-lab/
+        run: |
+          mkdir -p _site/rag-lab _site/agent-lab
+          cp index.html .nojekyll _site/
+          cp -r build/rag-lab/. _site/rag-lab/
+          cp -r build/agent-lab/. _site/agent-lab/
+          test -f _site/rag-lab/index.html
+          test -f _site/agent-lab/index.html
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: [site]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
