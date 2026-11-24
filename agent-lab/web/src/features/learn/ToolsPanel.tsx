@@ -59,7 +59,7 @@ export function ToolsPanel() {
       </div>
 
       {open && (
-        <div id={bodyId} className="@container scroll-thin max-h-[min(44vh,360px)] space-y-2 overflow-y-auto border-t border-hairline px-3 pb-2.5 pt-2" data-testid="tools-body">
+        <div id={bodyId} className="@container scroll-thin max-h-[min(24vh,216px)] space-y-2 overflow-y-auto border-t border-hairline px-3 pb-2.5 pt-2" data-testid="tools-body">
           <p className="text-[12px] leading-snug text-[var(--ink-2)]">{t.note}</p>
           {running && (
             <p id={lockId} role="status" className="edu-block rounded-md bg-primary px-2.5 py-1.5 text-[12px] font-semibold leading-snug text-primary-foreground" data-testid="tools-locked">

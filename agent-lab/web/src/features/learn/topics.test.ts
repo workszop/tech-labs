@@ -4,11 +4,14 @@ import { en } from '@/i18n/en'
 import { pl } from '@/i18n/pl'
 import type { TopicText } from '@/i18n/en/learn'
 import { TIP_TOPIC, TOPICS, TOPIC_IDS } from './topics'
+import { DEFAULT_LIMITS, fillLimits } from './limits'
 
 const words = (s: string) => s.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
 
 function topicWords(dict: typeof en, id: (typeof TOPIC_IDS)[number]): number {
-  const t: TopicText = dict.learn.topics[id]
+  const raw: TopicText = dict.learn.topics[id]
+  const f = (s: string) => fillLimits(s, DEFAULT_LIMITS, dict.learn.byDefault)
+  const t = { ...raw, lead: f(raw.lead), points: raw.points.map(f), example: f(raw.example), more: raw.more ? f(raw.more) : undefined }
   let n = words(t.lead) + t.points.reduce((a, p) => a + words(p), 0) + words(t.example) + (t.more ? words(t.more) : 0)
   if (id === 'compare') {
     const table = dict.learn.compareTable

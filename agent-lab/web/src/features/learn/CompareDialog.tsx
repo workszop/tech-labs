@@ -80,7 +80,8 @@ export function CompareDialog({ open, onOpenChange, a, b, onPick }: { open: bool
               }
             }}
             className="mb-0.5 inline-grid size-8 cursor-pointer place-items-center rounded-full border border-input bg-card hover:bg-muted [&_svg]:size-4"
-            aria-label={`${t.runA} ⇄ ${t.runB}`}
+            aria-label={t.swap}
+            title={t.swap}
           >
             <ArrowLeftRight aria-hidden="true" />
           </button>
@@ -103,7 +104,8 @@ export function CompareDialog({ open, onOpenChange, a, b, onPick }: { open: bool
                       <span>{t.noAccess(n.side === 'a' ? 'A' : 'B', n.side === 'a' ? 'B' : 'A', n.tool, tx.flow.nodes.systems[n.system], n.otherCalls)}</span>
                     </li>
                   ))}
-                  {cmp.a.run.customerId !== cmp.b.run.customerId && <li>{t.otherCustomer}</li>}
+                  {!cmp.sameCustomer && <li data-testid="compare-other-customer">{t.otherCustomer}</li>}
+                  {!cmp.sameLang && <li data-testid="compare-other-lang">{t.otherLang}</li>}
                 </ul>
               </section>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -141,7 +143,8 @@ function Side({ label, side, name, number }: { label: 'A' | 'B'; side: CompareSi
         {side.outcome && <Badge variant={side.outcome === 'answered' ? 'ok' : side.outcome === 'error' ? 'danger' : 'warn'}>{tx.flow.finalNode[side.outcome]}</Badge>}
       </div>
       {field(t.customer, <>{name} <span className="font-mono text-[11.5px] text-[var(--ink-2)]">{run.customerId}</span></>)}
-      {field(t.question, <q className="italic">{run.message}</q>)}
+      {field(t.question, <q className="italic" lang={run.lang}>{run.message}</q>)}
+      {field(t.language, <span data-run-lang={run.lang}>{t.langNames[run.lang]}</span>)}
       {field(
         t.toolsOn(side.enabled.length, TOOL_NAMES.length),
         <span className="flex flex-wrap items-center gap-1">

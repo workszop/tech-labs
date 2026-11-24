@@ -431,7 +431,7 @@ export async function repeatRun(runId: string): Promise<void> {
   const blocked = sendBlocker()
   if (blocked) throw blocked
   const src = getState().runs.find((r) => r.id === runId)
-  if (!src || !src.outcome) throw new Error(t().shell.runErrors.busy)
+  if (!src || !src.outcome) throw new Error(t().shell.runErrors.notRepeatable)
   if (!(await simDb.customers.get(src.customerId))) throw new Error(t().shell.runErrors.notReady)
   const again = sendBlocker()
   if (again) throw again

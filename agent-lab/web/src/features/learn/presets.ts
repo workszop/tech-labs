@@ -6,22 +6,24 @@
 import { TOOLS, TOOL_NAMES, type SystemId, type ToolName } from '@shared/tools'
 import { SYSTEM_IDS } from '@/features/workspace/trace'
 
-export type PresetId = 'all' | 'noCrm' | 'noLogistics' | 'noWarranty' | 'noKnowledge' | 'readOnly'
+export type PresetId = 'all' | 'noCrm' | 'noLogistics' | 'noWarranty' | 'noKnowledge' | 'readOnly' | 'kbOnly'
 
 /** Systems whose tools a preset switches off (`readOnly` switches off every state-changing tool instead). */
-const OFF_SYSTEMS: Record<Exclude<PresetId, 'all' | 'readOnly'>, SystemId[]> = {
+const OFF_SYSTEMS: Record<Exclude<PresetId, 'all' | 'readOnly' | 'kbOnly'>, SystemId[]> = {
   noCrm: ['crm'],
   noLogistics: ['logistics'],
   noWarranty: ['warranty'],
   noKnowledge: ['knowledge'],
 }
 
-export const PRESET_IDS: readonly PresetId[] = ['all', 'noCrm', 'noLogistics', 'noWarranty', 'noKnowledge', 'readOnly']
+export const PRESET_IDS: readonly PresetId[] = ['all', 'noCrm', 'noLogistics', 'noWarranty', 'noKnowledge', 'readOnly', 'kbOnly']
 
 /** The tools that stay on with a preset, in registry order. */
 export function presetTools(id: PresetId): ToolName[] {
   if (id === 'all') return [...TOOL_NAMES]
   if (id === 'readOnly') return TOOLS.filter((t) => t.readOnly).map((t) => t.name)
+  // Only the knowledge search: the agent then works like a RAG assistant.
+  if (id === 'kbOnly') return ['search_service_knowledge']
   const off = OFF_SYSTEMS[id]
   return TOOLS.filter((t) => !off.includes(t.system)).map((t) => t.name)
 }

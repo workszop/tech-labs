@@ -159,6 +159,7 @@ export const shell = {
   /** Dlaczego nie można wysłać wiadomości. */
   runErrors: {
     notReady: 'Aplikacja jeszcze się wczytuje. Spróbuj za chwilę.',
+    notRepeatable: 'Tego przebiegu nie da się powtórzyć: jeszcze się nie zakończył albo nie jest już zapisany.',
     busy: 'Agent nadal pracuje nad poprzednią wiadomością.',
     tooLong: (max: number) => `Wiadomość jest za długa (najwyżej ${max} znaków).`,
   },

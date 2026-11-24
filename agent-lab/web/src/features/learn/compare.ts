@@ -51,6 +51,10 @@ export interface Comparison {
   onlyA: number
   onlyB: number
   notes: OffNote[]
+  /** Both runs served the same customer. */
+  sameCustomer: boolean
+  /** Both runs were in the same language. */
+  sameLang: boolean
 }
 
 function side(run: RunRecord, otherKeys: Map<string, number>): { side: CompareSide; keys: string[] } {
@@ -105,7 +109,15 @@ export function compareRuns(a: RunRecord, b: RunRecord): Comparison {
       notes.push({ side: s, tool, system: getTool(tool).system, otherCalls: other.calls.filter((c) => c.name === tool).length })
     }
   }
-  return { a: sa, b: sb, onlyA: sa.calls.filter((c) => c.only).length, onlyB: sb.calls.filter((c) => c.only).length, notes }
+  return {
+    a: sa,
+    b: sb,
+    onlyA: sa.calls.filter((c) => c.only).length,
+    onlyB: sb.calls.filter((c) => c.only).length,
+    notes,
+    sameCustomer: a.customerId === b.customerId,
+    sameLang: a.lang === b.lang,
+  }
 }
 
 /** The run to compare a run with by default: the run it repeats, else the run before it. */

@@ -72,6 +72,7 @@ export function ActivationScreen() {
               </label>
               <Input
                 id="code"
+                data-testid="activation-code"
                 autoFocus
                 autoComplete="off"
                 spellCheck={false}
@@ -88,7 +89,7 @@ export function ActivationScreen() {
                   {errorText(error, tx)}
                 </p>
               )}
-              <Button type="submit" variant="accent" size="lg" className="mt-4 h-11 w-full" disabled={busy || !code.trim()}>
+              <Button type="submit" variant="accent" size="lg" className="mt-4 h-11 w-full" disabled={busy || !code.trim()} data-testid="activation-submit">
                 {busy ? <Loader2 className="animate-spin" /> : <ArrowRight />}
                 {busy ? tx.checking : tx.submit}
               </Button>

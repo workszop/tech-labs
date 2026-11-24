@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useT } from '@/i18n'
 import type { TopicText } from '@/i18n/en/learn'
 import { IconBadge } from '../common'
+import { useFillLimits } from './limits'
 import { closeLearn, setLearnTopic, showTarget, useLearnState } from './bus'
 import { GROUP_TONE, TOPICS, type TopicDef, type TopicGroup, type TopicId } from './topics'
 
@@ -121,7 +122,9 @@ export function LearnDialog() {
 
 function Topic({ def, onShow }: { def: TopicDef; onShow?: () => void }) {
   const tx = useT().learn
-  const text: TopicText = tx.topics[def.id]
+  const fill = useFillLimits()
+  const raw: TopicText = tx.topics[def.id]
+  const text: TopicText = { ...raw, lead: fill(raw.lead), points: raw.points.map(fill), example: fill(raw.example), ...(raw.more ? { more: fill(raw.more) } : {}) }
   const Icon = def.icon
   return (
     <article className="@container space-y-4 px-5 py-5" data-topic-article={def.id}>

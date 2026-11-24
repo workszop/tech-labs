@@ -65,7 +65,7 @@ export function KbStatus() {
   const { kb, value } = useKbText()
   return (
     <Tooltip content={kb.status === 'error' && kb.error ? `${tx.tooltip} ${kb.error}` : tx.tooltip}>
-      <HeaderStat className="hidden xl:flex" icon={<KbIcon status={kb.status} />} label={tx.label} value={value} testId="kb-status" />
+      <HeaderStat className="hidden xl:flex" icon={<KbIcon status={kb.status} />} label={tx.label} value={value} testId="kb-status" data-kb-status={kb.status} />
     </Tooltip>
   )
 }
@@ -135,7 +135,7 @@ export function StatusButton() {
   )
   return (
     <>
-      <Button variant="outline" size="icon" className="relative size-9 xl:hidden" onClick={() => setOpen(true)} aria-label={`${st.button}: ${st[state]}`} data-testid="status-button" data-state={state}>
+      <Button variant="outline" size="icon" className="relative size-9 xl:hidden" onClick={() => setOpen(true)} aria-label={`${st.button}: ${st[state]}`} data-testid="status-button" data-state={state} data-kb-status={kb.status}>
         <Activity />
         <span aria-hidden="true" className={cn('absolute right-0.5 top-0.5 size-2.5 rounded-full shadow-[0_0_0_2px_var(--paper)]', DOT[state])} />
       </Button>
@@ -254,7 +254,7 @@ export function ResetMenu() {
   const messages = conversation.filter((i) => i.kind === 'customer' || i.kind === 'agent').length
   const conv = messages > 0 ? [r.items.conversation(messages)] : []
   const lists: Record<ResetChoice, { removed: string[]; kept: string[] }> = {
-    new: { removed: [r.items.conversation(messages)], kept: [r.keep.customer(nameOf(customerId)), r.keep.companyData, r.keep.runs(runs), r.keep.switches, r.keep.kb] },
+    new: { removed: conv, kept: [r.keep.customer(nameOf(customerId)), r.keep.companyData, r.keep.runs(runs), r.keep.switches, r.keep.kb] },
     scenario: { removed: [...conv, r.items.companyData(tickets)], kept: [r.keep.customer(nameOf(customerId)), r.keep.runs(runs), r.keep.switches, r.keep.kb] },
     all: {
       removed: [

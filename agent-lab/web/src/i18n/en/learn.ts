@@ -20,6 +20,8 @@ export interface TopicText {
 }
 
 export const learn = {
+  /** Filled in for `{byDefault}` when no session publishes the run limits (texts may hold `{steps}`, `{calls}`, `{tokens}`). */
+  byDefault: 'by default ',
   button: 'How it works',
   buttonHint: 'Short explanations of what you see in this lab',
 
@@ -49,7 +51,7 @@ export const learn = {
       title: 'What is tool calling?',
       lead: 'A tool is a small, named function the agent may use, such as check_warranty. The model cannot open a database itself. It can only write a request: the tool name and its arguments.',
       points: ['This app checks the request and runs the tool on the simulated company systems.', 'The result goes back to the model as text.'],
-      example: 'Click a tool row in the timeline: the inspector shows the arguments the model sent and the exact result it received.',
+      example: 'Click a tool row in the timeline: the details panel that opens under it shows the arguments the model sent and the exact result it received.',
       showMe: 'Show the tools',
     },
     choosingTools: {
@@ -63,7 +65,7 @@ export const learn = {
     loop: {
       title: 'What is an agent execution loop?',
       lead: 'The agent works in rounds. In each round the model either asks for tools or writes the final answer. Tool results are added to the conversation and the next round starts.',
-      points: ['Each round is a step: the AI Agent node shows the step number.', 'The lab stops a run after 8 steps, 12 tool calls or about 40,000 tokens, and says so.'],
+      points: ['Each round is a step: the AI Agent node shows the step number.', 'This lab {byDefault}allows {steps} steps and about {tokens} tokens (small pieces of words the model reads and writes) per message. After {calls} tool calls the agent must answer without more tools. The chat says when a limit was reached.'],
       example: 'In scenario 1 there are three rounds: the order first, then the warranty and the manuals at the same time, then the answer.',
       showMe: 'Show the timeline',
     },
@@ -84,22 +86,23 @@ export const learn = {
     rag: {
       title: 'What is RAG?',
       lead: 'RAG (retrieval-augmented generation) means: first find the relevant passages in your own documents, then let the model answer from them.',
-      points: ['Documents are cut into chunks and turned into number vectors (embeddings).', 'A question is compared with every chunk; the closest ones go to the model.'],
-      example: 'The knowledge base status in the header shows this index being built in your browser. The inspector shows each chunk the search returned, with its similarity score.',
+      points: ['Documents are cut into chunks; each chunk becomes a list of numbers that stands for its meaning (an embedding).', 'A question is compared with every chunk; the closest ones go to the model.'],
+      example: 'The knowledge base status in the header shows this index being built in your browser. The details of a search row in the timeline show each chunk found, with its similarity score.',
+      more: 'While the Offline demo badge is shown, the numbers come from the words themselves, not from a model: the search matches shared words, not meaning.',
       showMe: 'Open the knowledge base',
     },
     kbUse: {
       title: 'How does an agent use a knowledge base?',
       lead: 'For the agent the knowledge base is just another tool, search_service_knowledge. The agent decides when to search and what for, then reads the chunks it gets back.',
       points: ['Each chunk says whether its document is current or replaced.', 'A good agent prefers the current document for the exact model.'],
-      example: 'In scenario 5 the search finds an older manual and a newer service bulletin for error S2. Check in the inspector which one the answer relies on.',
+      example: 'In scenario 5 the search finds an older manual and a newer service bulletin for error S2. Open the search row in the timeline and check which one the answer relies on.',
       showMe: 'Open scenario 5',
     },
     hitl: {
       title: 'What is human-in-the-loop?',
       lead: 'Human-in-the-loop means a person must approve before the agent does something that changes data or is hard to undo.',
       points: ['Reading data happens automatically.', 'Creating a ticket waits for a yes. After a no, nothing is written and the agent is told so.'],
-      example: 'In scenario 8 the agent proposes a paid repair. The approval card in the chat shows exactly what would be created; only Approve writes the ticket.',
+      example: 'In scenario 8 the agent proposes a paid repair. The approval card in the chat shows exactly what would be created; only Approve writes the ticket. Here the person who approves is the customer, played by you.',
       more: 'This app asks for the approval, not the model, so the model cannot skip it.',
       showMe: 'Open scenario 8',
     },
@@ -114,14 +117,14 @@ export const learn = {
       title: 'Why do agents sometimes make mistakes?',
       lead: 'A language model predicts likely text. It can pick the wrong tool, skip a check, misread a result or sound sure about something it never verified.',
       points: ['Missing tools or data lead to weaker answers.', 'Vague questions lead to guesses.', 'Limits can stop a run before the agent is done.'],
-      example: 'Scenario 7 is vague: the customer owns two coffee machines. Switch tools off with the presets, repeat a question and compare the two runs. Judge the trace, not only the reply.',
+      example: 'Scenario 7 is vague: the customer owns two coffee machines. Switch tools off with the presets, repeat a question and compare the two runs. Judge the steps the agent took, not only the reply.',
       showMe: 'Show the tool presets',
     },
     compare: {
       title: 'Chatbot, RAG or agent?',
       lead: 'Three ways to put AI in front of customers. Each one adds access, and with it the need for control.',
       points: [],
-      example: 'This lab is an agent. With only the knowledge search switched on, it works like RAG.',
+      example: 'This lab is an agent. With the preset Knowledge base only in the tool switches, it works like RAG.',
     },
   } satisfies Record<string, TopicText>,
 
@@ -140,9 +143,9 @@ export const learn = {
   tips: {
     learnMore: 'Learn more',
     toolCall: { label: 'About tool calls', text: 'The model only writes a request: a tool name and its arguments. This app checks it and runs the tool on the simulated systems.' },
-    markers: { label: 'About read-only and data-changing tools', text: 'Read-only tools only look data up. A tool that changes data, such as creating a ticket, first waits for the customer to approve.' },
+    markers: { label: 'About read-only and data-changing tools', text: 'Read-only tools only look data up. A tool that changes data, such as creating a ticket, first waits for the customer to approve: in this lab, you as the customer.' },
     score: { label: 'About the similarity score', text: 'How close a chunk is in meaning to the search, from 0 to 1. Higher means more similar, not necessarily more correct.' },
-    steps: { label: 'About steps', text: 'A step is one round of the loop: the model either asks for tools or writes the answer. The lab stops a run after 8 steps.' },
+    steps: { label: 'About steps', text: 'A step is one round of the loop: the model either asks for tools or writes the answer. This lab {byDefault}stops a run after {steps} steps.' },
     identity: { label: 'About the signed-in customer', text: "The tools return only this customer's records. A question about anyone else's order is refused by the tool itself." },
     tools: { label: 'About the tool switches', text: 'Switch a tool off to see how the agent copes without it. The change applies from the next message.' },
   },
@@ -164,6 +167,7 @@ export const learn = {
       noWarranty: 'No warranty lookup',
       noKnowledge: 'No knowledge base',
       readOnly: 'Read-only (no tickets)',
+      kbOnly: 'Knowledge base only',
     },
     changesData: 'Changes data',
     readOnlyNote: 'Every other tool only reads data.',
@@ -204,15 +208,21 @@ export const learn = {
     endedWith: 'Run ended',
     totals: { steps: 'Steps', toolCalls: 'Tool calls', duration: 'Duration', tokens: 'Tokens' },
     differences: 'Differences',
-    onlyCount: (a: number, b: number) =>
-      a === 0 && b === 0
-        ? 'Both runs made the same tool calls (same tools, same arguments).'
-        : `Run A made ${a === 1 ? '1 call' : `${a} calls`} that run B did not; run B made ${b === 1 ? '1 call' : `${b} calls`} that run A did not.`,
+    onlyCount: (a: number, b: number) => {
+      if (a === 0 && b === 0) return 'Both runs made the same tool calls (same tools, same arguments).'
+      const part = (other: 'A' | 'B', n: number) => `${n === 1 ? '1 call' : `${n} calls`} that run ${other} did not`
+      const parts = [a > 0 ? `Run A made ${part('B', a)}` : '', b > 0 ? `${a > 0 ? 'run' : 'Run'} B made ${part('A', b)}` : ''].filter(Boolean)
+      return `${parts.join('; ')}.`
+    },
     noAccess: (side: 'A' | 'B', other: 'A' | 'B', tool: ToolName, system: string, n: number) =>
       n > 0
         ? `Run ${side} had no access to ${tool} (${system}), so it made no such call; run ${other} called it ${times(n)}.`
         : `${tool} (${system}) was switched off in run ${side}; run ${other} did not call it either.`,
     otherCustomer: 'The two runs were for different customers.',
+    otherLang: 'The two runs were in different languages.',
+    language: 'Language',
+    langNames: { pl: 'Polish', en: 'English' },
+    swap: 'Swap run A and run B',
     runs,
   },
 }

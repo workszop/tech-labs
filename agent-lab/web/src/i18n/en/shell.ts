@@ -156,6 +156,7 @@ export const shell = {
   runErrors: {
     notReady: 'The app is still loading. Try again in a moment.',
     busy: 'The agent is still working on the previous message.',
+    notRepeatable: 'This run cannot be repeated: it is not finished or no longer stored.',
     tooLong: (max: number) => `The message is too long (at most ${max} characters).`,
   },
 

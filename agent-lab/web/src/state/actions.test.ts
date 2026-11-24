@@ -238,3 +238,48 @@ describe('experiments: repeat a question, tool presets, resets (Task 10)', () =>
     expect(s.conversation).toEqual([])
   })
 })
+
+describe('resets while a ticket confirmation is pending; repeat of an unknown run (fix round 1)', () => {
+  for (const which of ['resetScenario', 'resetEverything'] as const) {
+    it(`${which}: no ticket is written, the card is cancelled and the run ends cleanly`, async () => {
+      scriptTicketRun()
+      const done = sendMessage('Please open a repair ticket.')
+      await waitForConfirmation()
+      const runId = getState().currentRun!
+      const card = getState().conversation.find((i) => i.kind === 'confirmation')!
+      let cardStateAtReset: string | undefined
+      const unsub = (() => {
+        // the card's state just before the conversation is replaced
+        const id = setInterval(() => {
+          const c = getState().conversation.find((i) => i.id === card.id)
+          if (c && c.kind === 'confirmation') cardStateAtReset = c.state
+        }, 0)
+        return () => clearInterval(id)
+      })()
+      await (which === 'resetScenario' ? resetScenario() : resetEverything())
+      unsub()
+      await done
+      await persistenceIdle()
+      resolveConfirmation(true) // too late
+      expect(await simDb.tickets.count()).toBe(0)
+      const s = getState()
+      expect(s.currentRun).toBeNull()
+      expect(s.pendingConfirmation).toBeNull()
+      expect(s.conversation).toEqual([])
+      expect(cardStateAtReset).toBe('cancelled')
+      if (which === 'resetScenario') {
+        const r = s.runs.find((x) => x.id === runId)!
+        expect(r.outcome).toBe('cancelled')
+        expect(r.events.at(-1)).toMatchObject({ type: 'run_finished', outcome: 'cancelled' })
+        expect((await simDb.runs.get(runId))!.outcome).toBe('cancelled')
+      } else {
+        expect(s.runs).toEqual([])
+        expect(await simDb.runs.count()).toBe(0)
+      }
+    })
+  }
+
+  it('repeatRun of a run that is not stored is refused with its own message', async () => {
+    await expect(repeatRun('no-such-run')).rejects.toThrow(/cannot be repeated/)
+  })
+})

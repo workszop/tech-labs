@@ -59,7 +59,7 @@ function RecordDialog({ current, previous }: { current: RecordRef; previous: Rec
               </span>
             )}
           </div>
-          <DialogTitle className="text-[20px]">
+          <DialogTitle className="text-[20px]" data-testid="record-title">
             {current.kind !== 'document' && <span className="mr-2 font-mono text-[16px] font-semibold">{current.id}</span>}
             {title !== current.id && title}
           </DialogTitle>

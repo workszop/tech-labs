@@ -15,6 +15,7 @@ const wywolania = (n: number) => `${n} ${plural(n, 'wywołanie', 'wywołania', '
 const razy = (n: number) => (n === 1 ? 'raz' : `${n} razy`)
 
 export const learn: typeof en = {
+  byDefault: 'domyślnie ',
   button: 'Jak to działa',
   buttonHint: 'Krótkie wyjaśnienia tego, co widzisz w laboratorium',
 
@@ -44,7 +45,7 @@ export const learn: typeof en = {
       title: 'Czym jest wywoływanie narzędzi?',
       lead: 'Narzędzie to mała, nazwana funkcja, z której agent może skorzystać, na przykład check_warranty. Model sam nie zajrzy do bazy danych. Może tylko napisać prośbę: nazwę narzędzia i jego argumenty.',
       points: ['Aplikacja sprawdza prośbę i uruchamia narzędzie na symulowanych systemach firmy.', 'Wynik wraca do modelu jako tekst.'],
-      example: 'Kliknij wiersz narzędzia na osi czasu: inspektor pokaże argumenty wysłane przez model i dokładny wynik, który dostał.',
+      example: 'Kliknij wiersz narzędzia na osi czasu: panel szczegółów, który się pod nim otworzy, pokaże argumenty wysłane przez model i dokładny wynik, który dostał.',
       showMe: 'Pokaż narzędzia',
     },
     choosingTools: {
@@ -58,7 +59,7 @@ export const learn: typeof en = {
     loop: {
       title: 'Czym jest pętla działania agenta?',
       lead: 'Agent pracuje w rundach. W każdej rundzie model albo prosi o narzędzia, albo pisze odpowiedź. Wyniki narzędzi trafiają do rozmowy i zaczyna się kolejna runda.',
-      points: ['Każda runda to krok: jego numer widać na węźle Agent AI.', 'Laboratorium zatrzymuje przebieg po 8 krokach, 12 wywołaniach narzędzi lub około 40 000 tokenów i mówi o tym wprost.'],
+      points: ['Każda runda to krok: jego numer widać na węźle Agent AI.', 'Limit kroków na wiadomość to {byDefault}{steps}, a tokenów (drobnych kawałków słów, które model czyta i pisze) około {tokens}. Po {calls} wywołaniach narzędzi agent musi odpowiedzieć już bez narzędzi. Czat mówi, gdy zadziałał limit.'],
       example: 'W scenariuszu 1 są trzy rundy: najpierw zamówienie, potem jednocześnie gwarancja i instrukcje, na końcu odpowiedź.',
       showMe: 'Pokaż oś czasu',
     },
@@ -79,22 +80,23 @@ export const learn: typeof en = {
     rag: {
       title: 'Czym jest RAG?',
       lead: 'RAG (generowanie wspomagane wyszukiwaniem) oznacza: najpierw znajdź właściwe fragmenty we własnych dokumentach, potem pozwól modelowi odpowiedzieć na ich podstawie.',
-      points: ['Dokumenty są dzielone na fragmenty i zamieniane na wektory liczb (embeddingi).', 'Pytanie porównuje się z każdym fragmentem, a najbliższe trafiają do modelu.'],
-      example: 'Status bazy wiedzy w nagłówku pokazuje budowanie takiego indeksu w Twojej przeglądarce. Inspektor pokazuje każdy znaleziony fragment z jego wynikiem podobieństwa.',
+      points: ['Dokumenty są dzielone na fragmenty, a każdy fragment zamienia się w listę liczb oddającą jego znaczenie (tzw. embedding).', 'Pytanie porównuje się z każdym fragmentem, a najbliższe trafiają do modelu.'],
+      example: 'Status bazy wiedzy w nagłówku pokazuje budowanie takiego indeksu w Twojej przeglądarce. Szczegóły wiersza wyszukiwania na osi czasu pokazują każdy znaleziony fragment z jego wynikiem podobieństwa.',
+      more: 'Dopóki widać plakietkę Demo offline, liczby powstają z samych słów, a nie z modelu: wyszukiwanie dopasowuje wspólne słowa, a nie znaczenie.',
       showMe: 'Otwórz bazę wiedzy',
     },
     kbUse: {
       title: 'Jak agent korzysta z bazy wiedzy?',
       lead: 'Dla agenta baza wiedzy to po prostu kolejne narzędzie, search_service_knowledge. Agent sam decyduje, kiedy i czego szukać, a potem czyta zwrócone fragmenty.',
       points: ['Każdy fragment mówi, czy jego dokument jest aktualny, czy zastąpiony.', 'Dobry agent wybiera aktualny dokument dla konkretnego modelu.'],
-      example: 'W scenariuszu 5 wyszukiwanie znajduje starszą instrukcję i nowszy biuletyn serwisowy dla błędu S2. Sprawdź w inspektorze, na którym z nich oparto odpowiedź.',
+      example: 'W scenariuszu 5 wyszukiwanie znajduje starszą instrukcję i nowszy biuletyn serwisowy dla błędu S2. Otwórz wiersz wyszukiwania na osi czasu i sprawdź, na którym z nich oparto odpowiedź.',
       showMe: 'Otwórz scenariusz 5',
     },
     hitl: {
       title: 'Czym jest człowiek w pętli (human-in-the-loop)?',
       lead: 'Człowiek w pętli oznacza, że zanim agent zmieni dane albo zrobi coś trudnego do cofnięcia, musi to zatwierdzić osoba.',
       points: ['Odczyt danych odbywa się automatycznie.', 'Utworzenie zgłoszenia czeka na zgodę. Po odmowie nic nie zostaje zapisane, a agent dostaje tę informację.'],
-      example: 'W scenariuszu 8 agent proponuje odpłatną naprawę. Karta zatwierdzenia w czacie pokazuje dokładnie, co powstanie; zgłoszenie zapisuje się dopiero po kliknięciu Zatwierdź.',
+      example: 'W scenariuszu 8 agent proponuje odpłatną naprawę. Karta zatwierdzenia w czacie pokazuje dokładnie, co powstanie; zgłoszenie zapisuje się dopiero po kliknięciu Zatwierdź. Zatwierdza tu klient, czyli Ty.',
       more: 'O zgodę prosi aplikacja, a nie model, więc model nie może tego kroku pominąć.',
       showMe: 'Otwórz scenariusz 8',
     },
@@ -116,7 +118,7 @@ export const learn: typeof en = {
       title: 'Chatbot, RAG czy agent?',
       lead: 'Trzy sposoby postawienia AI przed klientem. Każdy kolejny daje więcej dostępu, a więc wymaga więcej kontroli.',
       points: [],
-      example: 'To laboratorium pokazuje agenta. Gdy zostawisz włączone tylko wyszukiwanie w bazie wiedzy, działa jak RAG.',
+      example: 'To laboratorium pokazuje agenta. Z gotowym zestawem Tylko baza wiedzy w przełącznikach narzędzi działa jak RAG.',
     },
   },
 
@@ -133,9 +135,9 @@ export const learn: typeof en = {
   tips: {
     learnMore: 'Dowiedz się więcej',
     toolCall: { label: 'O wywołaniach narzędzi', text: 'Model pisze tylko prośbę: nazwę narzędzia i argumenty. Aplikacja ją sprawdza i uruchamia narzędzie na symulowanych systemach.' },
-    markers: { label: 'O narzędziach do odczytu i zmieniających dane', text: 'Narzędzia do odczytu tylko sprawdzają dane. Narzędzie, które zmienia dane, na przykład tworzy zgłoszenie, najpierw czeka na zgodę klienta.' },
+    markers: { label: 'O narzędziach do odczytu i zmieniających dane', text: 'Narzędzia do odczytu tylko sprawdzają dane. Narzędzie, które zmienia dane, na przykład tworzy zgłoszenie, najpierw czeka na zgodę klienta: w tym laboratorium Twoją, bo grasz klienta.' },
     score: { label: 'O wyniku podobieństwa', text: 'Jak bliski znaczeniem jest fragment wyszukiwanemu tekstowi, od 0 do 1. Wyższy znaczy bardziej podobny, niekoniecznie bardziej trafny.' },
-    steps: { label: 'O krokach', text: 'Krok to jedna runda pętli: model prosi o narzędzia albo pisze odpowiedź. Laboratorium zatrzymuje przebieg po 8 krokach.' },
+    steps: { label: 'O krokach', text: 'Krok to jedna runda pętli: model prosi o narzędzia albo pisze odpowiedź. Laboratorium {byDefault}zatrzymuje przebieg po {steps} krokach.' },
     identity: { label: 'O zalogowanym kliencie', text: 'Narzędzia zwracają tylko rekordy tego klienta. Pytanie o cudze zamówienie odrzuca samo narzędzie.' },
     tools: { label: 'O przełącznikach narzędzi', text: 'Wyłącz narzędzie i zobacz, jak agent radzi sobie bez niego. Zmiana działa od następnej wiadomości.' },
   },
@@ -157,6 +159,7 @@ export const learn: typeof en = {
       noWarranty: 'Bez sprawdzania gwarancji',
       noKnowledge: 'Bez bazy wiedzy',
       readOnly: 'Tylko odczyt (bez zgłoszeń)',
+      kbOnly: 'Tylko baza wiedzy',
     },
     changesData: 'Zmienia dane',
     readOnlyNote: 'Pozostałe narzędzia tylko odczytują dane.',
@@ -197,15 +200,22 @@ export const learn: typeof en = {
     endedWith: 'Przebieg zakończony',
     totals: { steps: 'Kroki', toolCalls: 'Wywołania', duration: 'Czas', tokens: 'Tokeny' },
     differences: 'Różnice',
-    onlyCount: (a: number, b: number) =>
-      a === 0 && b === 0
-        ? 'Oba przebiegi wykonały te same wywołania (te same narzędzia, te same argumenty).'
-        : `Przebieg A wykonał ${wywolania(a)}, których nie było w B; przebieg B wykonał ${wywolania(b)}, których nie było w A.`,
+    onlyCount: (a: number, b: number) => {
+      if (a === 0 && b === 0) return 'Oba przebiegi wykonały te same wywołania (te same narzędzia, te same argumenty).'
+      // "którego" agrees with "1 wywołanie", "których" with 2, 5, ... wywołania / wywołań.
+      const part = (n: number, other: 'A' | 'B') => `${wywolania(n)}, ${n === 1 ? 'którego' : 'których'} nie było w ${other}`
+      const parts = [a > 0 ? `Przebieg A wykonał ${part(a, 'B')}` : '', b > 0 ? `${a > 0 ? 'przebieg' : 'Przebieg'} B wykonał ${part(b, 'A')}` : ''].filter(Boolean)
+      return `${parts.join('; ')}.`
+    },
     noAccess: (side: 'A' | 'B', other: 'A' | 'B', tool: ToolName, system: string, n: number) =>
       n > 0
         ? `Przebieg ${side} nie miał dostępu do ${tool} (${system}), więc nie wykonał takiego wywołania; przebieg ${other} wywołał je ${razy(n)}.`
         : `${tool} (${system}) było wyłączone w przebiegu ${side}; przebieg ${other} też go nie wywołał.`,
     otherCustomer: 'Te dwa przebiegi dotyczą różnych klientów.',
+    otherLang: 'Te dwa przebiegi były w różnych językach.',
+    language: 'Język',
+    langNames: { pl: 'polski', en: 'angielski' },
+    swap: 'Zamień przebiegi A i B',
     runs: (n: number) => `${n} ${plural(n, 'przebieg', 'przebiegi', 'przebiegów')}`,
   },
 }

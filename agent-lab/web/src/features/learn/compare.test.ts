@@ -105,3 +105,45 @@ describe('tool presets', () => {
     expect(presetOf(ALL.filter((n) => n !== 'track_shipment'))).toBeNull()
   })
 })
+
+describe('compareRuns edge cases (fix round 1)', () => {
+  it('an unfinished run: no outcome, no duration, its open call is running and still matched', () => {
+    const open = run('o', ALL, [ORDERS])
+    open.events = open.events.filter((e) => e.type !== 'run_finished' && !(e.type === 'tool_finished'))
+    delete open.outcome
+    delete open.answer
+    const c = compareRuns(open, run('b', ALL, [ORDERS]))
+    expect(c.a.outcome).toBeNull()
+    expect(c.a.totals.durationMs).toBeNull()
+    expect(c.a.answer).toBe('')
+    expect(c.a.calls).toMatchObject([{ name: 'get_customer_orders', status: 'running', summary: null, only: false }])
+  })
+
+  it('a rejected call with an unknown tool name has no system, counts as an error and is matched by its name', () => {
+    const a = run('a', ALL, [ORDERS])
+    a.events.splice(1, 0,
+      { type: 'tool_started', step: 1, callId: 'x1', seq: 0, name: 'do_magic', system: null, readOnly: true, args: {}, at: 1000 },
+      { type: 'tool_finished', callId: 'x1', at: 1000, durationMs: 0, result: { ok: false, error: { code: 'unknown_tool', message: 'no such tool' }, summary: 'Unknown tool' } },
+    )
+    const c = compareRuns(a, run('b', ALL, [ORDERS]))
+    const magic = c.a.calls.find((x) => x.name === 'do_magic')!
+    expect(magic).toMatchObject({ system: null, status: 'error', only: true, summary: 'Unknown tool' })
+    expect(c.onlyA).toBe(1)
+    expect(c.notes).toEqual([])
+  })
+
+  it('flags runs for different customers and in different languages', () => {
+    const a = run('a', ALL, [])
+    expect(compareRuns(a, run('b', ALL, []))).toMatchObject({ sameCustomer: true, sameLang: true })
+    const c = compareRuns(a, run('b', ALL, [], { customerId: 'CUST-1042', lang: 'pl' }))
+    expect(c).toMatchObject({ sameCustomer: false, sameLang: false })
+    expect(c.b.run.lang).toBe('pl')
+  })
+})
+
+describe('knowledge-base-only preset (fix round 1)', () => {
+  it('keeps only search_service_knowledge on and is recognised', () => {
+    expect(presetTools('kbOnly')).toEqual(['search_service_knowledge'])
+    expect(presetOf(['search_service_knowledge'])).toBe('kbOnly')
+  })
+})

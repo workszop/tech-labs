@@ -9,6 +9,7 @@ import { ArrowRight, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useT } from '@/i18n'
 import { openLearn } from './bus'
+import { useFillLimits } from './limits'
 import { TIP_TOPIC, type TipId } from './topics'
 
 const WIDTH = 272
@@ -17,6 +18,7 @@ const MARGIN = 12
 export function InfoTip({ tip, className }: { tip: TipId; className?: string }) {
   const tx = useT().learn.tips
   const t = tx[tip]
+  const fill = useFillLimits()
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ left: number; top: number; above: boolean } | null>(null)
   const button = useRef<HTMLButtonElement>(null)
@@ -95,7 +97,7 @@ export function InfoTip({ tip, className }: { tip: TipId; className?: string }) 
           className="z-50 rounded-lg border border-border bg-card p-3 text-left font-sans text-[12.5px] font-normal normal-case leading-relaxed tracking-normal text-foreground shadow-md"
           data-info-pop={tip}
         >
-          <p>{t.text}</p>
+          <p>{fill(t.text)}</p>
           <button
             type="button"
             onClick={() => {
