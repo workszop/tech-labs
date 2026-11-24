@@ -212,7 +212,7 @@ The Worker enforces its limits; the browser adds its own run guards. The UI only
 | Concurrent sessions per code | 3 (a 4th activation ends the least recently used session) | `max_sessions` (`DEFAULT_MAX_SESSIONS`) |
 | Session lifetime | 4 h | `SESSION_TTL_MINUTES` |
 | Requests per session per minute | 90 | `RATE_LIMIT_PER_MINUTE`. Indexing the knowledge base costs about 7 embedding requests per language and every agent step is one request. |
-| Activation attempts per IP | 10 / 15 min | `ACTIVATION_MAX_ATTEMPTS`, `ACTIVATION_WINDOW_SECONDS` |
+| Failed activation attempts per IP | 10 / 15 min | `ACTIVATION_MAX_ATTEMPTS`, `ACTIVATION_WINDOW_SECONDS`. Successful activations are not counted, so this does not limit how often a valid code is activated. |
 | Global failed activations | 60 / min | `ACTIVATION_GLOBAL_FAILURES_PER_MINUTE` |
 | Model turns per run | 8 (the last one without tools) | `AGENT_MAX_STEPS` |
 | Tool calls per run / per turn | 12 / 5 (then one last turn without tools) | `AGENT_MAX_TOOL_CALLS` / Worker constant |
@@ -255,6 +255,8 @@ Quotas are reserved **atomically** before each upstream call and reconciled to t
 | `rate_limited` while the knowledge base is indexed or right after a language switch | Indexing a language takes about 7 embedding requests; raise `RATE_LIMIT_PER_MINUTE` (default 90) for heavy use or wait a minute. |
 | The knowledge base shows "Error" or the search tool reports "not ready" | The index of the current language is built after activation and after a language switch. Network errors, rate limits and provider errors are retried automatically (three times, with growing waits); after that, or after an error a wait cannot fix (for example a spent quota), the header status and the line above the message box show the failure with a **Retry** button, and a new activation retries too. A search during a run while the index is not ready returns an honest `index_not_ready` error result. |
 | "This browser does not let the lab store its simulated company data" | IndexedDB is blocked (some private windows, or site data blocked in the settings). The lab cannot run there: open it in a normal window or allow the site to store data, then reload. |
+| A run ended as "cancelled" although nobody stopped it | Known limitation: when the session expires or is replaced in the middle of a run (4-hour lifetime, or the same code was activated elsewhere and this was its least recently used session), the run is recorded as cancelled instead of with its own reason. Nothing is written. Enter the code again and repeat the question. |
+| After an update of the lab, company records look outdated | Known limitation: the simulated company data has no version number, so a release that changes the seed data does not replace data already stored in a browser. Use **Reset -> Reset everything**. Give the seed data a version before the first release that changes it. |
 | Two tabs of the lab show different conversations or a run marked as interrupted | Both tabs share one browser database without coordination (the last one to write wins). Use the lab in one tab. Tickets still need approval and keep unique IDs. |
 | A learner is logged out after someone else activated the same code | The code reached its session limit and the newest activation ended the least recently used session. Give each learner a code, or raise `--max-sessions`. |
 | The agent with a real model never calls tools | The chat model does not support function calling. Use a model that does. |
