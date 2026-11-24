@@ -58,7 +58,7 @@ function check(name, ok, detail = '') {
 
 // ---------------------------------------------------------------- Chrome process and DevTools connection
 
-const procs = { chrome: null, profile: null, cdp: null, cleaning: false }
+const procs = { chrome: null, profile: null, cdp: null, cleaning: false, deadlineHit: false }
 
 /** One DevTools WebSocket: every command has a timeout; close, error, crash and detach reject everything pending. */
 class Cdp {
@@ -155,6 +155,7 @@ class Cdp {
 }
 
 async function launchChrome() {
+  if (procs.cleaning || procs.deadlineHit) throw new Error('not starting Chrome: the run is already over')
   procs.profile = mkdtempSync(path.join(tmpdir(), 'agent-lab-e2e-'))
   const args = [
     '--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--no-default-browser-check',
@@ -176,6 +177,7 @@ async function launchChrome() {
   let port = null
   for (const start = Date.now(); Date.now() - start < 20_000; await sleep(100)) {
     if (exited) throw new Error(`${exited.message}\n${stderr.trim()}`)
+    if (procs.deadlineHit) throw new Error('run deadline exceeded while Chrome was starting')
     if (existsSync(portFile)) {
       const [p] = readFileSync(portFile, 'utf8').split('\n')
       if (/^\d+$/.test(p ?? '')) {
@@ -188,6 +190,7 @@ async function launchChrome() {
   let page = null
   for (const start = Date.now(); !page && Date.now() - start < 10_000; await sleep(100)) {
     if (exited) throw exited
+    if (procs.deadlineHit) throw new Error('run deadline exceeded while Chrome was starting')
     try {
       const ctl = AbortSignal.timeout(2000)
       const list = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: ctl })).json()
@@ -267,7 +270,6 @@ const q = (sel) => JSON.stringify(sel)
 /** Clicks the first element matching `sel` (inside `scope` when given). */
 const click = (sel, scope = 'document') =>
   ev(`(() => { const e = ${scope}.querySelector(${q(sel)}); if (!e) throw new Error('no element ' + ${q(sel)}); e.click(); return true })()`)
-const exists = (sel) => ev(`!!document.querySelector(${q(sel)})`)
 const CHAT = `document.querySelector('[data-panel=chat]')`
 const inChat = (sel) => `${CHAT}?.querySelector(${q(sel)})`
 const countInChat = (sel) => ev(`${CHAT}?.querySelectorAll(${q(sel)}).length ?? 0`)
@@ -295,23 +297,34 @@ const ticketExists = (id) =>
 const kbIndexed = (lang) =>
   idb('agent-lab-kb', `if (!db.objectStoreNames.contains('meta')) { db.close(); return resolve(false) } const g = db.transaction('meta').objectStore('meta').get(${q(lang)}); g.onsuccess = () => { db.close(); resolve(!!g.result) }; g.onerror = () => reject(g.error)`)
 
+// Stable hooks first (data-testid), then the selectors that worked before they existed.
+const CODE_INPUT = `(document.querySelector('[data-testid=activation-code]') ?? document.querySelector('#code'))`
+const CODE_SUBMIT = `(document.querySelector('[data-testid=activation-submit]') ?? ${CODE_INPUT}?.form?.querySelector('button[type=submit]'))`
+
 async function activate(code) {
-  await waitFor(`!!document.querySelector('#code')`, 'the access-code field')
-  await ev(`(() => { const i = document.querySelector('#code'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, ${q(code)}); i.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
-  await waitFor(`!document.querySelector('#code')?.form?.querySelector('button[type=submit]')?.disabled`, 'the activation button to be enabled')
-  await click('button[type=submit]', `document.querySelector('#code').form`)
-  await waitFor(`!document.querySelector('#code') && !!${CHAT}`, 'the lab to open after activation', 15_000)
+  await waitFor(`!!${CODE_INPUT}`, 'the access-code field')
+  await ev(`(() => { const i = ${CODE_INPUT}; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, ${q(code)}); i.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
+  await waitFor(`!!${CODE_SUBMIT} && !${CODE_SUBMIT}.disabled`, 'the activation button to be enabled')
+  await ev(`(() => { ${CODE_SUBMIT}.click(); return true })()`)
+  await waitFor(`!${CODE_INPUT} && !!${CHAT}`, 'the lab to open after activation', 15_000)
 }
 
-/** The knowledge base of `lang` is indexed and the composer is not waiting for it. */
+/**
+ * Waits until the knowledge base of `lang` is indexed (meta row in IndexedDB), the
+ * header's readiness marker says ready (when the build has `data-kb-status`) and the
+ * composer is not waiting for it. Returns the last observed state either way.
+ */
 async function waitKbReady(lang) {
   const start = Date.now()
+  let state = null
   while (Date.now() - start < KB_TIMEOUT_MS) {
-    const busy = await ev(`(() => { const r = ${inChat('[data-testid=composer-reason]')}; return !${inChat('[data-testid=composer-input]')} || (!!r && /^(kb|loading)/.test(r.dataset.reason ?? '')) })()`)
-    if (!busy && (await kbIndexed(lang))) return
+    const ui = await ev(`(() => { const r = ${inChat('[data-testid=composer-reason]')}; const m = document.querySelector('[data-kb-status]'); return { composer: !!${inChat('[data-testid=composer-input]')}, reason: r?.dataset.reason ?? null, marker: m ? m.dataset.kbStatus : null } })()`)
+    state = { ...ui, indexed: await kbIndexed(lang) }
+    state.ready = state.indexed && state.composer && !/^(kb|loading)/.test(state.reason ?? '') && (state.marker === null || state.marker === 'ready')
+    if (state.ready) return state
     await sleep(200)
   }
-  throw new Error(`the ${lang} knowledge base was not indexed within ${KB_TIMEOUT_MS} ms`)
+  return state ?? { ready: false }
 }
 
 /** Accepts a confirmation dialog when one opened (new conversation, language switch). */
@@ -363,7 +376,7 @@ async function latestSteps() {
 async function openSourceTitle(id) {
   await click(`[data-source="${id}"]`, lastAgent)
   await waitFor(`document.querySelector('[data-testid=record-dialog]')?.dataset.record === ${q(id)}`, `the record dialog of ${id}`)
-  const title = await ev(`(() => { const d = document.querySelector('[data-testid=record-dialog]'); const dlg = d.closest('[role=dialog]') ?? d; const t = document.getElementById(dlg.getAttribute('aria-labelledby') ?? ''); return (t ?? dlg.querySelector('h2'))?.innerText.trim() ?? '' })()`)
+  const title = await ev(`(() => { const d = document.querySelector('[data-testid=record-dialog]'); const dlg = d.closest('[role=dialog]') ?? d; const t = dlg.querySelector('[data-testid=record-title]') ?? document.getElementById(dlg.getAttribute('aria-labelledby') ?? '') ?? dlg.querySelector('h2'); return t?.innerText.trim() ?? '' })()`)
   await key('Escape', 'Escape', 27)
   await waitFor(`!document.querySelector('[data-testid=record-dialog]')`, 'the record dialog to close')
   return title
@@ -408,14 +421,16 @@ async function main() {
 
   // -- activation and knowledge base
   await activate(CODE)
-  check('activation with a fresh code opens the lab', true)
+  const shell = await ev(`({ chat: !!${CHAT}, systems: !!document.querySelector('[data-panel=systems]'), workspace: !!document.querySelector('[data-panel=workspace]'), codeField: !!${CODE_INPUT} })`)
+  check('activation with a fresh code opens the lab (chat, systems and workspace panels)', shell.chat && shell.systems && shell.workspace && !shell.codeField, JSON.stringify(shell))
   if ((await ev('document.documentElement.lang')) !== LANG) {
     await click(`[data-testid=lang-switch] button[lang=${LANG}]`)
     await acceptConfirmationIfAny()
     await waitFor(`document.documentElement.lang === ${q(LANG)}`, `the ${LANG} interface`)
   }
-  await waitKbReady(LANG)
-  check(`${LANG}: knowledge base indexed in the browser (${elapsed()})`, true)
+  const kb1 = await waitKbReady(LANG)
+  check(`${LANG}: knowledge base indexed and marked ready (${elapsed()})`, kb1.ready, JSON.stringify(kb1))
+  if (!kb1.ready) throw new Error(`the ${LANG} knowledge base was not ready within ${KB_TIMEOUT_MS} ms`)
   await shot(`${LANG}-01-ready`)
 
   // -- scenario 1: tool calls and a reply with sources
@@ -472,8 +487,8 @@ async function main() {
     text: await ev(`${lastAgent}?.innerText ?? ''`),
   }
   await cdp.send('Page.reload', { ignoreCache: true })
-  await waitFor(`document.readyState === 'complete' && (!!document.querySelector('#code') || !!${CHAT})`, 'the page after reload', 15_000)
-  if (await exists('#code')) await activate(CODE)
+  await waitFor(`document.readyState === 'complete' && (!!${CODE_INPUT} || !!${CHAT})`, 'the page after reload', 15_000)
+  if (await ev(`!!${CODE_INPUT}`)) await activate(CODE)
   await waitFor(`${CHAT}.querySelectorAll('[data-testid=agent-message]').length >= ${before.agent}`, 'the restored conversation', 15_000)
   const after = {
     customer: await countInChat('[data-testid=customer-message]'),
@@ -493,16 +508,18 @@ async function main() {
   await waitFor(`!!${inChat('[data-testid=composer-input]')}`, 'the composer')
   const uiAfter = await ev(`${inChat('[data-testid=composer-input]')}?.placeholder ?? ''`)
   check(`language switch: the interface is in ${OTHER}`, uiAfter !== '' && uiAfter !== uiBefore, `"${uiBefore}" -> "${uiAfter}"`)
-  await waitKbReady(OTHER)
-  check(`${OTHER}: knowledge base indexed in the browser (${elapsed()})`, true)
+  const kb2 = await waitKbReady(OTHER)
+  check(`${OTHER}: knowledge base indexed and marked ready (${elapsed()})`, kb2.ready, JSON.stringify(kb2))
+  if (!kb2.ready) throw new Error(`the ${OTHER} knowledge base was not ready within ${KB_TIMEOUT_MS} ms`)
   await runScenario('product-failure-e04')
   await waitIdle(`scenario 1 (${OTHER}) to finish`)
   await waitFor(`!!${lastAgent}`, `the reply of scenario 1 (${OTHER})`)
   const otherSources = await lastAgentSources()
   check(`${OTHER} s1: reply cites a knowledge document`, otherSources.some((s) => s.startsWith('DOC-')), otherSources.join(', ') || 'no sources')
-  const sameDoc = otherSources.includes(docId) ? docId : otherSources.find((s) => s.startsWith('DOC-'))
-  const docTitleAfter = sameDoc ? await openSourceTitle(sameDoc) : ''
-  check(`language switch: the document title changed (${sameDoc})`, docTitleAfter.length > 3 && (sameDoc !== docId || docTitleAfter !== docTitleBefore), `"${docTitleBefore}" -> "${docTitleAfter}"`)
+  const sameDoc = !!docId && otherSources.includes(docId)
+  check(`${OTHER} s1: reply cites the same document as in ${LANG} (${docId})`, sameDoc, otherSources.join(', '))
+  const docTitleAfter = sameDoc ? await openSourceTitle(docId) : ''
+  check(`language switch: the title of ${docId} changed`, docTitleBefore.length > 3 && docTitleAfter.length > 3 && docTitleAfter !== docTitleBefore, `"${docTitleBefore}" -> "${docTitleAfter}"`)
   await shot(`${OTHER}-07-s1`)
 
   // -- hygiene
@@ -522,19 +539,26 @@ async function main() {
   check('no uncaught page errors or console errors', pageErrors.length === 0, pageErrors.slice(0, 8).join('\n       '))
 }
 
-const deadline = setTimeout(() => {
-  console.log(`\nFAIL the whole run exceeded ${DEADLINE_MS} ms`)
-  procs.cdp?.fail(new Error('run deadline exceeded'))
-}, DEADLINE_MS)
+// The deadline covers everything from the first request on: health and admin calls,
+// Chrome startup and the browser flow. When it fires, the run stops and Chrome is cleaned up.
+let deadlineTimer
+const deadline = new Promise((_, reject) => {
+  deadlineTimer = setTimeout(() => {
+    const err = new Error(`the whole run exceeded ${DEADLINE_MS} ms`)
+    procs.deadlineHit = true
+    procs.cdp?.fail(err)
+    reject(err)
+  }, DEADLINE_MS)
+})
 
 let exitCode = 0
 try {
-  await main()
+  await Promise.race([main(), deadline])
 } catch (e) {
   check('the run completed', false, e?.message ?? String(e))
   await shot('fail')
 } finally {
-  clearTimeout(deadline)
+  clearTimeout(deadlineTimer)
   await cleanup()
 }
 const failed = results.filter((r) => !r.ok)

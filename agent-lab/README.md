@@ -58,7 +58,7 @@ Defined once in `shared/tools.ts`: the Worker sends the definitions to the model
 
 ## 1. Local development
 
-Requirements: Node 20+ (22 recommended).
+Requirements: Node 22 recommended (CI uses 22); the apps run on Node 20+, but the end-to-end check needs Node 22 (it uses the built-in `WebSocket`).
 
 ```sh
 # Terminal 1: the API (offline "mock" models: no API key needed)
@@ -82,7 +82,7 @@ npm run dev                           # http://localhost:5173
 
 The **mock provider** (`PROVIDER=mock`) is for development, tests and workshops without a key. It is deterministic:
 - **Embeddings:** word-hash vectors with 256 dimensions (`mock-hash-embedding-256`). Texts that share wording really are similar.
-- **Agent:** `mock-rule-based-agent`, a rule-based stand-in for a tool-calling model. It reads the customer's message (keyword rules in Polish and English) and the tool results already in the transcript, requests the next sensible tools (never more than 3 per turn, never a call that already has a result) and writes its answer from the results, quoting one or two sentences of the best current knowledge-base document. It is a teaching aid that makes the loop visible, not a language model, and it says so in every answer.
+- **Agent:** `mock-rule-based-agent`, a rule-based stand-in for a tool-calling model. It reads the customer's message (keyword rules in Polish and English) and the tool results already in the transcript, requests the next sensible tools (never more than 3 per turn, never a call that already has a result) and writes its answer from the results, quoting one or two whole sentences of the best current knowledge-base document (a model-specific document or service bulletin first, by design). It is a teaching aid that makes the loop visible, not a language model, and it says so in every answer.
 
 The UI shows an **"Offline demo models"** badge while the mock provider is active, so mock results are never presented as a real AI model.
 

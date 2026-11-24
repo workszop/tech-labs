@@ -4,7 +4,7 @@ import type { AgentMessage } from '../../shared/api-types'
 import { SIM_TODAY } from '../../shared/sim'
 import { TOOLS, TOOL_NAMES, type ToolName } from '../../shared/tools'
 import { ApiError } from '../src/http'
-import { mockAgentTurn } from '../src/providers/mock-agent'
+import { mockAgentTurn, quoteSentences } from '../src/providers/mock-agent'
 import { OpenAICompatibleProvider } from '../src/providers/openai-compatible'
 import { hit, runMock } from './fake-world'
 
@@ -271,6 +271,30 @@ describe('mock agent (rule-based, offline)', () => {
       knowledge: [hit('Instrukcja Barista Pro 500', '## Kody błędów\n- **E04**: zablokowany przepływ wody\n- E05: brak ciśnienia', 'current', 'manual')],
     })
     expect(pl.answer).toContain('Według dokumentu „Instrukcja Barista Pro 500”: E04: zablokowany przepływ wody. E05: brak ciśnienia.')
+  })
+
+  it('quotes whole sentences only: decimals, versions, dates and abbreviations never split a sentence', () => {
+    expect(quoteSentences('Use water at 3.5 bar. Then restart the unit.')).toBe('Use water at 3.5 bar. Then restart the unit.')
+    expect(quoteSentences('Version v2.1 requires an update, see model E04. Call service if the error returns.')).toBe(
+      'Version v2.1 requires an update, see model E04. Call service if the error returns.',
+    )
+    expect(quoteSentences('## Filtr\nWymień filtr, np. filtr AquaPure, co ok. 40 minut pracy. Termin wymiany: 14.11.2026. Potem uruchom ekspres.')).toBe(
+      'Wymień filtr, np. filtr AquaPure, co ok. 40 minut pracy. Termin wymiany: 14.11.2026.',
+    )
+    expect(quoteSentences('Czujnik PM2.5 mierzy pył. Wersja 4.2 oprogramowania poprawia odczyt.')).toBe('Czujnik PM2.5 mierzy pył. Wersja 4.2 oprogramowania poprawia odczyt.')
+    // A chunk that starts or ends mid-sentence: only the whole sentence in between.
+    expect(quoteSentences('and keeps the old setting. Descale the machine every month. If the error returns after the')).toBe('Descale the machine every month.')
+    // Nothing whole to quote.
+    expect(quoteSentences('and then the unit stops working when the')).toBe('')
+    expect(quoteSentences('## Only a heading')).toBe('')
+  })
+
+  it('names only the document title when the top hit has no clean sentence to quote', () => {
+    const knowledge = [hit('Barista Pro 500 - error codes', 'and then the brewing unit blocks when the', 'current')]
+    const r = runMock('CUST-1042', 'My Barista Pro 500 shows error E04. What should I do?', 'en', { enabled: ['search_service_knowledge'], knowledge })
+    expect(r.answer).toContain('"Barista Pro 500 - error codes"')
+    expect(r.answer).not.toContain('brewing unit blocks')
+    expect(r.answer).not.toContain('no matching passage')
   })
 
   it('index_not_ready: does not retry the search and says the knowledge base is not ready', () => {

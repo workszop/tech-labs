@@ -31,7 +31,7 @@ Every number on screen comes from a real operation:
 | `web/` | The browser app. Its main parts are `src/rag/` (chunker, similarity, PCA, tokenizer, IndexedDB store), `src/api/` (Worker client and SSE parser), `src/state/` (store and pipeline orchestration), `src/features/` (UI) and `src/data/documents.ts` (corpus). |
 | `worker/` | The Cloudflare Worker API gateway, D1 migrations, admin CLI and tests. See [`worker/README.md`](worker/README.md). |
 | `shared/` | The API contract (`api-types.ts`) and the prompt template (`prompt.ts`). Both apps use them. |
-| `../.github/workflows/rag-lab-pages.yml` | CI for both apps, plus GitHub Pages deployment. |
+| `../.github/workflows/pages.yml` | CI for both apps, plus GitHub Pages deployment. |
 | `../.github/workflows/rag-lab-worker-deploy.yml` | Manual deployment of the Worker. |
 
 ---

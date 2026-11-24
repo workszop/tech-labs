@@ -102,9 +102,13 @@ A failed upstream call gives its step back to the run.
 With `PROVIDER=mock` the turn is answered by `mock-rule-based-agent`
 (`src/providers/mock-agent.ts`), a deterministic rule-based stand-in that reads
 the latest customer message and the tool results already in the transcript.
-It quotes one or two plain sentences of the best current knowledge-base hit
-(model-specific documents and service bulletins first, never a superseded
-document) and says so when it skipped a superseded one. It is a teaching
+It quotes one or two whole sentences of the best current knowledge-base hit,
+as plain text, and says so when it skipped a superseded one. By design a
+current model-specific document or service bulletin wins over a higher-ranked
+current general document; a superseded document is never quoted. Sentences are
+split only at a real end (not inside 3.5, v2.1 or 14.11.2026, not after
+abbreviations such as "np." or "e.g."); when the hit has no whole sentence to
+quote, the answer names only the document title. It is a teaching
 stand-in, not a language model.
 
 Session auth = `Authorization: Bearer <token>`. Tokens are never accepted in

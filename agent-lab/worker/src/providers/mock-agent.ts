@@ -361,6 +361,7 @@ const T = {
     soon: 'The warranty ends soon, so please contact service before that date.',
     kb: (title: string, text: string) => `From "${title}": ${text}`,
     superseded: (title: string) => `I did not rely on "${title}" because a newer document replaced it.`,
+    kbTitle: (title: string) => `The service document "${title}" matches your question.`,
     kbEmpty: 'The service knowledge base had no matching passage.',
     shipments: (n: number) => (n ? `I found ${n} shipment${n === 1 ? '' : 's'} on your account.` : 'I found no shipments for your account.'),
     shipmentRow: (s: Json) =>
@@ -401,6 +402,7 @@ const T = {
     soon: 'Gwarancja niedługo się kończy, więc warto zgłosić się do serwisu przed tą datą.',
     kb: (title: string, text: string) => `Według dokumentu „${title}”: ${text}`,
     superseded: (title: string) => `Nie opieram się na dokumencie „${title}”, bo zastąpił go nowszy.`,
+    kbTitle: (title: string) => `Pasuje do tego dokument serwisowy „${title}”.`,
     kbEmpty: 'W bazie wiedzy serwisowej nie znalazłem pasującego fragmentu.',
     shipments: (n: number) => (n ? `Na Twoim koncie znalazłem przesyłki: ${n}.` : 'Na Twoim koncie nie znalazłem żadnych przesyłek.'),
     shipmentRow: (s: Json) =>
@@ -454,34 +456,71 @@ function clip(s: string, n: number): string {
 /** Model-specific documents and service bulletins beat general documents of the same search. */
 const PREFERRED_AUTHORITY = new Set(['model_specific', 'service_bulletin'])
 
+// Intended: a current model-specific or bulletin hit wins over a higher-ranked current general document.
 /** The hit to quote: never a superseded one; a model-specific or bulletin hit first, else the best-ranked current hit. */
 function topCurrentHit(hits: Json[]): Json | null {
   const current = hits.filter((h) => h.status !== 'superseded')
   return current.find((h) => PREFERRED_AUTHORITY.has(String(h.authority))) ?? current[0] ?? null
 }
 
+/** Longest quote; a first sentence longer than this is not quoted (it would have to be cut). */
+const MAX_QUOTE_CHARS = 360
+
 /**
- * One or two plain sentences of a knowledge chunk: markdown headings are dropped,
- * list markers and emphasis removed, and each list line becomes its own sentence.
+ * Splits plain text into sentences, only where a sentence really ends: after
+ * `.`, `!` or `?` (and closing quotes or brackets) followed by whitespace and a
+ * word that does not start with a lowercase letter or a digit. A dot after a
+ * short lowercase token (np., ok., e.g., itp.) is an abbreviation, not an end.
+ * Dots inside numbers, versions and dates (3.5, v2.1, 14.11.2026) are never
+ * followed by whitespace, so they never split. The trailing text without an
+ * end mark is returned separately as `rest`.
  */
-function quoteSentences(markdown: string): string {
+function splitSentences(text: string): { sentences: string[]; rest: string } {
+  const sentences: string[] = []
+  const boundary = /[.!?]["'”’)\]]*(?=\s+(\S))/g
+  let from = 0
+  let m: RegExpExecArray | null
+  while ((m = boundary.exec(text))) {
+    const end = m.index + m[0].length
+    const next = text.slice(end).trimStart()
+    if (/^[\p{Ll}\d]/u.test(next)) continue
+    if (text[m.index] === '.' && /(?:^|[\s(„"])[\p{Ll}]{1,3}(?:\.[\p{Ll}]{1,3})*$/u.test(text.slice(from, m.index))) continue
+    sentences.push(text.slice(from, end).trim())
+    from = end
+  }
+  const tail = text.slice(from).trim()
+  if (/[.!?]["'”’)\]]*$/.test(tail)) return { sentences: [...sentences, tail], rest: '' }
+  return { sentences, rest: tail }
+}
+
+/**
+ * One or two whole sentences of a knowledge chunk, as plain text: markdown
+ * headings are dropped, list markers and emphasis removed, and a list item
+ * without an end mark becomes its own sentence. A chunk can start or end in the
+ * middle of a sentence (chunk boundaries and overlap); such fragments are never
+ * quoted. Returns '' when no whole sentence is left.
+ */
+export function quoteSentences(markdown: string): string {
   const lines = markdown
     .split('\n')
     .filter((l) => !/^\s*#/.test(l))
-    .map((l) =>
-      l
+    .map((l) => {
+      const item = /^\s*(?:[-*+]|\d+[.)])\s+/.test(l)
+      const plain = l
         .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
         .replace(/(\*\*|__|\*|`)/g, '')
         .replace(/\s+/g, ' ')
-        .trim(),
-    )
+        .trim()
+      // A list item is complete in itself; a paragraph line without an end mark may be cut off.
+      return item && plain && !/[.!?:;,]$/.test(plain) ? `${plain}.` : plain
+    })
     .filter(Boolean)
-    .map((l) => (/[.!?:;,]$/.test(l) ? l : `${l}.`))
-  const text = lines.join(' ')
-  const sentences = text.match(/[^.!?]+[.!?]+(?=\s|$)/g)?.map((x) => x.trim()) ?? []
-  if (!sentences.length) return clip(text, 240)
-  const two = sentences.slice(0, 2).join(' ')
-  return two.length <= 320 ? two : clip(sentences[0]!, 320)
+  const { sentences } = splitSentences(lines.join(' '))
+  // A first "sentence" that starts in lowercase is the end of a sentence cut off by the chunk boundary.
+  const whole = sentences.filter((x, i) => i > 0 || /^[\p{Lu}\d„"'(]/u.test(x))
+  if (!whole.length || whole[0]!.length > MAX_QUOTE_CHARS) return ''
+  const two = whole.slice(0, 2).join(' ')
+  return two.length <= MAX_QUOTE_CHARS ? two : whole[0]!
 }
 
 function errorLine(lang: Lang, d: Done): string {
@@ -550,9 +589,10 @@ function answer(lang: Lang, intents: Intents, done: Done[], p: Plan, limitReache
         const top = topCurrentHit(hits)
         const quote = top ? quoteSentences(String(top.text ?? '')) : ''
         if (top && quote) out.push(t.kb(String(top.docTitle), quote))
+        else if (top) out.push(t.kbTitle(String(top.docTitle)))
         else out.push(t.kbEmpty)
         for (const h of hits.filter((x) => x.status === 'superseded').slice(0, 1)) out.push(t.superseded(String(h.docTitle)))
-        useful = useful || !!quote
+        useful = useful || !!top
         break
       }
       case 'get_shipments': {
