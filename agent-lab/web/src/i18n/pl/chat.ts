@@ -56,9 +56,12 @@ export const chat: Dict['chat'] = {
     keys: 'Enter wysyła · Shift+Enter dodaje wiersz',
     counter: (n: number, max: number) => `${n}/${max}`,
     activate: 'Aktywuj',
+    retryKb: 'Spróbuj ponownie',
     reasons: {
       inactive: 'Aktywuj laboratorium kodem dostępu, żeby porozmawiać z agentem.',
       loading: 'Wczytuję rozmowę…',
+      storage: 'Ta przeglądarka blokuje zapis danych, których potrzebuje laboratorium, więc agent nie może tu działać.',
+      kbFailed: 'Nie udało się przygotować dokumentów serwisowych. Agent odpowie, ale dopóki to się nie uda, nie przeszuka dokumentów.',
       kbChecking: 'Sprawdzam dokumenty serwisowe… Za chwilę możesz pisać.',
       kbIndexing: (done: number, total: number) => `Przygotowuję dokumenty serwisowe (${done}/${total}). Gdy skończę, możesz pisać.`,
       running: 'Agent odpowiada. Zatrzymaj go, jeśli chcesz napisać coś nowego.',

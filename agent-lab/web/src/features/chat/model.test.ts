@@ -3,7 +3,7 @@ import type { RunRecord, TraceEvent } from '@/agent/types'
 import type { SystemId } from '@shared/tools'
 import type { ToolResult } from '@/sim/tools'
 import type { KnowledgeHit } from '@/data/kb/types'
-import { runSources, runSteps, runView, stepStatusOf, ticketIdOf, handsOver } from './model'
+import { draftKeepsScenario, runSources, runSteps, runView, stepStatusOf, ticketIdOf, handsOver } from './model'
 
 let seq = 0
 function started(callId: string, name: string, system: SystemId | null = 'orders'): TraceEvent {
@@ -158,5 +158,16 @@ describe('escalation', () => {
     expect(runView(undefined)).toEqual({ steps: [], sources: [], ticketId: null, handover: false, endReason: null })
     const limited: TraceEvent = { type: 'run_finished', at: 9, outcome: 'error', detail: 'rate_limited', answer: '' }
     expect(runView(run([runStart, limited], 'error')).endReason).toBe('rate_limited')
+  })
+})
+
+describe('scenario label of an edited message (final fix finding 20)', () => {
+  it('keeps the scenario only while the draft is the scenario text', () => {
+    const msg = 'My Barista Pro 500 shows E04.'
+    expect(draftKeepsScenario(msg, msg)).toBe(true)
+    expect(draftKeepsScenario(`${msg} `, msg)).toBe(true)
+    expect(draftKeepsScenario('My PureAir 300 shows S2.', msg)).toBe(false)
+    expect(draftKeepsScenario('', msg)).toBe(false)
+    expect(draftKeepsScenario(msg, undefined)).toBe(false)
   })
 })

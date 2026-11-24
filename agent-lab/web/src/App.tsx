@@ -11,6 +11,7 @@ import { SystemsPanel } from '@/features/systems/SystemsPanel'
 import { RecordDialogHost } from '@/features/systems/RecordDialog'
 import { WorkspacePanel } from '@/features/workspace/WorkspacePanel'
 import { ChatPanel } from '@/features/chat/ChatPanel'
+import { Alert } from '@/features/common'
 
 /** Three resizable panels from this width; below it the app shows one panel at a time with tabs. */
 const DESKTOP_QUERY = '(min-width: 1100px)'
@@ -30,6 +31,7 @@ const Handle = () => <Separator className="w-px bg-border transition-colors data
 
 export default function App() {
   const status = useStore((s) => s.auth.status)
+  const storage = useStore((s) => s.storage)
   const mobileTab = useStore((s) => s.ui.mobileTab)
   const desktop = useIsDesktop()
   const lang = useLang()
@@ -51,6 +53,11 @@ export default function App() {
       ) : (
         <div className="flex h-full flex-col">
           <Header />
+          {storage === 'unavailable' && (
+            <div role="alert" className="shrink-0 border-b bg-card px-3 py-2" data-testid="storage-unavailable">
+              <Alert tone="danger" title={tx.storage.unavailable}>{tx.storage.hint}</Alert>
+            </div>
+          )}
           {desktop ? (
             <Group orientation="horizontal" className="min-h-0 flex-1">
               <Panel defaultSize="30" minSize="320px" maxSize="50" className="bg-card">{systems}</Panel>

@@ -8,7 +8,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { useT } from '@/i18n'
-import { logout, resetEverything, resetScenario, startNewConversation } from '@/state/actions'
+import { logout, resetEverything, resetScenario, retryKbIndex, startNewConversation } from '@/state/actions'
 import { DEFAULT_CUSTOMER_ID, useStore } from '@/state/store'
 import type { Customer, Ticket } from '@/data/company/types'
 import { useTable } from '@/sim/db'
@@ -60,13 +60,27 @@ export function SimDate() {
   )
 }
 
+/** Retry control of a failed knowledge base index (an icon button in the crowded header row). */
+function KbRetry({ className, compact }: { className?: string; compact?: boolean }) {
+  const tx = useT().shell.header.kb
+  const button = (
+    <Button size={compact ? 'icon-sm' : 'xs'} variant="outline" className={className} onClick={() => void retryKbIndex()} aria-label={tx.retry} data-testid="kb-retry">
+      <RotateCcw /> {!compact && tx.retry}
+    </Button>
+  )
+  return compact ? <Tooltip content={tx.retry}>{button}</Tooltip> : button
+}
+
 export function KbStatus() {
   const tx = useT().shell.header.kb
   const { kb, value } = useKbText()
   return (
-    <Tooltip content={kb.status === 'error' && kb.error ? `${tx.tooltip} ${kb.error}` : tx.tooltip}>
-      <HeaderStat className="hidden xl:flex" icon={<KbIcon status={kb.status} />} label={tx.label} value={value} testId="kb-status" data-kb-status={kb.status} />
-    </Tooltip>
+    <div className="hidden items-center gap-1 xl:flex">
+      <Tooltip content={kb.status === 'error' && kb.error ? `${tx.tooltip} ${kb.error}` : tx.tooltip}>
+        <HeaderStat className="flex" icon={<KbIcon status={kb.status} />} label={tx.label} value={value} testId="kb-status" data-kb-status={kb.status} />
+      </Tooltip>
+      {kb.status === 'error' && <KbRetry compact />}
+    </div>
   )
 }
 
@@ -156,6 +170,7 @@ export function StatusButton() {
                   <span className="mb-1.5 block h-2 overflow-hidden rounded-full bg-muted"><span className="block h-full bg-primary" style={{ width: `${(kb.done / kb.total) * 100}%` }} /></span>
                 )}
                 {kb.status === 'error' && kb.error ? kb.error : tx.kb.tooltip}
+                {kb.status === 'error' && <KbRetry className="mt-2 flex" />}
               </>,
               'status-kb',
             )}
@@ -201,6 +216,7 @@ export function ResetMenu() {
   const hasConversation = conversation.length > 0 || running
   const [open, setOpen] = useState(false)
   const [confirm, setConfirm] = useState<ResetChoice | null>(null)
+  const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
@@ -240,13 +256,17 @@ export function ResetMenu() {
   }
   const run = async () => {
     setBusy(true)
+    setFailed(false)
     try {
       if (confirm === 'new') startNewConversation()
       else if (confirm === 'scenario') await resetScenario()
       else await resetEverything()
+      setConfirm(null)
+    } catch {
+      // Storage refused the change: keep the dialog open and say so.
+      setFailed(true)
     } finally {
       setBusy(false)
-      setConfirm(null)
     }
   }
 
@@ -316,7 +336,7 @@ export function ResetMenu() {
           )}
         </div>
       )}
-      <Dialog open={confirm !== null} onOpenChange={(o) => !o && !busy && setConfirm(null)}>
+      <Dialog open={confirm !== null} onOpenChange={(o) => { if (!o && !busy) { setConfirm(null); setFailed(false) } }}>
         <DialogContent data-testid="reset-confirm" data-choice={confirm ?? undefined}>
           {confirm && (
             <>
@@ -327,9 +347,10 @@ export function ResetMenu() {
               <div className="space-y-3 px-5 py-4">
                 {list(r.removed, lists[confirm].removed, true)}
                 {list(r.kept, lists[confirm].kept, false)}
+                {failed && <p role="alert" className="text-[13px] font-medium text-danger" data-testid="reset-failed">{r.failed}</p>}
               </div>
               <div className="flex flex-wrap justify-end gap-2 border-t border-dashed px-5 py-3">
-                <Button variant="outline" onClick={() => setConfirm(null)} disabled={busy}>{r.cancel}</Button>
+                <Button variant="outline" onClick={() => { setConfirm(null); setFailed(false) }} disabled={busy}>{r.cancel}</Button>
                 <Button variant={confirm === 'new' ? 'default' : 'danger'} onClick={run} disabled={busy} data-testid="confirm-reset">
                   {busy ? <Loader2 className="animate-spin" /> : ICON[confirm]}
                   {ACTION[confirm]}

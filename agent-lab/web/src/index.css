@@ -352,15 +352,8 @@
   /* app helpers */
   .scroll-thin { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
   .kbd { font-family: var(--font-mono); font-size: 11px; }
-  /* chunk overlap: solid yellow carries dark ink */
-  .mark-overlap { background: var(--yellow); color: var(--yellow-ink); border-radius: var(--r-xs); }
-  /* cited passage: green well, ink text, full 1px contour */
-  .mark-hit { background: var(--ok-tint); color: var(--ink); border-radius: var(--r-xs); box-shadow: 0 0 0 1px var(--green-600); }
   .react-flow__attribution { display: none; }
   .react-flow { --xy-background-color: transparent; }
-  /* running step: a crisp full-contour yellow band that breathes (no blur, no glow) */
-  @keyframes rl-pulse { 0%,100% { box-shadow: 0 0 0 2px var(--yellow); } 50% { box-shadow: 0 0 0 5px var(--yellow); } }
-  .rl-processing { animation: rl-pulse 1.4s ease-in-out infinite; }
   /* panel spotlight (lib/reveal.ts): full contour for ~2 s, ink band with a yellow band inside */
   @keyframes rl-spot { 0%,70% { opacity: 1; } 100% { opacity: 0; } }
   .rl-spotlight { position: relative; }

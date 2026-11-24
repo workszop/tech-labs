@@ -59,7 +59,7 @@ export const learn: typeof en = {
     loop: {
       title: 'Czym jest pętla działania agenta?',
       lead: 'Agent pracuje w rundach. W każdej rundzie model albo prosi o narzędzia, albo pisze odpowiedź. Wyniki narzędzi trafiają do rozmowy i zaczyna się kolejna runda.',
-      points: ['Każda runda to krok: jego numer widać na węźle Agent AI.', 'Limit kroków na wiadomość to {byDefault}{steps}, a tokenów (drobnych kawałków słów, które model czyta i pisze) około {tokens}. Po {calls} wywołaniach narzędzi agent musi odpowiedzieć już bez narzędzi. Czat mówi, gdy zadziałał limit.'],
+      points: ['Każda runda to krok: jego numer widać na węźle Agent AI.', 'Limit kroków na wiadomość to {byDefault}{steps}, wywołań narzędzi {calls}, a tokenów (drobnych kawałków słów, które model czyta i pisze) około {tokens}. Gdy któryś limit się wyczerpie, ostatni krok agent wykonuje już bez narzędzi i odpowiada tym, co wie. Czat mówi, gdy zadziałał limit.'],
       example: 'W scenariuszu 1 są trzy rundy: najpierw zamówienie, potem jednocześnie gwarancja i instrukcje, na końcu odpowiedź.',
       showMe: 'Pokaż oś czasu',
     },

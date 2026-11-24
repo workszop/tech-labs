@@ -19,11 +19,12 @@
 //
 // Flow: activate with a fresh code, wait for the knowledge-base index, scenario 1 (at least
 // three tool rows, a reply with sources), scenario 8 rejected then approved (ticket count),
-// scenario 9 (access denied step), reload (conversation and data survive), language switch
+// scenario 9 (access denied step), reload (conversation and data survive), four more reloads
+// with the same code (max 3 sessions: every re-activation opens the lab), language switch
 // (UI and a document title change, scenario 1 again in the other language), no uncaught
 // errors, no secrets in the bundle or web storage. Exits 1 with the list of failed checks.
 //
-// Each run creates one access code (max 5 sessions) and makes about 25 Worker requests.
+// Each run creates one access code (max 3 sessions) and makes about 35 Worker requests.
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -401,8 +402,9 @@ async function main() {
 
   const health = await (await fetch(`${API}/api/health`, { signal: AbortSignal.timeout(5000) })).json()
   if (health.provider !== 'mock') console.log(`  note: the Worker uses provider "${health.provider}", not the mock; answers will vary`)
-  const { codes } = await admin('POST', '/api/admin/codes', { count: 1, label: 'e2e', requestLimit: 500, tokenLimit: 2_000_000, maxSessions: 5 })
+  const { codes } = await admin('POST', '/api/admin/codes', { count: 1, label: 'e2e', requestLimit: 500, tokenLimit: 2_000_000, maxSessions: 3 })
   const CODE = codes[0].code
+  const CODE_ID = codes[0].id
 
   cdp = await launchChrome()
   cdp.on('Runtime.exceptionThrown', (p) => pageErrors.push(`exception: ${p.exceptionDetails?.exception?.description ?? p.exceptionDetails?.text}`.split('\n')[0]))
@@ -499,6 +501,19 @@ async function main() {
   check('reload: the approved ticket is still in the company data', ticketId ? await ticketExists(ticketId) : false, String(ticketId))
   check('reload: no ticket was lost or added', (await ticketCount()) === tickets1)
   await shot(`${LANG}-06-reloaded`)
+
+  // -- four more reloads with the same code: a code allows 3 sessions, and a reload must never lock the learner out
+  let reopened = 0
+  for (let i = 0; i < 4; i++) {
+    await cdp.send('Page.reload', { ignoreCache: true })
+    await waitFor(`document.readyState === 'complete' && (!!${CODE_INPUT} || !!${CHAT})`, `the page after reload ${i + 2}`, 15_000)
+    if (await ev(`!!${CODE_INPUT}`)) await activate(CODE)
+    if (await ev(`!!${CHAT} && !${CODE_INPUT}`)) reopened++
+  }
+  check('four reloads with the same code (max 3 sessions): the lab opens after every re-activation', reopened === 4, `opened ${reopened}/4`)
+  const { codes: listed } = await admin('GET', '/api/admin/codes')
+  const activeSessions = listed.find((c) => c.id === CODE_ID)?.activeSessions ?? -1
+  check('reloads free or reuse session slots: at most 3 active sessions', activeSessions >= 1 && activeSessions <= 3, `active sessions: ${activeSessions}`)
 
   // -- language switch
   const uiBefore = await ev(`${inChat('[data-testid=composer-input]')}?.placeholder ?? ''`)

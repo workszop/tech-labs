@@ -185,3 +185,11 @@ export function runView(run: RunRecord | undefined): RunView {
   if (!run) return { steps: [], sources: [], ticketId: null, handover: false, endReason: null }
   return { steps: runSteps(run.events), sources: runSources(run.events), ticketId: ticketIdOf(run.events), handover: handsOver(run), endReason: endReasonOf(run.events) }
 }
+
+/**
+ * Whether a message filled in from a scenario still counts as that scenario: only
+ * while the draft is the scenario text (an edited question is the learner's own).
+ */
+export function draftKeepsScenario(draft: string, scenarioMessage: string | undefined): boolean {
+  return !!scenarioMessage && draft.trim() === scenarioMessage.trim()
+}

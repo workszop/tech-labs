@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, ApiError, __setTokenForTests, hasSession, localizedErrorMessage } from './client'
+import { api, ApiError, __setApiBaseForTests, __setTokenForTests, hasSession, localizedErrorMessage, resolveApiBaseUrl } from './client'
 import { setSettings } from '@/state/store'
 import { en } from '@/i18n/en'
 import { pl } from '@/i18n/pl'
@@ -9,6 +9,48 @@ const quota = { requestsUsed: 1, requestLimit: 10, tokensUsed: 5, tokenLimit: 10
 afterEach(() => {
   vi.unstubAllGlobals()
   __setTokenForTests(null)
+  __setApiBaseForTests('http://localhost:8787')
+})
+
+describe('API base URL (final fix finding 4)', () => {
+  it('uses the configured URL, the localhost default only in development, and nothing in a production build without the variable', () => {
+    expect(resolveApiBaseUrl('https://api.example.test/', false)).toBe('https://api.example.test')
+    expect(resolveApiBaseUrl('https://api.example.test', true)).toBe('https://api.example.test')
+    expect(resolveApiBaseUrl(undefined, true)).toBe('http://localhost:8787')
+    expect(resolveApiBaseUrl('', true)).toBe('http://localhost:8787')
+    expect(resolveApiBaseUrl(undefined, false)).toBeNull()
+    expect(resolveApiBaseUrl('  ', false)).toBeNull()
+  })
+
+  it('without a configured server no request is sent and the error says so', async () => {
+    __setApiBaseForTests(null)
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(api.activate('AGT-AAAA')).rejects.toMatchObject({ code: 'not_configured' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('logout when the page is unloaded (final fix finding 5)', () => {
+  it('sends a keepalive logout with the bearer header (never the token in the URL) and forgets the token', () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    __setTokenForTests('secret-token')
+    api.logoutOnUnload()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('http://localhost:8787/api/logout')
+    expect(init).toMatchObject({ method: 'POST', keepalive: true, credentials: 'omit' })
+    expect(new Headers(init.headers).get('Authorization')).toBe('Bearer secret-token')
+    expect(hasSession()).toBe(false)
+  })
+
+  it('does nothing without a session', () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    api.logoutOnUnload()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
 
 describe('api client', () => {

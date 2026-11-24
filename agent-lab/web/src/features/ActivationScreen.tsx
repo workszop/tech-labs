@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { ArrowRight, BookOpen, KeyRound, Loader2, Lock, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BookOpen, KeyRound, Loader2, Lock, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ApiError, API_BASE_URL } from '@/api/client'
+import { ApiError, getApiBaseUrl } from '@/api/client'
 import { activate, browseWithoutActivation } from '@/state/actions'
 import { useStore } from '@/state/store'
 import { t, useT } from '@/i18n'
 import { Logo } from './Logo'
 import { LangSwitch } from './LangSwitch'
-import { IconBadge } from './common'
+import { Alert, IconBadge } from './common'
 
 /** What went wrong, kept as data so the message follows a later language switch. */
 type ActivationError = { code: string; fallback: string; retryAfterSeconds?: number }
@@ -20,7 +20,10 @@ function errorText(err: ActivationError, tx: ReturnType<typeof t>['shell']['acti
 
 export function ActivationScreen() {
   const notice = useStore((s) => s.auth.notice)
-  const tx = useT().shell.activation
+  const storage = useStore((s) => s.storage)
+  const shell = useT().shell
+  const tx = shell.activation
+  const apiBase = getApiBaseUrl()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<ActivationError | null>(null)
@@ -73,7 +76,8 @@ export function ActivationScreen() {
               <Input
                 id="code"
                 data-testid="activation-code"
-                autoFocus
+                autoFocus={!!apiBase}
+                disabled={!apiBase}
                 autoComplete="off"
                 spellCheck={false}
                 placeholder={tx.codePlaceholder}
@@ -83,13 +87,19 @@ export function ActivationScreen() {
                 aria-invalid={!!error}
                 aria-describedby="code-help"
               />
+              {!apiBase && (
+                <p role="status" className="edu-block mt-3 flex gap-2 rounded-lg bg-danger px-3 py-2 text-[13px] text-white" data-testid="activation-not-configured">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <span>{shell.errors.byCode.not_configured}</span>
+                </p>
+              )}
               {notice && !error && <p className="edu-block mt-3 rounded-lg bg-primary px-3 py-2 text-[13px] text-primary-foreground">{notice}</p>}
               {error && (
                 <p role="alert" className="edu-block mt-3 rounded-lg bg-danger px-3 py-2 text-[13px] text-white">
                   {errorText(error, tx)}
                 </p>
               )}
-              <Button type="submit" variant="accent" size="lg" className="mt-4 h-11 w-full" disabled={busy || !code.trim()} data-testid="activation-submit">
+              <Button type="submit" variant="accent" size="lg" className="mt-4 h-11 w-full" disabled={busy || !code.trim() || !apiBase} data-testid="activation-submit">
                 {busy ? <Loader2 className="animate-spin" /> : <ArrowRight />}
                 {busy ? tx.checking : tx.submit}
               </Button>
@@ -100,6 +110,11 @@ export function ActivationScreen() {
           </form>
 
           <div className="grid gap-3">
+            {storage === 'unavailable' && (
+              <div role="alert" data-testid="storage-unavailable">
+                <Alert tone="danger" title={shell.storage.unavailable}>{shell.storage.hint}</Alert>
+              </div>
+            )}
             <div className="flex gap-3 rounded-lg border bg-card px-4 py-3.5 text-[14px] leading-relaxed text-[var(--ink-2)]">
               <IconBadge tone="ok"><ShieldCheck /></IconBadge>
               <span className="min-w-0">{tx.privacyLocal}</span>
@@ -114,7 +129,7 @@ export function ActivationScreen() {
                 <BookOpen /> {tx.explore}
               </Button>
             </div>
-            {import.meta.env.DEV && <p className="font-mono text-[11px] text-muted-foreground">{tx.apiLabel(API_BASE_URL)}</p>}
+            {import.meta.env.DEV && apiBase && <p className="font-mono text-[11px] text-muted-foreground">{tx.apiLabel(apiBase)}</p>}
           </div>
         </div>
       </main>

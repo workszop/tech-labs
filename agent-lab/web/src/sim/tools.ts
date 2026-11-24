@@ -383,6 +383,10 @@ const HANDLERS: Record<ToolName, Handler> = {
     if (issue.length > 600) throw invalid('Argument "issue_description" is longer than 600 characters.', ctx.lang)
     const product = await simDb.products.get(productId)
     if (!product) throw notFound('product', ctx.lang)
+    // Only for an appliance of this customer: an order line or a warranty (also after a transfer).
+    const [orders, warranties] = await Promise.all([simDb.orders.where('customerId').equals(customerId).toArray(), simDb.warranties.where('customerId').equals(customerId).toArray()])
+    const owns = orders.some((o) => o.lines.some((l) => l.productId === productId)) || warranties.some((w) => w.productId === productId)
+    if (!owns) throw forbidden('product', ctx.lang)
     const year = SIM_TODAY.slice(0, 4)
     const ticket = await simDb.transaction('rw', simDb.tickets, async () => {
       const prefix = `TCK-${year}-`
@@ -435,6 +439,7 @@ export async function executeTool(name: ToolName, args: Record<string, unknown>,
     return { ok: true, data, summary }
   } catch (e) {
     if (e instanceof ToolError) return { ok: false, error: { code: e.code, message: e.message }, summary: e.summary }
+    console.error(`[agent-lab] tool ${name} failed unexpectedly`, e)
     return {
       ok: false,
       error: { code: 'failed', message: 'The company system did not respond. The tool could not complete; try again later or offer human support.' },

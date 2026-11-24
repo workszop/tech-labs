@@ -101,6 +101,23 @@ describe('validateToolArgs', () => {
     expect(validateToolArgs('get_customer_orders', ['CUST-1042']).ok).toBe(false)
   })
 
+  it('treats an optional argument sent as "" or null as omitted (final fix finding 6)', () => {
+    expect(validateToolArgs('search_service_knowledge', { query: 'E04', error_code: '', product_model: null })).toEqual({ ok: true, args: { query: 'E04' } })
+    expect(validateToolArgs('get_shipments', { customer_id: 'CUST-1042', order_id: null })).toEqual({ ok: true, args: { customer_id: 'CUST-1042' } })
+    expect(validateToolArgs('get_shipments', { customer_id: '  ', order_id: 'ORD-2026-0187' })).toEqual({ ok: true, args: { order_id: 'ORD-2026-0187' } })
+  })
+
+  it('a required argument sent as "" or null is still an error, and so are all-empty alternatives', () => {
+    for (const v of ['', '   ', null]) {
+      const r = validateToolArgs('check_warranty', { customer_id: 'CUST-1042', serial_number: v })
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.error).toContain('serial_number')
+    }
+    expect(validateToolArgs('get_shipments', { customer_id: '', order_id: null }).ok).toBe(false)
+    // Other types stay errors even for optional arguments.
+    expect(validateToolArgs('search_service_knowledge', { query: 'E04', error_code: 4 }).ok).toBe(false)
+  })
+
   it('trims strings before checking and returns the trimmed arguments', () => {
     expect(validateToolArgs('track_shipment', { shipment_id: '  SHIP-2026-091 ' })).toEqual({ ok: true, args: { shipment_id: 'SHIP-2026-091' } })
   })

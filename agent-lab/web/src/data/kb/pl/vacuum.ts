@@ -73,7 +73,7 @@ Northstar RoboClean R5 (numery seryjne zaczynające się od RC5) to robot sprzą
 
 ## Błąd silnika szczotki
 Objaw: szczotka główna staje po kilku minutach, a aplikacja pokazuje „Błąd silnika szczotki”.
-1. Odwróć robota na miękkim podłożu i wyjmij szczotkę główną (dwa zatrzaski).
+1. Najpierw wyłącz robota. Potem odwróć go na miękkim podłożu i wyjmij szczotkę główną (dwa zatrzaski).
 2. Przetnij włosy i nitki nawinięte na szczotkę i jej końcówki.
 3. Sprawdź, czy szczotka obraca się swobodnie w ręku, włóż ją z powrotem i uruchom sprzątanie testowe.
 Jeśli błąd wraca w ciągu kilku minut od czyszczenia, uszkodzony jest moduł silnika szczotki. Moduł silnika szczotki (część RC5-BM-11) użytkownik może wymienić sam: trzymają go dwie śruby od spodu, a podłącza się go wtyczką, bez napięcia sieciowego. W ramach gwarancji moduł jest wysyłany do klienta pocztą (DOC-shipping-delivery), a klient montuje go dołączonym śrubokrętem.

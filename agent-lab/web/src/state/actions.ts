@@ -12,6 +12,7 @@ import { boundHistory, MAX_STORED_RUNS } from '@/agent/limits'
 import { noticeKeyFor, type ChatItem, type EngineDeps, type RunRecord, type RunResult } from '@/agent/types'
 import { SCENARIOS } from '@/data/scenarios'
 import { loadCorpus } from '@/kb/indexer'
+import { KB_RETRY_DELAYS_MS, retryTransient } from '@/kb/retry'
 import { indexKnowledgeBase, indexStatus, searchKnowledge, type EmbedFn } from '@/kb/search'
 import { resetSimulation, seedIfEmpty, simDb } from '@/sim/db'
 import {
@@ -92,9 +93,10 @@ async function restoreState(): Promise<void> {
       history: same ? same.history : [],
     })
   } catch {
-    // IndexedDB unavailable or partly unreadable: run in memory only, and do not
-    // overwrite what is stored with the empty in-memory state.
-    setState({ ready: true })
+    // IndexedDB unavailable or partly unreadable: the simulated systems cannot run.
+    // Say so (a persistent notice, the composer is blocked) and do not overwrite
+    // what may be stored with the empty in-memory state.
+    setState({ ready: true, storage: 'unavailable' })
     return
   }
   persistConversation()
@@ -112,6 +114,13 @@ export function initApp(): Promise<void> {
       usage: s.usage,
     }))
   })
+  if (typeof window !== 'undefined') {
+    // A reload or a closed tab frees the session slot of the code at once (best effort).
+    // A page kept in the back/forward cache keeps its session.
+    window.addEventListener('pagehide', (e) => {
+      if (!e.persisted) api.logoutOnUnload()
+    })
+  }
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     // Dev-only hook for headless checks; Vite drops this branch from production builds.
     Object.assign(window, { __agentLab: { getState, sendMessage, cancelRun, resolveConfirmation, setActiveCustomer, ensureKbIndex, persistenceIdle, repeatRun, setToolEnabled, setEnabledTools, startNewConversation, resetScenario, resetEverything } })
@@ -132,9 +141,14 @@ export function setLang(lang: Lang) {
 
 export async function activate(code: string): Promise<SessionInfo> {
   const session = await api.activate(code)
-  setState({ auth: { status: 'active', session, notice: null }, usage: session.usage })
-  void ensureKbIndex()
+  void activateSession(session)
   return session
+}
+
+/** A valid session starts (or retries, after a failure) the knowledge base index. */
+export function activateSession(session: SessionInfo): Promise<void> {
+  setState({ auth: { status: 'active', session, notice: null }, usage: session.usage })
+  return ensureKbIndex()
 }
 
 export function browseWithoutActivation() {
@@ -174,6 +188,12 @@ function embedFnFor(session: SessionInfo, signal?: AbortSignal): EmbedFn {
 }
 
 let kbTask: { lang: Lang; ctl: AbortController; promise: Promise<void> } | null = null
+let kbRetryDelays: readonly number[] = KB_RETRY_DELAYS_MS
+
+/** Test hook: shorter waits between automatic retries. */
+export function __setKbRetryDelaysForTests(delays: readonly number[]) {
+  kbRetryDelays = delays
+}
 
 function stopKbIndex() {
   kbTask?.ctl.abort()
@@ -183,11 +203,14 @@ function stopKbIndex() {
 /**
  * Builds the knowledge base index of the current language when it is missing or
  * stale (other embedding model or documents), reporting progress in `kbIndex`.
+ * Transient failures (network, rate limit, provider errors) are retried
+ * automatically with growing delays; when they persist, or the error cannot be
+ * fixed by waiting, the status is `error` until `retryKbIndex()` or a new session.
  */
 export function ensureKbIndex(): Promise<void> {
   const s = getState()
   const session = s.auth.session
-  if (s.auth.status !== 'active' || !session) return Promise.resolve()
+  if (s.auth.status !== 'active' || !session || s.storage === 'unavailable') return Promise.resolve()
   const lang = s.settings.lang
   if (kbTask && kbTask.lang === lang) return kbTask.promise
   stopKbIndex()
@@ -205,7 +228,10 @@ export function ensureKbIndex(): Promise<void> {
         set({ status: 'ready', done: total, total })
         return
       }
-      const info = await indexKnowledgeBase(lang, embed, (done, total) => set({ status: 'indexing', done, total }), ctl.signal)
+      const info = await retryTransient(
+        () => indexKnowledgeBase(lang, embed, (done, total) => set({ status: 'indexing', done, total }), ctl.signal),
+        { delays: kbRetryDelays, signal: ctl.signal },
+      )
       set({ status: 'ready', done: info.chunks, total: info.chunks })
     } catch (e) {
       if (!ctl.signal.aborted) set({ status: 'error', error: e instanceof Error ? e.message : String(e) })
@@ -215,6 +241,12 @@ export function ensureKbIndex(): Promise<void> {
   })()
   kbTask = { lang, ctl, promise }
   return promise
+}
+
+/** The Retry control of a failed index (header status and chat composer). */
+export function retryKbIndex(): Promise<void> {
+  if (getState().kbIndex.status !== 'error') return kbTask?.promise ?? Promise.resolve()
+  return ensureKbIndex()
 }
 
 // ---------------------------------------------------------------- conversation and runs
@@ -277,6 +309,7 @@ export interface SendOptions {
 function sendBlocker(): Error | null {
   const tx = t().shell
   if (!getState().ready) return new Error(tx.runErrors.notReady)
+  if (getState().storage === 'unavailable') return new Error(tx.storage.unavailable)
   if (runDone || getState().currentRun) return new Error(tx.runErrors.busy)
   if (getState().auth.status !== 'active' || !getState().auth.session) return new ApiError('unauthorized', tx.errors.activateFirst, 401)
   return null

@@ -9,7 +9,7 @@ import type { ChatItem } from '@/agent/types'
 import type { Customer, Product } from '@/data/company/types'
 import { SCENARIOS, type Scenario } from '@/data/scenarios'
 import { useLang, useT } from '@/i18n'
-import { cancelRun, sendMessage, setActiveCustomer, showActivation, startNewConversation } from '@/state/actions'
+import { cancelRun, retryKbIndex, sendMessage, setActiveCustomer, showActivation, startNewConversation } from '@/state/actions'
 import { getState, useStore } from '@/state/store'
 import { useTable } from '@/sim/db'
 import { IconBadge } from '../common'
@@ -19,7 +19,7 @@ import { ConfirmationCard } from './ConfirmationCard'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AgentBubble, AgentRow, CustomerBubble, Escalation, NoticeItem, RunSteps, TypingIndicator, noticeContent } from './Messages'
-import { runView, type RunView } from './model'
+import { draftKeepsScenario, runView, type RunView } from './model'
 import { ScenarioList } from './Scenarios'
 import { useShowHandler } from '../learn/bus'
 
@@ -35,6 +35,7 @@ export function ChatPanel() {
   const authStatus = useStore((s) => s.auth.status)
   const maxChars = useStore((s) => s.auth.session?.capabilities.agent.maxMessageChars ?? 1000)
   const ready = useStore((s) => s.ready)
+  const storage = useStore((s) => s.storage)
   const kb = useStore((s) => s.kbIndex)
   const activeCustomerId = useStore((s) => s.activeCustomerId)
   const customerRows = useTable<Customer>('customers')
@@ -58,6 +59,8 @@ export function ChatPanel() {
   const active = authStatus === 'active'
   const block: BlockReason | null = !active
     ? { kind: 'inactive' }
+    : storage === 'unavailable'
+      ? { kind: 'storage' }
     : !ready
       ? { kind: 'loading' }
       : currentRun && pending
@@ -68,7 +71,9 @@ export function ChatPanel() {
             ? { kind: 'kbChecking' }
             : kb.status === 'indexing'
               ? { kind: 'kbIndexing', done: kb.done, total: kb.total }
-              : null
+              : kb.status === 'error'
+                ? { kind: 'kbFailed' }
+                : null
   const status: AgentStatus = !active ? 'offline' : pending ? 'waiting' : currentRun ? 'working' : 'online'
 
   // ---- scenario: the message is filled in, the learner sends it
@@ -145,7 +150,7 @@ export function ChatPanel() {
 
   const send = () => {
     const text = draft.trim()
-    if (!text || block) return
+    if (!text || (block && block.kind !== 'kbFailed')) return
     stick.current = true
     setError(null)
     const sid = scenarioId ?? undefined
@@ -266,7 +271,7 @@ export function ChatPanel() {
         value={draft}
         onChange={(v) => {
           setDraft(v)
-          if (!v) setScenarioId(null)
+          if (!draftKeepsScenario(v, scenario?.message[lang])) setScenarioId(null)
         }}
         onSend={send}
         onStop={() => {
@@ -274,6 +279,7 @@ export function ChatPanel() {
           inputRef.current?.focus()
         }}
         onActivate={showActivation}
+        onRetryKb={() => void retryKbIndex()}
         block={block}
         running={currentRun !== null}
         max={maxChars}

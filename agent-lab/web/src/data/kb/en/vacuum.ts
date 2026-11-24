@@ -73,7 +73,7 @@ The Northstar RoboClean R5 (serial numbers starting with RC5) is a robot vacuum 
 
 ## Brush motor error
 Symptom: the main brush stops after a few minutes, and the app shows "Brush motor error".
-1. Turn the robot over on a soft surface and remove the main brush (two clips).
+1. Switch the robot off first. Then turn it over on a soft surface and remove the main brush (two clips).
 2. Cut away hair and threads wound around the brush and its end caps.
 3. Check that the brush turns freely by hand, refit it and start a test clean.
 If the error returns within a few minutes after cleaning, the brush motor module is faulty. The brush motor module (part RC5-BM-11) is user-replaceable: it is held by two screws on the underside and is connected with a plug, with no mains voltage involved. Under warranty, the module is sent to the customer by post (DOC-shipping-delivery), and the customer fits it with the supplied screwdriver.

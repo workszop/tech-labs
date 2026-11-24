@@ -65,7 +65,7 @@ export const learn = {
     loop: {
       title: 'What is an agent execution loop?',
       lead: 'The agent works in rounds. In each round the model either asks for tools or writes the final answer. Tool results are added to the conversation and the next round starts.',
-      points: ['Each round is a step: the AI Agent node shows the step number.', 'This lab {byDefault}allows {steps} steps and about {tokens} tokens (small pieces of words the model reads and writes) per message. After {calls} tool calls the agent must answer without more tools. The chat says when a limit was reached.'],
+      points: ['Each round is a step: the AI Agent node shows the step number.', 'This lab {byDefault}allows {steps} steps, {calls} tool calls and about {tokens} tokens (small pieces of words the model reads and writes) per message. When one runs out, the agent takes one last step without tools and answers with what it knows.'],
       example: 'In scenario 1 there are three rounds: the order first, then the warranty and the manuals at the same time, then the answer.',
       showMe: 'Show the timeline',
     },

@@ -11,7 +11,14 @@ describe('run limits in the explanations (fix round 1)', () => {
     const loop = fillLimits(pl.topics.loop.points[1]!, { steps: 6, calls: 10, tokens: 30000, fromSession: true }, pl.byDefault, 'pl-PL')
     expect(loop).toContain('Limit kroków na wiadomość to 6,')
     expect(loop).toMatch(/około 30\s000\./)
-    expect(loop).toContain('Po 10 wywołaniach narzędzi agent musi odpowiedzieć już bez narzędzi')
+    expect(loop).toContain('wywołań narzędzi 10,')
+    expect(loop).toContain('ostatni krok agent wykonuje już bez narzędzi')
     expect(loop).not.toContain('{')
+  })
+
+  it('says that every run limit ends with one last answer without tools (final fix finding 1)', () => {
+    const loop = fillLimits(en.topics.loop.points[1]!, DEFAULT_LIMITS, en.byDefault)
+    expect(loop).toContain('by default allows 8 steps, 12 tool calls and about 80,000 tokens')
+    expect(loop).toContain('When one runs out, the agent takes one last step without tools')
   })
 })

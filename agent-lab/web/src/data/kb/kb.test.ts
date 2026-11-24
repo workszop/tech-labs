@@ -93,3 +93,14 @@ describe('knowledge base documents', () => {
     expect(pl.find((d) => d.id === 'DOC-coffee-repair-procedure')!.body).toMatch(/## Diagnoza \(WYŁĄCZNIE SERWIS\)/)
   })
 })
+
+describe('safe user-level instructions (final fix finding 24)', () => {
+  it('the RoboClean R5 brush procedure switches the robot off before turning it over, in both languages', () => {
+    for (const [docs, off, over] of [[en, /Switch the robot off/, /turn it over/], [pl, /wyłącz robota/, /odwróć go/]] as const) {
+      const body = docs.find((d) => d.id === 'DOC-roboclean-r5-guide')!.body
+      const step = body.split('\n').find((l) => over.test(l))!
+      expect(step).toMatch(off)
+      expect(step.search(off)).toBeLessThan(step.search(over))
+    }
+  })
+})

@@ -15,7 +15,7 @@ export interface LearnLimits {
   fromSession: boolean
 }
 
-export const DEFAULT_LIMITS: LearnLimits = { steps: 8, calls: 12, tokens: 40000, fromSession: false }
+export const DEFAULT_LIMITS: LearnLimits = { steps: 8, calls: 12, tokens: 80000, fromSession: false }
 
 /** Replaces `{steps}`, `{calls}`, `{tokens}` and `{byDefault}` in a text. */
 export function fillLimits(text: string, l: LearnLimits, byDefault: string, locale = 'en'): string {

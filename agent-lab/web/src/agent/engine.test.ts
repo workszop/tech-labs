@@ -224,6 +224,15 @@ describe('runAgent: confirmation', () => {
     expect(res.outcome).toBe('answered')
   })
 
+  it('a Worker response that claims requiresConfirmation: false for create_service_ticket still asks first (final fix finding 16)', async () => {
+    const confirm = vi.fn(async () => false)
+    const wrong = { ...ticket(), requiresConfirmation: false, readOnly: true }
+    const { deps, executed } = setup([toolTurn(1, [wrong, call('o1', 'get_customer_orders', { customer_id: 'CUST-1042' })]), finalTurn(2, 'No ticket was created.')], { confirm })
+    await runAgent(input(), deps, new AbortController().signal)
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(executed.map((e) => e.name)).toEqual(['get_customer_orders'])
+  })
+
   it('reject: nothing is executed, the model gets rejected_by_user and the loop continues', async () => {
     const { deps, events, requests, executed } = setup([toolTurn(1, [ticket()]), finalTurn(2, 'No ticket was created.')], { confirm: async () => false })
     const res = await runAgent(input(), deps, new AbortController().signal)

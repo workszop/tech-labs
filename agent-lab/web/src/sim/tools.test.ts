@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { KnowledgeHit } from '@/data/kb/types'
-import { CUSTOMERS, ORDERS, SHIPMENTS } from '@/data/company'
+import { CUSTOMERS, ORDERS, PRODUCTS, SHIPMENTS, WARRANTIES } from '@/data/company'
 import { resetSimulation, seedIfEmpty, simDb } from './db'
 import { executeTool, toolResultForModel, type ToolContext, type ToolResult } from './tools'
 
@@ -118,6 +118,49 @@ describe('happy path for every tool on the anchor customer', () => {
     expect(await simDb.tickets.get('TCK-2026-0001')).toMatchObject({ customerId: 'CUST-1042', productId: 'PRD-COFFEE-1', priority: 'normal', status: 'open' })
     expect(ok(await executeTool('create_service_ticket', args, ctx())).ticket_id).toBe('TCK-2026-0002')
     expect(r.summary).toBe('Ticket TCK-2026-0001 created (normal priority)')
+  })
+
+  it('create_service_ticket refuses a product the customer does not own and writes nothing (final fix finding 21)', async () => {
+    const owned = new Set([
+      ...ORDERS.filter((o) => o.customerId === 'CUST-1042').flatMap((o) => o.lines.map((l) => l.productId)),
+      ...WARRANTIES.filter((w) => w.customerId === 'CUST-1042').map((w) => w.productId),
+    ])
+    const other = PRODUCTS.find((p) => !owned.has(p.id))!
+    const r = await executeTool('create_service_ticket', { customer_id: 'CUST-1042', product_id: other.id, issue_description: 'x', priority: 'low' }, ctx())
+    expect(r).toMatchObject({ ok: false, error: { code: 'forbidden' } })
+    if (!r.ok) expect(r.error.message).not.toContain(other.id)
+    expect(await simDb.tickets.count()).toBe(0)
+  })
+
+  it('every appliance get_customer_orders lists for a customer (what the mock agent proposes) can get a ticket (finding 21)', async () => {
+    let checked = 0
+    for (const c of CUSTOMERS) {
+      const data = ok(await executeTool('get_customer_orders', { customer_id: c.id }, ctx(c.id))) as { orders: { items: { product_id: string; serial_number: string | null; note?: string }[] }[]; transferred_units?: { product_id: string }[] }
+      const units = [...data.orders.flatMap((o) => o.items.filter((i) => i.serial_number && !i.note)), ...(data.transferred_units ?? [])]
+      for (const u of units) {
+        const r = await executeTool('create_service_ticket', { customer_id: c.id, product_id: u.product_id, issue_description: 'x', priority: 'low' }, ctx(c.id))
+        expect(r.ok, `${c.id} ${u.product_id}`).toBe(true)
+        checked++
+      }
+    }
+    expect(checked).toBeGreaterThan(20)
+  })
+
+  it('create_service_ticket accepts a unit the customer received by transfer (warranty of the customer)', async () => {
+    const w = WARRANTIES.find((x) => x.transfer)!
+    const r = await executeTool('create_service_ticket', { customer_id: w.customerId, product_id: w.productId, issue_description: 'x', priority: 'low' }, ctx(w.customerId))
+    expect(r.ok).toBe(true)
+  })
+
+  it('an unexpected exception becomes failed and is logged for whoever debugs a workshop (final fix finding 22)', async () => {
+    const boom = new Error('storage exploded')
+    const get = vi.spyOn(simDb.customers, 'get').mockRejectedValueOnce(boom)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const r = await executeTool('get_customer_profile', { customer_id: 'CUST-1042' }, ctx())
+    expect(r).toMatchObject({ ok: false, error: { code: 'failed' } })
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('get_customer_profile'), boom)
+    get.mockRestore()
+    log.mockRestore()
   })
 
   it('returns text fields and summaries in ctx.lang', async () => {

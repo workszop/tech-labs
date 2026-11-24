@@ -1,17 +1,21 @@
 /** Message box: Enter sends, Shift+Enter adds a line; Stop replaces Send while a run is active. */
 import { forwardRef, useLayoutEffect, useRef, useImperativeHandle } from 'react'
-import { Info, KeyRound, LoaderCircle, SendHorizontal, Square } from 'lucide-react'
+import { AlertTriangle, Info, KeyRound, LoaderCircle, RotateCcw, SendHorizontal, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useT } from '@/i18n'
 
 /**
  * Why the composer cannot send now. `running` / `awaiting` keep the box focusable
- * (read-only), so the focus stays in it after sending.
+ * (read-only), so the focus stays in it after sending. `kbFailed` does not block:
+ * the agent can still answer, only the document search reports that the index is
+ * not ready, so the line explains it and offers Retry.
  */
 export type BlockReason =
   | { kind: 'inactive' }
+  | { kind: 'storage' }
   | { kind: 'loading' }
+  | { kind: 'kbFailed' }
   | { kind: 'kbChecking' }
   | { kind: 'kbIndexing'; done: number; total: number }
   | { kind: 'running' }
@@ -23,16 +27,18 @@ interface Props {
   onSend: () => void
   onStop: () => void
   onActivate: () => void
+  onRetryKb: () => void
   block: BlockReason | null
   running: boolean
   max: number
   error: string | null
 }
 
-export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer({ value, onChange, onSend, onStop, onActivate, block, running, max, error }, outer) {
+export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer({ value, onChange, onSend, onStop, onActivate, onRetryKb, block: shown, running, max, error }, outer) {
   const tx = useT().chat.composer
   const ref = useRef<HTMLTextAreaElement>(null)
   useImperativeHandle(outer, () => ref.current!, [])
+  const block = shown?.kind === 'kbFailed' ? null : shown
   const hard = block !== null && block.kind !== 'running' && block.kind !== 'awaiting'
   const canSend = block === null && value.trim().length > 0
 
@@ -44,30 +50,39 @@ export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer
     el.style.height = `${Math.min(el.scrollHeight, 150)}px`
   }, [value])
 
-  const reason = block && {
+  const reason = shown && {
     inactive: tx.reasons.inactive,
+    storage: tx.reasons.storage,
     loading: tx.reasons.loading,
+    kbFailed: tx.reasons.kbFailed,
     kbChecking: tx.reasons.kbChecking,
-    kbIndexing: block.kind === 'kbIndexing' ? tx.reasons.kbIndexing(block.done, block.total) : '',
+    kbIndexing: shown.kind === 'kbIndexing' ? tx.reasons.kbIndexing(shown.done, shown.total) : '',
     running: tx.reasons.running,
     awaiting: tx.reasons.awaiting,
-  }[block.kind]
+  }[shown.kind]
   const reasonId = 'chat-composer-reason'
   const near = value.length >= max * 0.8
 
   return (
     <div className="shrink-0 border-t border-hairline bg-subtle px-3 pb-3 pt-2" data-testid="composer">
       {reason && (
-        <p id={reasonId} className="mb-1.5 flex items-start gap-1.5 text-[12px] leading-snug text-[var(--ink-2)]" data-testid="composer-reason" data-reason={block?.kind}>
-          {block?.kind === 'kbIndexing' || block?.kind === 'kbChecking' || block?.kind === 'loading' ? (
+        <p id={reasonId} className={cn('mb-1.5 flex items-start gap-1.5 text-[12px] leading-snug text-[var(--ink-2)]', (shown?.kind === 'kbFailed' || shown?.kind === 'storage') && 'text-danger')} data-testid="composer-reason" data-reason={shown?.kind}>
+          {shown?.kind === 'kbIndexing' || shown?.kind === 'kbChecking' || shown?.kind === 'loading' ? (
             <LoaderCircle className="mt-px size-3.5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          ) : shown?.kind === 'kbFailed' || shown?.kind === 'storage' ? (
+            <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
           ) : (
             <Info className="mt-px size-3.5 shrink-0" aria-hidden="true" />
           )}
           <span className="min-w-0 flex-1">{reason}</span>
-          {block?.kind === 'inactive' && (
+          {shown?.kind === 'inactive' && (
             <Button size="xs" onClick={onActivate} className="-my-0.5 shrink-0">
               <KeyRound /> {tx.activate}
+            </Button>
+          )}
+          {shown?.kind === 'kbFailed' && (
+            <Button size="xs" variant="outline" onClick={onRetryKb} className="-my-0.5 shrink-0" data-testid="composer-kb-retry">
+              <RotateCcw /> {tx.retryKb}
             </Button>
           )}
         </p>

@@ -50,9 +50,12 @@ export const chat = {
     keys: 'Enter sends · Shift+Enter adds a line',
     counter: (n: number, max: number) => `${n}/${max}`,
     activate: 'Activate',
+    retryKb: 'Retry',
     reasons: {
       inactive: 'Activate the lab with your access code to talk to the agent.',
       loading: 'Loading the conversation…',
+      storage: 'This browser blocks the storage the lab needs, so the agent cannot run here.',
+      kbFailed: 'The service documents could not be prepared. The agent can answer, but it cannot search the documents until this works.',
       kbChecking: 'Checking the service documents… You can write in a moment.',
       kbIndexing: (done: number, total: number) => `Preparing the service documents (${done}/${total}). You can write when this is done.`,
       running: 'The agent is answering. Stop it if you want to write again.',

@@ -277,7 +277,9 @@ export async function runAgent(input: RunInput, deps: EngineDeps, signal: AbortS
         const startedAt = started(v.id, v.name, v.system, v.readOnly, v.arguments)
         const message = `${v.name} was already called with the same arguments in this run; use the earlier result.`
         immediate.push({ id: v.id, startedAt, result: errorResult(lang, 'duplicate_call', message) })
-      } else if (v && v.requiresConfirmation) {
+      } else if (v && (v.requiresConfirmation || !isToolName(v.name) || !getTool(v.name).readOnly)) {
+        // Approval also follows the shared tool registry, so a wrong flag in a
+        // response can never run a state-changing tool in the parallel batch.
         confirmations.push(v)
       } else if (v) {
         parallel.push({ v, startedAt: started(v.id, v.name, v.system, v.readOnly, v.arguments) })

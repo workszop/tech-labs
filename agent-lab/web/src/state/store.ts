@@ -43,6 +43,8 @@ export interface AppState {
   ui: { mobileTab: MobileTab }
   /** False until the persisted conversation, runs and preferences are restored. */
   ready: boolean
+  /** `unavailable`: this browser blocks IndexedDB (private window, blocked site data); the simulated systems cannot run. */
+  storage: 'ok' | 'unavailable'
   activeCustomerId: string
   enabledTools: ToolName[]
   /** Changes on every new conversation (customer or language switch, "new conversation"). */
@@ -94,6 +96,7 @@ let state: AppState = {
   settings: typeof window === 'undefined' ? DEFAULT_SETTINGS : loadPrefs(),
   ui: { mobileTab: 'chat' },
   ready: false,
+  storage: 'ok',
   activeCustomerId: DEFAULT_CUSTOMER_ID,
   enabledTools: [...DEFAULT_TOOLS],
   conversationId: newConversationId(),

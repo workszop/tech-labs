@@ -21,7 +21,26 @@ import type {
 } from '@shared/api-types'
 import { getLang, t } from '@/i18n'
 
-export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || 'http://localhost:8787'
+/** The local Worker of `npm run dev`; not even present in a production bundle. */
+const DEV_API_BASE_URL: string | null = import.meta.env.DEV ? 'http://localhost:8787' : null
+
+/**
+ * The Worker's URL: `VITE_API_BASE_URL`, or the local Worker in development.
+ * A production build without the variable has no server (null): it sends
+ * nothing and the activation screen says the lab is not configured yet, instead
+ * of sending a visitor's access code to their own machine.
+ */
+export function resolveApiBaseUrl(configured: string | undefined, dev: boolean): string | null {
+  const url = configured?.trim().replace(/\/+$/, '')
+  return url || (dev ? DEV_API_BASE_URL : null)
+}
+
+let apiBaseUrl: string | null = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL as string | undefined, !!import.meta.env.DEV)
+
+/** The Worker's URL, or null when this build has none configured. */
+export function getApiBaseUrl(): string | null {
+  return apiBaseUrl
+}
 
 let sessionToken: string | null = null
 type Listener = (err: ApiError) => void
@@ -37,7 +56,7 @@ export function hasSession() {
 
 export class ApiError extends Error {
   constructor(
-    public readonly code: ApiErrorCode | 'network' | 'aborted',
+    public readonly code: ApiErrorCode | 'network' | 'aborted' | 'not_configured',
     message: string,
     public readonly status = 0,
     public readonly retryAfterSeconds?: number,
@@ -75,6 +94,7 @@ async function toApiError(res: Response): Promise<ApiError> {
 }
 
 async function request(path: string, init: RequestInit & { auth?: boolean } = {}): Promise<Response> {
+  if (!apiBaseUrl) throw new ApiError('not_configured', t().shell.errors.byCode.not_configured)
   const headers = new Headers(init.headers)
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   if (init.auth !== false) {
@@ -83,7 +103,7 @@ async function request(path: string, init: RequestInit & { auth?: boolean } = {}
   }
   let res: Response
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers, credentials: 'omit', cache: 'no-store' })
+    res = await fetch(`${apiBaseUrl}${path}`, { ...init, headers, credentials: 'omit', cache: 'no-store' })
   } catch (e) {
     if ((e as Error)?.name === 'AbortError') throw new ApiError('aborted', t().shell.errors.byCode.aborted)
     throw new ApiError('network', t().shell.errors.byCode.network)
@@ -117,6 +137,21 @@ export const api = {
       if (sessionToken) await request('/api/logout', { method: 'POST' })
     } finally {
       sessionToken = null
+    }
+  },
+  /**
+   * Best-effort logout while the page is being unloaded (reload, tab closed), so
+   * the session slot of the code is freed at once. `keepalive` lets the request
+   * outlive the page; the token goes in the Authorization header, never in a URL.
+   */
+  logoutOnUnload(): void {
+    const token = sessionToken
+    sessionToken = null
+    if (!token || !apiBaseUrl) return
+    try {
+      void fetch(`${apiBaseUrl}/api/logout`, { method: 'POST', keepalive: true, credentials: 'omit', headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined)
+    } catch {
+      /* the page is going away: nothing to report */
     }
   },
   /** `lang` is the language of the inputs (default: the UI language); only the offline mock model uses it. */
@@ -158,4 +193,9 @@ function isAgentResponse(d: unknown, runId: string): d is AgentResponse {
 /** Test hook. */
 export function __setTokenForTests(t: string | null) {
   sessionToken = t
+}
+
+/** Test hook. */
+export function __setApiBaseForTests(url: string | null) {
+  apiBaseUrl = url
 }

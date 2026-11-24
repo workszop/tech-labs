@@ -4,7 +4,7 @@
 import type { ApiErrorCode } from '@shared/api-types'
 import type { RunNoticeKey } from '@/agent/types'
 
-type ErrorCode = ApiErrorCode | 'network' | 'aborted'
+type ErrorCode = ApiErrorCode | 'network' | 'aborted' | 'not_configured'
 
 export const shell = {
   langSwitch: {
@@ -40,6 +40,7 @@ export const shell = {
       indexing: (done: number, total: number) => `Indexing ${done}/${total}`,
       ready: 'Ready',
       error: 'Error',
+      retry: 'Retry',
       tooltip: 'Before the agent can search the service documents, their chunks are turned into vectors (embeddings) through the server and stored in this browser.',
     },
     mockBadgeShort: 'Offline demo',
@@ -67,6 +68,7 @@ export const shell = {
     confirmNewTitle: 'Start a new conversation?',
     confirmScenarioTitle: 'Reset this scenario?',
     confirmResetTitle: 'Reset everything?',
+    failed: 'The reset did not finish because this browser could not change the stored data. Try again, or reload the page.',
     removed: 'Removed',
     kept: 'Kept',
     items: {
@@ -109,7 +111,6 @@ export const shell = {
       invalid_code: 'That access code was not recognised. Check for typos - codes look like AGT-XXXX-XXXX-XXXX-XXXX-XXXX.',
       expired_code: 'This access code has expired. Ask your workshop host for a new one.',
       revoked_code: 'This access code has been revoked. Ask your workshop host for a new one.',
-      too_many_sessions: 'This code is already in use on the maximum number of devices. Log out elsewhere or ask your host.',
       quota_exceeded: 'This code has used up its AI allowance. Ask your workshop host to raise the limit.',
     } as Record<string, string>,
   },
@@ -129,7 +130,6 @@ export const shell = {
       invalid_code: 'This access code is not valid. Check for typos and try again.',
       expired_code: 'This access code has expired.',
       revoked_code: 'This access code has been revoked by the administrator.',
-      too_many_sessions: 'This access code is already in use in the maximum number of active sessions. Log out elsewhere or ask the organiser for help.',
       unauthorized: 'Missing or invalid session token. Activate an access code first.',
       session_expired: 'Your session has ended. Please enter your access code again.',
       quota_exceeded: 'The request or token budget of this access code is used up.',
@@ -144,6 +144,7 @@ export const shell = {
       not_found: 'Not found.',
       internal: 'Unexpected server error.',
       network: 'Could not reach the Service Agent Lab server. Check your internet connection and try again.',
+      not_configured: 'This lab\'s server is not configured yet, so it cannot be activated right now. Try again later or ask your workshop host.',
       aborted: 'Cancelled.',
     } as Record<ErrorCode, string>,
     activateFirst: 'Please activate Service Agent Lab with your access code first.',
@@ -153,6 +154,11 @@ export const shell = {
   },
 
   /** Why a message could not be sent. */
+  storage: {
+    unavailable: 'This browser does not let the lab store its simulated company data (a private window or blocked site data). The agent cannot work here.',
+    hint: 'Open the lab in a normal browser window, or allow this site to store data, then reload the page.',
+  },
+
   runErrors: {
     notReady: 'The app is still loading. Try again in a moment.',
     busy: 'The agent is still working on the previous message.',
