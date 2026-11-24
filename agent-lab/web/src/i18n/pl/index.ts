@@ -1,6 +1,7 @@
 import type { Dict } from '../en'
+import { chat } from './chat'
 import { flow } from './flow'
 import { shell } from './shell'
 import { systems } from './systems'
 
-export const pl: Dict = { flow, shell, systems }
+export const pl: Dict = { chat, flow, shell, systems }
