@@ -91,7 +91,7 @@ export function ReplayBar({ view }: { view: RunView }) {
             </button>
           ))}
         </div>
-        <span className="font-mono text-[11px] text-[var(--ink-2)]" data-testid="replay-progress">{tx.progress(replay.pos, total)}</span>
+        <span className="font-mono text-[11px] text-[var(--ink-2)]" aria-live="polite" data-testid="replay-progress">{tx.progress(replay.pos, total)}</span>
         <Button size="xs" variant="ghost" className="ml-auto" onClick={view.stopReplay}><X />{tx.exit}</Button>
       </div>
     </div>

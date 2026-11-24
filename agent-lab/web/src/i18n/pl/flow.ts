@@ -205,6 +205,11 @@ export const flow: typeof en = {
     followLive: 'Śledź najnowszy krok',
   },
 
+  live: {
+    callStarted: (name: string) => `${name}: start`,
+    callFinished: (name: string, status: string) => `${name}: ${status}`,
+  },
+
   replay: {
     start: 'Odtwórz',
     startHint: 'Przejdź jeszcze raz przez zapisane zdarzenia tego przebiegu. Model i narzędzia nie są wywoływane.',

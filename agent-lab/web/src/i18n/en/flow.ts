@@ -198,6 +198,11 @@ export const flow = {
     followLive: 'Follow the newest step',
   },
 
+  live: {
+    callStarted: (name: string) => `${name} started`,
+    callFinished: (name: string, status: string) => `${name}: ${status}`,
+  },
+
   replay: {
     start: 'Replay',
     startHint: 'Step through the recorded events of this run again. The model and the tools are not called.',

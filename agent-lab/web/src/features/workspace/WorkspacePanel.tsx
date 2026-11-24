@@ -34,6 +34,16 @@ export function WorkspacePanel() {
     if (selectedNode && details.current) reveal(details.current)
   }, [selectedNode])
 
+  // One polite live region for the live run: the newest call start or result, in a short sentence.
+  // The text only changes when a new tool event arrives, so it is not repeated on re-renders.
+  const lastCallEvent = view.live ? [...(run?.events ?? [])].reverse().find((e) => e.type === 'tool_started' || e.type === 'tool_finished') : undefined
+  const lastCall = lastCallEvent ? trace.calls.find((c) => c.callId === (lastCallEvent as { callId: string }).callId) : undefined
+  const announcement = !lastCall || !lastCallEvent
+    ? ''
+    : lastCallEvent.type === 'tool_started'
+      ? tx.live.callStarted(lastCall.name || tx.timeline.unknownTool)
+      : tx.live.callFinished(lastCall.name || tx.timeline.unknownTool, lastCall.result ? (lastCall.result.ok ? tx.callStatus.ok : tx.errorCode[lastCall.result.error.code]) : '')
+
   const { select, following } = view
   const onNode = useCallback(
     (node: NodeId) => {
@@ -49,7 +59,7 @@ export function WorkspacePanel() {
   const onRow = useCallback((id: string) => select(id === selected && !following ? null : id), [select, selected, following])
 
   return (
-    <section data-panel="workspace" aria-label={tx.panel.title} className="flex h-full min-h-0 flex-col bg-background max-[1099px]:overflow-y-auto">
+    <section data-panel="workspace" aria-label={tx.panel.title} className="relative flex h-full min-h-0 flex-col bg-background max-[1099px]:overflow-y-auto">
       <div className="shrink-0 space-y-2 border-b border-hairline bg-subtle px-3 pb-2.5 pt-3 max-[1099px]:pt-2.5">
         <div className="flex items-center gap-2.5 max-[1099px]:hidden">
           <IconBadge tone="query"><Bot /></IconBadge>
@@ -61,6 +71,7 @@ export function WorkspacePanel() {
         <RunBar view={view} />
       </div>
       <ReplayBar view={view} />
+      <div className="sr-only" aria-live="polite" data-testid="live-announcer">{announcement}</div>
 
       <div className="relative h-[clamp(300px,48vh,460px)] shrink-0 border-b border-hairline bg-card">
         <FlowGraph trace={trace} model={run?.model ?? ''} highlighted={highlighted} onSelect={onNode} />

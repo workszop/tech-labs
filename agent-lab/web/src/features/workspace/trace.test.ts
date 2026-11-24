@@ -208,4 +208,32 @@ describe('deriveTrace', () => {
     expect(itemsOfNode(t, 'warranty')).toEqual(['tool:c2'])
     expect(itemsOfNode(t, 'agent')).toEqual(['model:1', 'model:2', 'model:3'])
   })
+
+  it('a rejected confirmation is not running while the rejection result is pending', () => {
+    const events: TraceEvent[] = [
+      { type: 'run_started', runId: 'r', at: 0, customerId: 'C', message: 'x', enabledTools: ALL },
+      started(1, 't1', 1, 'create_service_ticket', 'tickets', 10, false),
+      { type: 'confirmation_requested', callId: 't1', at: 11 },
+      { type: 'confirmation_resolved', callId: 't1', approved: false, at: 12 },
+    ]
+    const t = deriveTrace(events, ALL)
+    expect(t.calls[0]!.status).toBe('warning')
+    expect(t.systems.tickets.status).toBe('warning')
+  })
+
+  it('a finished run never shows an open call as active or waiting', () => {
+    const events: TraceEvent[] = [
+      { type: 'run_started', runId: 'r', at: 0, customerId: 'C', message: 'x', enabledTools: ALL },
+      started(1, 'c1', 1, 'get_crm_history', 'crm'),
+      started(1, 't1', 2, 'create_service_ticket', 'tickets', 10, false),
+      { type: 'confirmation_requested', callId: 't1', at: 11 },
+      { type: 'run_finished', at: 30, outcome: 'cancelled', detail: 'cancelled', answer: '' },
+    ]
+    const t = deriveTrace(events, ALL)
+    expect(t.calls.map((c) => c.status)).toEqual(['neutral', 'neutral'])
+    expect(t.calls.every((c) => c.durationMs === null)).toBe(true)
+    expect(t.calls[1]!.confirmation?.state).toBe('none')
+    expect(t.systems.crm.status).toBe('neutral')
+    expect(t.systems.tickets.status).toBe('neutral')
+  })
 })

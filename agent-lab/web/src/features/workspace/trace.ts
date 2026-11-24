@@ -169,7 +169,8 @@ export function deriveTrace(events: readonly TraceEvent[], fallbackTools: readon
         if (!call?.confirmation) break
         call.confirmation.state = e.approved ? 'approved' : 'rejected'
         call.confirmation.resolvedAt = e.at
-        call.status = 'running'
+        // Approved: the tool runs now. Rejected: it never runs; the rejection result follows.
+        call.status = e.approved ? 'running' : 'warning'
         break
       }
       case 'tool_finished': {
@@ -189,11 +190,20 @@ export function deriveTrace(events: readonly TraceEvent[], fallbackTools: readon
     }
   })
 
-  if (finished) for (const t of turns.values()) if (t.status === 'running') t.status = 'interrupted'
+  if (finished) {
+    for (const t of turns.values()) if (t.status === 'running') t.status = 'interrupted'
+    // Defensive: a finished run with a call that has no result (restore normally closes these)
+    // shows it as "result not recorded", never as running or awaiting approval.
+    for (const c of calls.values()) {
+      if (c.result) continue
+      c.status = 'neutral'
+      if (c.confirmation?.state === 'pending') c.confirmation.state = 'none'
+    }
+  }
 
   // Parallel: calls of one step that were carried out and whose start..finish intervals overlap.
   const list = [...calls.values()].sort((a, b) => a.seq - b.seq)
-  const ran = list.filter((c) => !c.result || c.durationMs !== null)
+  const ran = list.filter((c) => (c.result ? c.durationMs !== null : !finished))
   for (const c of ran) {
     const end = c.endIdx ?? Number.POSITIVE_INFINITY
     c.parallel = ran.filter((o) => o.step === c.step && o.startIdx < end && c.startIdx < (o.endIdx ?? Number.POSITIVE_INFINITY)).length

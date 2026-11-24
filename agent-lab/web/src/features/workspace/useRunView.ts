@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RunRecord } from '@/agent/types'
 import { selectTraceItem } from '@/state/actions'
 import { getState, useStore } from '@/state/store'
+import { listRuns, pickShownRun } from './runSelection'
 import { deriveTrace, type TraceView } from './trace'
 
 export const REPLAY_SPEEDS = [0.5, 1, 2] as const
@@ -53,10 +54,15 @@ export function useRunView(): RunView {
   const [picked, setPicked] = useState<string | null>(null)
   const [replay, setReplayState] = useState<ReplayState | null>(null)
 
-  const runs = useMemo(() => {
-    const ids = new Set(conversation.map((i) => i.runId))
-    return allRuns.filter((r) => ids.has(r.id) || r.id === currentRun || r.id === picked)
-  }, [allRuns, conversation, currentRun, picked])
+  const selectedRunId = storeSel?.runId ?? null
+  const runs = useMemo(
+    () => listRuns({ allRuns, conversationRunIds: conversation.map((i) => i.runId), currentRun, selectedRunId }),
+    [allRuns, conversation, currentRun, selectedRunId],
+  )
+
+  // A new conversation forgets the run picked in the previous one.
+  const conversationId = useStore((s) => s.conversationId)
+  useEffect(() => setPicked(null), [conversationId])
 
   // A new run is followed at once; a step selected elsewhere (the chat) shows its run.
   useEffect(() => {
@@ -66,7 +72,7 @@ export function useRunView(): RunView {
     if (storeSel?.runId) setPicked(storeSel.runId)
   }, [storeSel?.runId])
 
-  const run = runs.find((r) => r.id === picked) ?? runs.find((r) => r.id === currentRun) ?? runs.at(-1) ?? null
+  const run = pickShownRun(runs, picked, currentRun)
   const live = !!run && run.id === currentRun
   const activeReplay = replay && run && replay.runId === run.id && !live ? replay : null
 

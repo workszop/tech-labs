@@ -14,6 +14,9 @@ import type { CallView } from './trace'
 export function CallStatusChip({ call, className }: { call: CallView; className?: string }) {
   const tx = useT().flow
   const r = call.result
+  // No result yet: rejected (the rejection result follows) or, in a finished run, never recorded.
+  if (!r && call.status === 'warning') return <Badge variant="warn" className={className}>{tx.errorCode.rejected_by_user}</Badge>
+  if (!r && call.status === 'neutral') return <Badge variant="default" className={className}>{tx.errorCode.result_unknown}</Badge>
   if (!r || call.status === 'running' || call.status === 'waiting') {
     return <Badge variant="warn" className={className}>{call.status === 'waiting' ? tx.callStatus.waiting : tx.callStatus.running}</Badge>
   }
@@ -25,7 +28,7 @@ export function CallStatusChip({ call, className }: { call: CallView; className?
 /** Duration of a finished call; calls that never ran have none (not "0 ms"). */
 export function CallDuration({ call, className }: { call: CallView; className?: string }) {
   const tx = useT().flow
-  if (!call.result) return null
+  if (!call.result && call.status !== 'neutral' && call.status !== 'warning') return null
   if (call.durationMs === null) {
     return <span className={cn('font-mono text-[11px] text-muted-foreground', className)} title={tx.timeline.noDurationHint}>{tx.timeline.noDuration}</span>
   }
@@ -92,7 +95,7 @@ export function RecordChips({ ids }: { ids: string[] }) {
             key={id}
             type="button"
             onClick={() => openRecordById(id)}
-            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-doc px-2 py-0.5 font-mono text-[11px] font-medium leading-5 text-[var(--blue-ink)] transition-colors hover:bg-[var(--doc-text)] [&_svg]:size-3"
+            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-doc px-2 py-0.5 font-mono text-[11px] font-medium leading-5 text-[var(--blue-ink)] transition-colors hover:bg-[var(--doc-press)] [&_svg]:size-3"
             aria-label={`${tx.kinds[kind]} ${id}`}
             data-record-chip={id}
           >
