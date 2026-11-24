@@ -1,5 +1,5 @@
 /**
- * Service Agent Lab API gateway — the only server-side component of Service Agent Lab.
+ * Service Agent Lab API gateway - the only server-side component of Service Agent Lab.
  * Routes: see README.md. Contract: ../../shared/api-types.ts
  */
 import type { RequestContext } from './context'
@@ -9,6 +9,7 @@ import { ApiError, errorResponse, toApiError } from './http'
 import type { FetchLike } from './providers/openai-compatible'
 import { handleCreateCodes, handleListCodes, handleRevokeCode, handleUpdateCode } from './routes/admin'
 import { handleActivate } from './routes/activate'
+import { handleAgent } from './routes/agent'
 import { handleEmbeddings } from './routes/embeddings'
 import { handleHealth } from './routes/health'
 import { handleLogout, handleSession, handleUsage } from './routes/session'
@@ -40,6 +41,7 @@ const ROUTES: Route[] = [
   route('POST', '/api/logout', handleLogout),
   route('GET', '/api/usage', handleUsage),
   route('POST', '/api/embeddings', handleEmbeddings),
+  route('POST', '/api/agent', handleAgent),
   route('POST', '/api/admin/codes', handleCreateCodes),
   route('GET', '/api/admin/codes', handleListCodes),
   route('PATCH', '/api/admin/codes/:id', handleUpdateCode),

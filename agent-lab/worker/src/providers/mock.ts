@@ -5,12 +5,14 @@
  *   unigrams + bigrams (light stemming, stop words dropped), FNV-1a into 256
  *   signed buckets, L2-normalised. Deterministic, and texts sharing words
  *   really are closer in cosine space.
- * - Chat: none yet. The rule-based tool-calling stand-in for the agent
- *   endpoint arrives with Task 5.
+ * - Agent turns (`mock-rule-based-agent`): the rule-based tool-calling
+ *   stand-in in ./mock-agent.ts.
  */
-import { type Lang, estimateTokens } from '../../../shared/api-types'
+import { type AgentMessage, type Lang, estimateTokens } from '../../../shared/api-types'
+import type { ToolDef } from '../../../shared/tools'
 import { MOCK_CHAT_MODEL, MOCK_EMBEDDING_DIMENSIONS, MOCK_EMBEDDING_MODEL } from '../env'
-import type { EmbedResult, Provider } from './types'
+import { mockAgentTurn } from './mock-agent'
+import type { ChatOptions, EmbedResult, Provider, ToolChatResult } from './types'
 
 const STOP_WORDS = new Set(
   (
@@ -103,8 +105,8 @@ function stripSuffixPl(w: string): string {
 /**
  * Light Polish stemmer for word-overlap retrieval; not linguistically correct.
  * Expects a lowercase word without diacritics. Strips the longest known
- * inflectional ending, at most twice (systemami → system → syst, the same stem
- * as "system"), then drops the fleeting "e" (dodatek / dodatku → dodatk).
+ * inflectional ending, at most twice (systemami -> system -> syst, the same stem
+ * as "system"), then drops the fleeting "e" (dodatek / dodatku -> dodatk).
  */
 export function stemPl(w: string): string {
   const irregular = STEM_EXCEPTIONS_PL[w]
@@ -173,5 +175,14 @@ export class MockProvider implements Provider {
       embeddings: inputs.map((t) => hashEmbedding(t, this.embeddingDimensions, lang)),
       inputTokens: inputs.reduce((n, t) => n + estimateTokens(t), 0),
     }
+  }
+
+  async chatWithTools(
+    system: string,
+    messages: AgentMessage[],
+    tools: ToolDef[],
+    opts: ChatOptions & { toolChoice: 'auto' | 'none' },
+  ): Promise<ToolChatResult> {
+    return mockAgentTurn(system, messages, tools, opts)
   }
 }

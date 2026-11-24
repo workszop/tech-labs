@@ -14,7 +14,7 @@ export interface RequestContext {
   fetch?: FetchLike
 }
 
-export function cost(cfg: Config, op: 'embeddings' | 'chat', inputTokens: number, outputTokens: number): number {
+export function cost(cfg: Config, op: 'embeddings' | 'agent', inputTokens: number, outputTokens: number): number {
   if (op === 'embeddings') return (inputTokens * cfg.embeddingPricePerMTok) / 1e6
   return (inputTokens * cfg.chatInputPricePerMTok + outputTokens * cfg.chatOutputPricePerMTok) / 1e6
 }

@@ -1,4 +1,4 @@
-# Service Agent Lab — Worker API gateway
+# Service Agent Lab - Worker API gateway
 
 The only server-side component of Service Agent Lab. The browser app (GitHub Pages) does
 chunking, vector storage (IndexedDB) and cosine search itself; this Cloudflare
@@ -6,13 +6,15 @@ Worker handles:
 
 - access codes → bearer-token sessions
 - the embeddings proxy to an OpenAI-compatible provider (or an offline `mock` provider)
+- one model turn of the service agent per `POST /api/agent`: system prompt, tool
+  definitions, model, validation of the model's tool calls and per-run limits
 - rate limits, quotas, usage and cost accounting (D1)
 - admin operations (create / list / update / revoke codes)
 
 The API contract is `../shared/api-types.ts`; the tool registry is
 `../shared/tools.ts` and the agent system prompt `../shared/agent-prompt.ts`.
 They are imported by relative path; wrangler/esbuild bundles them and `tsc`
-includes them. The agent endpoint (`POST /api/agent`) is not built yet.
+includes them.
 
 ## Endpoints
 
@@ -24,10 +26,35 @@ includes them. The agent endpoint (`POST /api/agent`) is not built yet.
 | POST | `/api/logout` | session | 204, revokes the session (idempotent) |
 | GET | `/api/usage` | session | `UsageInfo` |
 | POST | `/api/embeddings` | session | `{inputs}` → vectors, rate-limited + quota |
+| POST | `/api/agent` | session | `AgentRequest` → `AgentResponse`: one model turn of an agent run, rate-limited + quota + run limits |
 | POST | `/api/admin/codes` | admin | create 1..200 codes; plaintext returned once (201) |
 | GET | `/api/admin/codes` | admin | list + totals |
 | PATCH | `/api/admin/codes/:id` | admin | limits / expiry / label / status / resetUsage / revokeSessions |
 | DELETE | `/api/admin/codes/:id` | admin | revoke code + all its sessions (row and usage kept) |
+
+### `POST /api/agent`
+
+The browser drives the agent loop and executes the tools against the simulated
+company systems; each model turn is one request carrying the whole transcript.
+The Worker builds the system prompt (`buildAgentSystemPrompt`, date `SIM_TODAY`),
+sends only the enabled tools, calls the model (temperature 0.2, at most 700
+output tokens) and checks every tool call in order: unknown name →
+`unknown_tool`, not enabled → `tool_disabled`, arguments not JSON or failing the
+tool schema → `invalid_arguments`, beyond 5 per step or the run's remaining
+calls → `too_many_calls`. Rejected calls come back in `rejected` (the browser
+answers them with an error tool message, the run goes on); valid calls in
+`toolCalls` (`create_service_ticket` has `requiresConfirmation: true`).
+
+Runs are tracked in `agent_runs` (counters only, owned by the session that
+started them). The last allowed step (`maxSteps`), or any step after the run
+used `maxToolCalls`, is sent without tools and returns `forcedFinal: true`;
+after `maxSteps` steps or `maxRunTokens` tokens the next request is
+`run_limit_exceeded` (409). A client-supplied `model`, `system`, `tools` or
+`temperature` is refused.
+
+With `PROVIDER=mock` the turn is answered by `mock-rule-based-agent`
+(`src/providers/mock-agent.ts`), a deterministic rule-based stand-in that reads
+the latest customer message and the tool results already in the transcript.
 
 Session auth = `Authorization: Bearer <token>`. Tokens are never accepted in
 query strings (a request with `?token=`, `?access_token=`, `?code=`… is refused).
@@ -72,7 +99,7 @@ npm test
 npx wrangler login
 npx wrangler d1 create agent-lab                 # paste the database_id into wrangler.jsonc
 npm run db:migrate:remote
-npx wrangler secret put CODE_PEPPER            # ≥ 16 chars, random, e.g. 32 bytes base64url — never change it later (all codes depend on it)
+npx wrangler secret put CODE_PEPPER            # ≥ 16 chars, random, e.g. 32 bytes base64url - never change it later (all codes depend on it)
 npx wrangler secret put ADMIN_TOKEN            # ≥ 24 chars, random
 npx wrangler secret put PROVIDER_API_KEY       # your OpenAI / compatible key
 # edit vars in wrangler.jsonc: ALLOWED_ORIGINS, models, prices, limits
@@ -89,17 +116,18 @@ Generate secrets with `node -e "console.log(require('crypto').randomBytes(32).to
 | `PROVIDER_BASE_URL` | `https://api.openai.com/v1` | any OpenAI-compatible endpoint |
 | `EMBEDDING_MODEL` / `CHAT_MODEL` | `text-embedding-3-small` / `gpt-4o-mini` | must be in `ALLOWED_MODELS` (else requests fail with `model_not_allowed`) |
 | `EMBEDDING_DIMENSIONS` | `1536` | vectors are validated against it (mock: always 256) |
-| `EMBED_TIMEOUT_MS` / `CHAT_TIMEOUT_MS` | 20000 / 60000 | → `upstream_timeout` |
+| `EMBED_TIMEOUT_MS` / `CHAT_TIMEOUT_MS` | 20000 / 60000 | → `upstream_timeout` (`CHAT_TIMEOUT_MS` is per agent turn) |
 | `*_PRICE_PER_MTOK` | 0.02 / 0.15 / 0.60 | USD per 1M tokens (embedding, chat input, chat output) |
 | `ALLOWED_ORIGINS` | `https://tech-labs.warsztaty-ai.com,https://workszop.github.io` | comma list, exact match |
 | `SESSION_TTL_MINUTES` | 240 | absolute session lifetime (never beyond code expiry) |
 | `SESSION_IDLE_TIMEOUT_MINUTES` | 0 (off) | idle timeout using sliding `last_activity_at` |
-| `RATE_LIMIT_PER_MINUTE` | 30 | per session, embeddings + chat |
+| `RATE_LIMIT_PER_MINUTE` | 30 | per session, embeddings + agent turns |
+| `AGENT_MAX_STEPS` / `AGENT_MAX_TOOL_CALLS` / `AGENT_MAX_RUN_TOKENS` | 8 / 12 / 40000 | per agent run; published in `capabilities.agent` |
 | `ACTIVATION_MAX_ATTEMPTS` / `ACTIVATION_WINDOW_SECONDS` | 10 / 900 | per client IP (failed + in-flight attempts) |
 | `ACTIVATION_GLOBAL_FAILURES_PER_MINUTE` | 60 | all IPs together |
 | `ACTIVATION_MIN_RESPONSE_MS` | 250 | failed activations are padded to this duration |
 | `DEFAULT_REQUEST_LIMIT` / `DEFAULT_TOKEN_LIMIT` / `DEFAULT_MAX_SESSIONS` | 300 / 300000 / 3 | for new codes |
-| `CLEANUP_RETENTION_DAYS` | 7 | cron deletes sessions expired/revoked longer ago |
+| `CLEANUP_RETENTION_DAYS` | 7 | cron deletes sessions expired/revoked longer ago, and agent runs older than that |
 | `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD` | empty | enable Cloudflare Access JWT verification for admin |
 
 Secrets: `CODE_PEPPER`, `ADMIN_TOKEN`, `PROVIDER_API_KEY`.
@@ -146,24 +174,19 @@ day (UTC). Plaintext codes are printed once; `--csv` writes them to a file with 
 
 | Limit | Value | Over the limit |
 |---|---|---|
-| Body size: embeddings / chat / activate / admin | 512 KB / 128 KB / 4 KB / 32 KB | `payload_too_large` 413 |
+| Body size: embeddings / agent / activate / admin | 512 KB / 256 KB / 4 KB / 32 KB | `payload_too_large` 413 |
 | Inputs per embeddings call | 64 | 413 |
 | Estimated tokens per embedding input | 2000 | 413 |
-| Context chunks per chat | 10 | 413 |
-| Question length | 1000 chars (after trim) | 413 |
-| Estimated chat input tokens (system + context + question) | 12000 | 413 |
-| `maxTokens` (output) | min 64, max 1024, default 500 | **clamped** (rounded) |
-| `temperature` | min 0, max 1, default 0.2 | **clamped** |
-| Chunk metadata (`chunkId`, `documentTitle`, `folder`) | 300 chars each | 413 |
+| Agent transcript | 60 messages; user message 1000 chars; tool result 16000 chars | 413 |
+| Estimated agent input tokens (system + tools + transcript) | 24000 | 413 |
+| Agent run | 8 steps, 12 tool calls (5 per step), 40000 tokens | `forcedFinal`, then `run_limit_exceeded` 409 |
 | Requests per session per minute | `RATE_LIMIT_PER_MINUTE` (30) | `rate_limited` 429 + `retryAfterSeconds` |
 | Activation attempts per IP | 10 / 15 min (failed + in-flight) | 429 |
 | Failed activations, global | 60 / min | 429 |
 
-Wrong *types* (e.g. `temperature: "hot"`) are `invalid_request`; out-of-range
-numbers are clamped and the `PromptEcho` shows the values actually used.
 A body with `model` different from the server's model is `model_not_allowed`;
-any other client fields (`messages`, `system`, …) are ignored — the client can
-never choose provider URLs, models or the system prompt.
+`system`, `tools` or `temperature` in an agent request is `invalid_request`.
+The client can never choose provider URLs, models, tools or the system prompt.
 
 ## Quotas and accounting
 
@@ -172,14 +195,14 @@ never choose provider URLs, models or the system prompt.
   not revoked/expired, and both budgets have room. D1 executes statements
   serially, so parallel requests cannot overshoot (tested: 10 parallel requests
   against a limit of 3 → exactly 3 succeed).
-  - estimate: embeddings = Σ ⌈len/4⌉; chat = estimated input tokens + `maxTokens`.
+  - estimate: embeddings = Σ ⌈len/4⌉; agent turn = estimated input tokens + 700.
 - Afterwards a single D1 batch replaces the estimate with the provider-reported
   usage (or the estimate if none is reported), adds the cost, and inserts a
-  `usage_events` row (`ok` / `error` / `aborted`; token counts only — never prompt or document text).
+  `usage_events` row (`ok` / `error` / `aborted`; operation `embeddings` or
+  `agent`; token counts only - never prompt or document text).
 - **Upstream failure:** the token reservation is refunded; **the request stays
   counted** (it used a request slot; this also caps retry storms against a failing provider).
-  If a stream fails or the client disconnects mid-answer, the tokens already
-  streamed are charged (estimated) since the provider really produced them.
+  A failed agent turn also gives its step back to the run.
 
 ## Security notes
 
@@ -208,7 +231,7 @@ never choose provider URLs, models or the system prompt.
   upstream error type. All errors are `ApiErrorBody`; unexpected ones are
   `internal` without details.
 - **Data minimisation**: no prompts, questions, documents or IPs are stored.
-  The cron (`17 3 * * *` UTC) deletes old sessions and rate-limit windows.
+  The cron (`17 3 * * *` UTC) deletes old sessions, agent runs and rate-limit windows.
 
 ## Layout
 
@@ -216,18 +239,19 @@ never choose provider URLs, models or the system prompt.
 src/index.ts            router, CORS, error boundary, scheduled()
 src/env.ts              Env + config parsing (defaults)
 src/limits.ts           hard limits + Capabilities
-src/http.ts             ApiError, JSON/SSE helpers, size-limited body reader
+src/http.ts             ApiError, JSON helpers, size-limited body reader
 src/cors.ts             CORS decisions
 src/crypto.ts           random, hashes, HMAC, constant-time compare
 src/codes.ts            access-code generation / normalisation / hashing
 src/db.ts               row mapping, counters, quota reserve/settle
+src/agent-runs.ts       per-run step / tool-call / token counters
 src/ratelimit.ts        per-session limiter (D1 + optional binding)
 src/scheduled.ts        cleanup cron
 src/auth/session.ts     bearer session auth
 src/auth/admin.ts       admin auth (ADMIN_TOKEN, Cloudflare Access JWT)
 src/routes/*.ts         endpoint handlers
-src/providers/          Provider interface, openai-compatible, mock, SSE parser
-migrations/0001_init.sql
+src/providers/          Provider interface, openai-compatible, mock (embeddings), mock-agent (rule-based agent)
+migrations/*.sql
 scripts/admin.mjs       admin CLI
 test/*.test.ts          Vitest (workers pool, real D1)
 ```

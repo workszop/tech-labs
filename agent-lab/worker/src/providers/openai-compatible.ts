@@ -5,10 +5,10 @@
  * request data or account details). Only a sanitized summary is logged:
  * operation, HTTP status, and the upstream error `type`/`code` if short.
  */
-import type { ChatMessage } from '../../../shared/api-types'
+import type { AgentMessage } from '../../../shared/api-types'
+import type { ToolDef } from '../../../shared/tools'
 import { ApiError } from '../http'
-import { parseSse } from './sse'
-import type { ChatOptions, ChatResult, ChatStreamChunk, EmbedResult, Provider, TokenUsage } from './types'
+import type { ChatOptions, EmbedResult, Provider, TokenUsage, ToolChatResult, UpstreamToolCall } from './types'
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 
@@ -181,22 +181,14 @@ export class OpenAICompatibleProvider implements Provider {
     }
   }
 
-  private chatBody(messages: ChatMessage[], opts: ChatOptions, stream: boolean): string {
-    const body: Record<string, unknown> = {
-      model: opts.model,
-      messages,
-      temperature: opts.temperature,
-      max_tokens: opts.maxTokens,
-    }
-    if (stream) {
-      body.stream = true
-      body.stream_options = { include_usage: true }
-    }
-    return JSON.stringify(body)
-  }
-
-  async chat(messages: ChatMessage[], opts: ChatOptions, signal?: AbortSignal): Promise<ChatResult> {
-    const op = 'chat'
+  async chatWithTools(
+    system: string,
+    messages: AgentMessage[],
+    tools: ToolDef[],
+    opts: ChatOptions & { toolChoice: 'auto' | 'none' },
+    signal?: AbortSignal,
+  ): Promise<ToolChatResult> {
+    const op = 'chat_tools'
     this.requireKey(op)
     const d = deadline(this.opts.chatTimeoutMs, signal)
     try {
@@ -205,7 +197,7 @@ export class OpenAICompatibleProvider implements Provider {
         const res = await this.fetchImpl(`${this.opts.baseUrl}/chat/completions`, {
           method: 'POST',
           headers: this.headers(),
-          body: this.chatBody(messages, opts, false),
+          body: JSON.stringify(toolChatBody(system, messages, tools, opts)),
           signal: d.signal,
         })
         if (!res.ok) throw await upstreamHttpError(op, res)
@@ -215,11 +207,16 @@ export class OpenAICompatibleProvider implements Provider {
       } catch (err) {
         throw transportError(op, err, d)
       }
-      const choice = (body as { choices?: Array<{ message?: { content?: unknown }; finish_reason?: unknown }> })?.choices?.[0]
-      const content = choice?.message?.content
-      if (typeof content !== 'string') throw badResponse(op, 'missing content')
+      const choice = (body as { choices?: Array<{ message?: unknown; finish_reason?: unknown }> })?.choices?.[0]
+      const message = choice?.message as { content?: unknown; tool_calls?: unknown } | undefined
+      if (!message || typeof message !== 'object') throw badResponse(op, 'missing message')
+      const content = message.content
+      if (content !== undefined && content !== null && typeof content !== 'string') throw badResponse(op, 'bad content')
+      const rawCalls = message.tool_calls
+      if (rawCalls !== undefined && rawCalls !== null && !Array.isArray(rawCalls)) throw badResponse(op, 'bad tool_calls')
       return {
-        text: content,
+        text: typeof content === 'string' ? content : '',
+        toolCalls: parseToolCalls(Array.isArray(rawCalls) ? rawCalls : []),
         finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : null,
         usage: parseUsage((body as { usage?: unknown }).usage),
       }
@@ -227,76 +224,63 @@ export class OpenAICompatibleProvider implements Provider {
       d.clear()
     }
   }
+}
 
-  async *chatStream(messages: ChatMessage[], opts: ChatOptions, signal?: AbortSignal): AsyncGenerator<ChatStreamChunk> {
-    const op = 'chat_stream'
-    this.requireKey(op)
-    const d = deadline(this.opts.chatTimeoutMs, signal)
-    let res: Response
-    try {
-      try {
-        res = await this.fetchImpl(`${this.opts.baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: { ...this.headers(), Accept: 'text/event-stream' },
-          body: this.chatBody(messages, opts, true),
-          signal: d.signal,
-        })
-        if (!res.ok) throw await upstreamHttpError(op, res)
-        if (!res.body) throw badResponse(op, 'no body')
-      } catch (err) {
-        throw transportError(op, err, d)
-      }
-
-      let finishReason: string | null = null
-      let usage: TokenUsage | null = null
-      let sawDone = false
-      let sawAny = false
-      const iter = parseSse(res.body)
-      try {
-        for (;;) {
-          let next: IteratorResult<{ event: string; data: string }>
-          try {
-            next = await iter.next()
-          } catch (err) {
-            throw transportError(op, err, d)
-          }
-          if (next.done) break
-          const { data } = next.value
-          if (data.trim() === '[DONE]') {
-            sawDone = true
-            break
-          }
-          let j: Record<string, unknown>
-          try {
-            j = JSON.parse(data) as Record<string, unknown>
-          } catch {
-            throw badResponse(op, 'invalid json chunk')
-          }
-          if (j.error) {
-            logUpstream(op, { error: 'stream_error_event' })
-            throw new ApiError('upstream_unavailable', 'The AI provider reported an error while answering.')
-          }
-          const u = parseUsage(j.usage)
-          if (u) usage = u
-          const choices = j.choices
-          if (Array.isArray(choices) && choices.length) {
-            const c = choices[0] as { delta?: { content?: unknown }; finish_reason?: unknown }
-            const text = c?.delta?.content
-            if (typeof text === 'string' && text.length) {
-              sawAny = true
-              yield { type: 'delta', text }
-            }
-            if (typeof c?.finish_reason === 'string') finishReason = c.finish_reason
-          }
-        }
-      } finally {
-        await iter.return(undefined).catch(() => {})
-        if (!sawDone) await res.body.cancel().catch(() => {})
-      }
-      if (!sawDone && finishReason === null && !sawAny) throw badResponse(op, 'stream ended early')
-      yield { type: 'finish', finishReason, usage }
-    } finally {
-      d.clear()
-    }
+/** OpenAI chat-completions body. A forced-final turn sends no tools, tool_choice or parallel_tool_calls at all. */
+export function toolChatBody(
+  system: string,
+  messages: AgentMessage[],
+  tools: ToolDef[],
+  opts: ChatOptions & { toolChoice: 'auto' | 'none' },
+): Record<string, unknown> {
+  const upstream: Record<string, unknown>[] = [{ role: 'system', content: system }]
+  for (const m of messages) {
+    if (m.role === 'user') upstream.push({ role: 'user', content: m.content })
+    else if (m.role === 'tool') upstream.push({ role: 'tool', tool_call_id: m.toolCallId, content: m.content })
+    else if (m.toolCalls?.length) {
+      upstream.push({
+        role: 'assistant',
+        content: m.content === '' ? null : m.content,
+        tool_calls: m.toolCalls.map((c) => ({
+          id: c.id,
+          type: 'function',
+          function: { name: c.name, arguments: JSON.stringify(c.arguments) },
+        })),
+      })
+    } else upstream.push({ role: 'assistant', content: m.content })
   }
+  const body: Record<string, unknown> = {
+    model: opts.model,
+    messages: upstream,
+    temperature: opts.temperature,
+    max_tokens: opts.maxTokens,
+  }
+  if (opts.toolChoice === 'auto' && tools.length) {
+    body.tools = tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } }))
+    body.tool_choice = 'auto'
+    body.parallel_tool_calls = true
+  }
+  return body
+}
+
+/**
+ * Normalises upstream tool calls. Arguments stay a raw string (they may be
+ * malformed; the route reports that to the model). Missing or repeated IDs are
+ * replaced, because some compatible servers omit them.
+ */
+function parseToolCalls(raw: unknown[]): UpstreamToolCall[] {
+  const seen = new Set<string>()
+  return raw.map((item) => {
+    const c = (item && typeof item === 'object' ? item : {}) as { id?: unknown; function?: { name?: unknown; arguments?: unknown } }
+    const fn = c.function && typeof c.function === 'object' ? c.function : {}
+    let id = typeof c.id === 'string' && /^[\w.:-]{1,100}$/.test(c.id) ? c.id : ''
+    if (!id || seen.has(id)) id = `call_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`
+    seen.add(id)
+    const args = fn.arguments
+    return {
+      id,
+      name: typeof fn.name === 'string' ? fn.name.slice(0, 100) : '',
+      rawArguments: typeof args === 'string' ? args : args && typeof args === 'object' ? JSON.stringify(args) : '',
+    }
+  })
 }

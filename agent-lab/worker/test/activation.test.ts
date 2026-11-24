@@ -28,7 +28,7 @@ describe('POST /api/activate', () => {
       provider: 'mock',
       embeddingModel: 'mock-hash-embedding-256',
       embeddingDimensions: 256,
-      chatModel: 'mock-extractive-chat',
+      chatModel: 'mock-rule-based-agent',
       maxEmbeddingBatch: 64,
       maxEmbeddingInputTokens: 2000,
       maxContextChunks: 10,
@@ -36,7 +36,7 @@ describe('POST /api/activate', () => {
       maxQuestionChars: 1000,
       maxOutputTokens: { min: 64, max: 1024, default: 500 },
       temperature: { min: 0, max: 1, default: 0.2 },
-      streaming: true,
+      streaming: false,
       agent: { maxSteps: 8, maxToolCalls: 12, maxParallelToolCalls: 5, maxRunTokens: 40000, maxMessageChars: 1000 },
     })
     expect(body.session.usage).toMatchObject({ requestsUsed: 0, requestLimit: 300, tokensUsed: 0, tokenLimit: 300000 })

@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, EmbeddingsResponse } from '../../shared/api-types'
+import type { AgentMessage, EmbeddingsResponse } from '../../shared/api-types'
 import { ApiError } from '../src/http'
 import { OpenAICompatibleProvider } from '../src/providers/openai-compatible'
-import type { ChatStreamChunk } from '../src/providers/types'
 import { PROVIDER_KEY, auth, callWith, expectError, jsonInit, newSession } from './helpers'
 
 const KEY = 'sk-unit-test-key'
@@ -18,23 +17,6 @@ function provider(fetchImpl: (url: string, init?: RequestInit) => Promise<Respon
     chatTimeoutMs: opts.chatTimeoutMs ?? 2000,
     fetch: fetchImpl,
   })
-}
-
-function sseResponse(chunks: string[]): Response {
-  const enc = new TextEncoder()
-  const stream = new ReadableStream<Uint8Array>({
-    start(ctl) {
-      for (const c of chunks) ctl.enqueue(enc.encode(c))
-      ctl.close()
-    },
-  })
-  return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } })
-}
-
-async function collect(it: AsyncIterable<ChatStreamChunk>): Promise<ChatStreamChunk[]> {
-  const out: ChatStreamChunk[] = []
-  for await (const c of it) out.push(c)
-  return out
 }
 
 async function rejectsWith(p: Promise<unknown>, code: string): Promise<ApiError> {
@@ -54,11 +36,9 @@ const hangingFetch = (_url: string, init?: RequestInit) =>
     init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
   })
 
-const messages: ChatMessage[] = [
-  { role: 'system', content: 'You are a test assistant.' },
-  { role: 'user', content: 'q?' },
-]
-const chatOpts = { model: 'gpt-4o-mini', temperature: 0.2, maxTokens: 100 }
+const messages: AgentMessage[] = [{ role: 'user', content: 'q?' }]
+const chatOpts = { model: 'gpt-4o-mini', temperature: 0.2, maxTokens: 100, toolChoice: 'auto' as const }
+const chatWithTools = (p: OpenAICompatibleProvider) => p.chatWithTools('You are a test assistant.', messages, [], chatOpts)
 
 describe('openai-compatible provider (mocked fetch)', () => {
   it('embeddings: sends model + inputs with the key, returns vectors in index order', async () => {
@@ -82,7 +62,7 @@ describe('openai-compatible provider (mocked fetch)', () => {
     expect(r.inputTokens).toBe(7)
   })
 
-  it('embeddings: validates shape and dimensions → upstream_bad_response', async () => {
+  it('embeddings: validates shape and dimensions -> upstream_bad_response', async () => {
     const f = (body: unknown) => async () => Response.json(body)
     await rejectsWith(provider(f({ data: [{ index: 0, embedding: [1, 2] }] })).embed(['a']), 'upstream_bad_response')
     await rejectsWith(provider(f({ data: [] })).embed(['a']), 'upstream_bad_response')
@@ -95,78 +75,16 @@ describe('openai-compatible provider (mocked fetch)', () => {
     const leaky = JSON.stringify({ error: { message: `Incorrect API key provided: ${KEY}`, type: 'server_error' } })
     const e500 = await rejectsWith(provider(async () => new Response(leaky, { status: 500 })).embed(['a']), 'upstream_unavailable')
     expect(e500.message).not.toContain(KEY)
-    const e429 = await rejectsWith(provider(async () => new Response(leaky, { status: 429 })).chat(messages, chatOpts), 'upstream_unavailable')
+    const e429 = await rejectsWith(chatWithTools(provider(async () => new Response(leaky, { status: 429 }))), 'upstream_unavailable')
     expect(e429.message).toMatch(/rate limit/i)
     await rejectsWith(provider(async () => { throw new TypeError('network down') }).embed(['a']), 'upstream_unavailable')
-    await rejectsWith(collect(provider(async () => new Response(leaky, { status: 503 })).chatStream(messages, chatOpts)), 'upstream_unavailable')
+    const e503 = await rejectsWith(chatWithTools(provider(async () => new Response(leaky, { status: 503 }))), 'upstream_unavailable')
+    expect(e503.message).not.toContain(KEY)
   })
 
-  it('timeouts → upstream_timeout (embeddings, chat and streaming)', async () => {
+  it('timeouts -> upstream_timeout (embeddings and tool chat)', async () => {
     await rejectsWith(provider(hangingFetch, { embedTimeoutMs: 100 }).embed(['a']), 'upstream_timeout')
-    await rejectsWith(provider(hangingFetch, { chatTimeoutMs: 100 }).chat(messages, chatOpts), 'upstream_timeout')
-    await rejectsWith(collect(provider(hangingFetch, { chatTimeoutMs: 100 }).chatStream(messages, chatOpts)), 'upstream_timeout')
-  })
-
-  it('timeout while the stream is already flowing → upstream_timeout', async () => {
-    const enc = new TextEncoder()
-    const stalled = async (_u: string, init?: RequestInit) => {
-      const body = new ReadableStream<Uint8Array>({
-        start(ctl) {
-          ctl.enqueue(enc.encode('data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n'))
-          init?.signal?.addEventListener('abort', () => ctl.error(new DOMException('aborted', 'AbortError')))
-        },
-      })
-      return new Response(body)
-    }
-    await rejectsWith(collect(provider(stalled, { chatTimeoutMs: 150 }).chatStream(messages, chatOpts)), 'upstream_timeout')
-  })
-
-  it('non-streaming chat parses content, finish_reason and usage', async () => {
-    const fetchImpl = async (url: string, init?: RequestInit) => {
-      expect(url).toBe('https://upstream.test/v1/chat/completions')
-      const body = JSON.parse(init!.body as string)
-      expect(body).toMatchObject({ model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 100, messages })
-      expect(body.stream).toBeUndefined()
-      return Response.json({ choices: [{ message: { content: 'Three days [1].' }, finish_reason: 'stop' }], usage: { prompt_tokens: 50, completion_tokens: 5 } })
-    }
-    expect(await provider(fetchImpl).chat(messages, chatOpts)).toEqual({
-      text: 'Three days [1].',
-      finishReason: 'stop',
-      usage: { inputTokens: 50, outputTokens: 5 },
-    })
-  })
-
-  it('streaming: robust SSE parsing (split chunks, CRLF, comments, split UTF-8) incl. the usage chunk', async () => {
-    let sentBody: any
-    const full =
-      ': keep-alive\r\n\r\n' +
-      'data: {"choices":[{"delta":{"role":"assistant","content":""}}]}\r\n\r\n' +
-      'data: {"choices":[{"delta":{"content":"Zażółć "}}]}\n\n' +
-      'data: {"choices":[{"delta":{"content":"gęślą [1]"}}]}\n\n' +
-      'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n' +
-      'data: {"choices":[],"usage":{"prompt_tokens":120,"completion_tokens":9,"total_tokens":129}}\n\n' +
-      'data: [DONE]\n\n'
-    const bytes = new TextEncoder().encode(full)
-    // Split into 7-byte pieces → breaks lines, JSON and multi-byte characters.
-    const pieces: Uint8Array[] = []
-    for (let i = 0; i < bytes.length; i += 7) pieces.push(bytes.slice(i, i + 7))
-    const fetchImpl = async (_u: string, init?: RequestInit) => {
-      sentBody = JSON.parse(init!.body as string)
-      return new Response(new ReadableStream({ start(c) { pieces.forEach((p) => c.enqueue(p)); c.close() } }))
-    }
-    const out = await collect(provider(fetchImpl).chatStream(messages, chatOpts))
-    expect(sentBody).toMatchObject({ stream: true, stream_options: { include_usage: true } })
-    expect(out).toEqual([
-      { type: 'delta', text: 'Zażółć ' },
-      { type: 'delta', text: 'gęślą [1]' },
-      { type: 'finish', finishReason: 'stop', usage: { inputTokens: 120, outputTokens: 9 } },
-    ])
-  })
-
-  it('streaming: garbage chunk → upstream_bad_response; error event → upstream_unavailable', async () => {
-    await rejectsWith(collect(provider(async () => sseResponse(['data: {not json}\n\n'])).chatStream(messages, chatOpts)), 'upstream_bad_response')
-    await rejectsWith(collect(provider(async () => sseResponse(['data: {"error":{"message":"boom"}}\n\n'])).chatStream(messages, chatOpts)), 'upstream_unavailable')
-    await rejectsWith(collect(provider(async () => sseResponse([''])).chatStream(messages, chatOpts)), 'upstream_bad_response')
+    await rejectsWith(chatWithTools(provider(hangingFetch, { chatTimeoutMs: 100 })), 'upstream_timeout')
   })
 
   it('missing API key fails closed', async () => {
@@ -175,6 +93,7 @@ describe('openai-compatible provider (mocked fetch)', () => {
       fetch: async () => { throw new Error('must not be called') },
     })
     await rejectsWith(p.embed(['a']), 'upstream_unavailable')
+    await rejectsWith(chatWithTools(p), 'upstream_unavailable')
   })
 })
 
@@ -210,7 +129,7 @@ describe('Worker with openai-compatible provider', () => {
     expect(eb.quota.tokensUsed).toBe(3)
   })
 
-  it('upstream errors → proper HTTP status for non-streaming requests (502 / 504)', async () => {
+  it('upstream errors -> proper HTTP status for non-streaming requests (502 / 504)', async () => {
     const { token } = await newSession()
     const body = jsonInit('POST', { inputs: ['a'] }, auth(token))
     await expectError(await callWith(OPENAI_ENV, '/api/embeddings', body, async () => new Response('x', { status: 500 })), 502, 'upstream_unavailable')

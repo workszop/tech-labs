@@ -1,8 +1,10 @@
+import { LIMITS } from './limits'
+
 /**
  * Environment bindings and parsed configuration.
  *
  * Everything the frontend could abuse (provider URL, models, limits, prices)
- * comes from here — never from the request.
+ * comes from here - never from the request.
  */
 
 export interface Env {
@@ -20,7 +22,6 @@ export interface Env {
   EMBEDDING_DIMENSIONS?: string
   EMBED_TIMEOUT_MS?: string
   CHAT_TIMEOUT_MS?: string
-  MOCK_STREAM_DELAY_MS?: string
 
   // --- prices (USD per 1M tokens)
   EMBEDDING_PRICE_PER_MTOK?: string
@@ -48,6 +49,11 @@ export interface Env {
   DEFAULT_TOKEN_LIMIT?: string
   DEFAULT_MAX_SESSIONS?: string
 
+  // --- agent runs (POST /api/agent)
+  AGENT_MAX_STEPS?: string
+  AGENT_MAX_TOOL_CALLS?: string
+  AGENT_MAX_RUN_TOKENS?: string
+
   // --- maintenance
   CLEANUP_RETENTION_DAYS?: string
 }
@@ -55,7 +61,7 @@ export interface Env {
 export type ProviderName = 'openai-compatible' | 'mock'
 
 export const MOCK_EMBEDDING_MODEL = 'mock-hash-embedding-256'
-export const MOCK_CHAT_MODEL = 'mock-extractive-chat'
+export const MOCK_CHAT_MODEL = 'mock-rule-based-agent'
 export const MOCK_EMBEDDING_DIMENSIONS = 256
 
 export interface Config {
@@ -68,7 +74,6 @@ export interface Config {
   allowedModels: Set<string>
   embedTimeoutMs: number
   chatTimeoutMs: number
-  mockStreamDelayMs: number
 
   embeddingPricePerMTok: number
   chatInputPricePerMTok: number
@@ -91,6 +96,10 @@ export interface Config {
   defaultRequestLimit: number
   defaultTokenLimit: number
   defaultMaxSessions: number
+
+  agentMaxSteps: number
+  agentMaxToolCalls: number
+  agentMaxRunTokens: number
 
   cleanupRetentionDays: number
 }
@@ -129,7 +138,6 @@ export function loadConfig(env: Env): Config {
     allowedModels: allowed,
     embedTimeoutMs: num(env.EMBED_TIMEOUT_MS, 20_000, 100, 300_000),
     chatTimeoutMs: num(env.CHAT_TIMEOUT_MS, 60_000, 100, 300_000),
-    mockStreamDelayMs: num(env.MOCK_STREAM_DELAY_MS, 25, 0, 2000),
 
     embeddingPricePerMTok: num(env.EMBEDDING_PRICE_PER_MTOK, 0.02, 0, 1000),
     chatInputPricePerMTok: num(env.CHAT_INPUT_PRICE_PER_MTOK, 0.15, 0, 1000),
@@ -152,6 +160,10 @@ export function loadConfig(env: Env): Config {
     defaultRequestLimit: Math.round(num(env.DEFAULT_REQUEST_LIMIT, 300, 0, 10_000_000)),
     defaultTokenLimit: Math.round(num(env.DEFAULT_TOKEN_LIMIT, 300_000, 0, 10_000_000_000)),
     defaultMaxSessions: Math.round(num(env.DEFAULT_MAX_SESSIONS, 3, 1, 10_000)),
+
+    agentMaxSteps: Math.round(num(env.AGENT_MAX_STEPS, LIMITS.agent.maxSteps, 1, 50)),
+    agentMaxToolCalls: Math.round(num(env.AGENT_MAX_TOOL_CALLS, LIMITS.agent.maxToolCalls, 0, 200)),
+    agentMaxRunTokens: Math.round(num(env.AGENT_MAX_RUN_TOKENS, LIMITS.agent.maxRunTokens, 1000, 1_000_000)),
 
     cleanupRetentionDays: num(env.CLEANUP_RETENTION_DAYS, 7, 0, 3650),
   }

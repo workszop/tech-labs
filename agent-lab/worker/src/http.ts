@@ -76,15 +76,6 @@ export function errorResponse(err: ApiError): Response {
   return json(err.toBody(), err.status, headers)
 }
 
-export function sseHeaders(): Record<string, string> {
-  return {
-    ...BASE_HEADERS,
-    'Content-Type': 'text/event-stream; charset=utf-8',
-    'Cache-Control': 'no-store, no-transform',
-    'X-Accel-Buffering': 'no',
-  }
-}
-
 /**
  * Reads a JSON body with a hard byte limit (checks Content-Length up front and
  * counts streamed bytes, so a lying/absent Content-Length cannot bypass it).

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { CROCKFORD, generateCode, normalizeCode } from '../src/codes'
 import worker from '../src/index'
 import { hashEmbedding, looksPolish, stem, stemPl, terms } from '../src/providers/mock'
-import { parseSse } from '../src/providers/sse'
 import { newSession, sampleContextPl } from './helpers'
 import { sha256Hex } from '../src/crypto'
 
@@ -113,33 +112,19 @@ describe('Polish text in the mock provider', () => {
   })
 })
 
-describe('SSE parser', () => {
-  it('handles CR-only line endings, multi-line data and a final event without trailing blank line', async () => {
-    const text = 'event: a\rdata: one\rdata: two\r\r:comment\n\nevent: b\ndata: {"x":1}'
-    const stream = new ReadableStream<Uint8Array>({
-      start(c) {
-        const b = new TextEncoder().encode(text)
-        for (let i = 0; i < b.length; i++) c.enqueue(b.slice(i, i + 1))
-        c.close()
-      },
-    })
-    const out = []
-    for await (const ev of parseSse(stream)) out.push(ev)
-    expect(out).toEqual([
-      { event: 'a', data: 'one\ntwo' },
-      { event: 'b', data: '{"x":1}' },
-    ])
-  })
-})
-
 describe('scheduled cleanup', () => {
-  it('deletes long-expired sessions and stale rate-limit windows, keeps live ones', async () => {
+  it('deletes long-expired sessions, old agent runs and stale rate-limit windows, keeps live ones', async () => {
     const live = await newSession()
     const old = await newSession()
     const oldId = await sha256Hex(old.token)
     const liveId = await sha256Hex(live.token)
     await env.DB.prepare('UPDATE sessions SET expires_at = ?2 WHERE id = ?1').bind(oldId, Date.now() - 30 * 86_400_000).run()
     await env.DB.prepare("INSERT INTO rate_limits (key, window_start, count) VALUES ('stale-test', 1000, 5)").run()
+    const oldRun = crypto.randomUUID()
+    const liveRun = crypto.randomUUID()
+    await env.DB.prepare('INSERT INTO agent_runs (run_id, session_id, steps, tool_calls, tokens, created_at) VALUES (?1, ?2, 1, 0, 10, ?3), (?4, ?2, 1, 0, 10, ?5)')
+      .bind(oldRun, liveId, Date.now() - 30 * 86_400_000, liveRun, Date.now())
+      .run()
 
     const ctx = createExecutionContext()
     await worker.scheduled(createScheduledController({ scheduledTime: Date.now(), cron: '17 3 * * *' }), env, ctx)
@@ -148,5 +133,7 @@ describe('scheduled cleanup', () => {
     expect(await env.DB.prepare('SELECT id FROM sessions WHERE id = ?1').bind(oldId).first()).toBeNull()
     expect(await env.DB.prepare('SELECT id FROM sessions WHERE id = ?1').bind(liveId).first()).not.toBeNull()
     expect(await env.DB.prepare("SELECT key FROM rate_limits WHERE key = 'stale-test'").first()).toBeNull()
+    expect(await env.DB.prepare('SELECT run_id FROM agent_runs WHERE run_id = ?1').bind(oldRun).first()).toBeNull()
+    expect(await env.DB.prepare('SELECT run_id FROM agent_runs WHERE run_id = ?1').bind(liveRun).first()).not.toBeNull()
   })
 })

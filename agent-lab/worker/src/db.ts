@@ -162,7 +162,7 @@ export interface UsageEvent {
   accessCodeId: string
   sessionId: string
   model: string
-  operation: 'embeddings' | 'chat'
+  operation: 'embeddings' | 'agent'
   inputTokens: number
   outputTokens: number
   cost: number
@@ -171,8 +171,8 @@ export interface UsageEvent {
 
 /**
  * After the upstream call: replace the token estimate with actual usage, add
- * cost, and log a usage_events row — in one D1 batch (atomic).
- * On failure pass actual tokens 0 → the token reservation is refunded, the
+ * cost, and log a usage_events row - in one D1 batch (atomic).
+ * On failure pass actual tokens 0 -> the token reservation is refunded, the
  * request itself stays counted (it consumed a slot in the request budget).
  */
 export async function settleUsage(

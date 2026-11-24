@@ -23,7 +23,6 @@ export default defineConfig(async () => {
             ALLOWED_ORIGINS: 'http://localhost:5173,https://workszop.github.io',
             ACCESS_TEAM_DOMAIN: '',
             ACCESS_AUD: '',
-            MOCK_STREAM_DELAY_MS: '0',
             ACTIVATION_MIN_RESPONSE_MS: '0',
             ACTIVATION_MAX_ATTEMPTS: '10',
             ACTIVATION_GLOBAL_FAILURES_PER_MINUTE: '100000',

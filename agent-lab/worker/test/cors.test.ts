@@ -11,7 +11,7 @@ describe('CORS', () => {
   })
 
   it('preflight for an allowed origin', async () => {
-    const res = await api('/api/chat', {
+    const res = await api('/api/agent', {
       method: 'OPTIONS',
       headers: { Origin: 'https://workszop.github.io', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization, content-type' },
     })
@@ -23,8 +23,8 @@ describe('CORS', () => {
     expect(res.headers.get('Vary')).toMatch(/Origin/)
   })
 
-  it('disallowed origin → 403 origin_not_allowed (preflight and actual), no ACAO', async () => {
-    const pre = await api('/api/chat', { method: 'OPTIONS', headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'POST' } })
+  it('disallowed origin -> 403 origin_not_allowed (preflight and actual), no ACAO', async () => {
+    const pre = await api('/api/agent', { method: 'OPTIONS', headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'POST' } })
     expect(pre.headers.get('Access-Control-Allow-Origin')).toBeNull()
     await expectError(pre, 403, 'origin_not_allowed')
 
