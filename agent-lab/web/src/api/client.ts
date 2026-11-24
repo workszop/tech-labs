@@ -10,9 +10,12 @@
  */
 import type {
   ActivateResponse,
+  AgentRequest,
+  AgentResponse,
   ApiErrorBody,
   ApiErrorCode,
   EmbeddingsResponse,
+  Lang,
   SessionInfo,
   UsageInfo,
 } from '@shared/api-types'
@@ -116,14 +119,40 @@ export const api = {
       sessionToken = null
     }
   },
-  async embed(inputs: string[], signal?: AbortSignal): Promise<EmbeddingsResponse> {
-    const res = await request('/api/embeddings', { method: 'POST', body: JSON.stringify({ inputs, lang: getLang() }), signal })
+  /** `lang` is the language of the inputs (default: the UI language); only the offline mock model uses it. */
+  async embed(inputs: string[], signal?: AbortSignal, lang: Lang = getLang()): Promise<EmbeddingsResponse> {
+    const res = await request('/api/embeddings', { method: 'POST', body: JSON.stringify({ inputs, lang }), signal })
     const data = (await res.json()) as EmbeddingsResponse
     if (!Array.isArray(data.embeddings) || data.embeddings.length !== inputs.length || data.embeddings.some((v) => !Array.isArray(v) || v.length !== data.dimensions)) {
       throw new ApiError('upstream_bad_response', t().shell.errors.embeddingMalformed)
     }
     return data
   },
+  /** One model turn of an agent run (POST /api/agent). */
+  async agentStep(req: AgentRequest, signal?: AbortSignal): Promise<AgentResponse> {
+    const res = await request('/api/agent', { method: 'POST', body: JSON.stringify(req), signal })
+    const data = (await res.json()) as AgentResponse
+    if (!isAgentResponse(data, req.runId)) throw new ApiError('upstream_bad_response', t().shell.errors.agentMalformed)
+    return data
+  },
+}
+
+/** Shape check of the fields the agent loop relies on. */
+function isAgentResponse(d: unknown, runId: string): d is AgentResponse {
+  const r = d as Partial<AgentResponse> | null
+  return (
+    !!r &&
+    r.runId === runId.toLowerCase() &&
+    (r.kind === 'tool_calls' || r.kind === 'final') &&
+    !!r.assistantMessage &&
+    typeof r.assistantMessage.content === 'string' &&
+    (r.assistantMessage.toolCalls === undefined || Array.isArray(r.assistantMessage.toolCalls)) &&
+    Array.isArray(r.toolCalls) &&
+    Array.isArray(r.rejected) &&
+    typeof r.forcedFinal === 'boolean' &&
+    !!r.usage &&
+    !!r.limits
+  )
 }
 
 /** Test hook. */

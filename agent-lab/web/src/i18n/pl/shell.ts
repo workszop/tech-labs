@@ -102,5 +102,27 @@ export const shell = {
     activateFirst: 'Najpierw aktywuj Service Agent Lab kodem dostępu.',
     requestFailed: (status: number) => `Zapytanie się nie powiodło (HTTP ${status}).`,
     embeddingMalformed: 'Odpowiedź z wektorami miała nieprawidłowy kształt (zła liczba wektorów albo wymiarów).',
+    agentMalformed: 'Serwer przysłał odpowiedź agenta w nieprawidłowym kształcie.',
+  },
+
+  /** Dlaczego nie można wysłać wiadomości. */
+  runErrors: {
+    notReady: 'Aplikacja jeszcze się wczytuje. Spróbuj za chwilę.',
+    busy: 'Agent nadal pracuje nad poprzednią wiadomością.',
+    tooLong: (max: number) => `Wiadomość jest za długa (najwyżej ${max} znaków).`,
+  },
+
+  /** Komunikaty w czacie, gdy przebieg agenta skończył się bez zwykłej odpowiedzi (klucz: RunNoticeKey). */
+  runNotices: {
+    cancelled: 'Zatrzymano agenta. Dla tej wiadomości nic więcej nie zostało zrobione.',
+    reload: 'Strona została odświeżona w trakcie pracy agenta. Przebieg przerwano i nic więcej nie zostało zrobione.',
+    max_steps: 'Agent wykorzystał limit kroków i zatrzymał się, zanim zdążył odpowiedzieć.',
+    run_timeout: 'Agent pracował zbyt długo i został zatrzymany. Spróbuj ponownie, na przykład z krótszym pytaniem.',
+    model_timeout: 'Model AI nie odpowiedział na czas, więc agent się zatrzymał.',
+    tool_loop: 'Agent w kółko powtarzał to samo wywołanie narzędzia i został zatrzymany.',
+    forced_final: 'Agent wykorzystał limit kroków albo wywołań narzędzi. Odpowiedź może być niepełna.',
+    run_limit_exceeded: 'Agent wykorzystał limit kroków albo tokenów dla tego pytania.',
+    quota_exceeded: 'Limit użycia AI dla tego kodu dostępu został wyczerpany.',
+    error: 'Agent nie mógł dokończyć pracy z powodu błędu.',
   },
 }

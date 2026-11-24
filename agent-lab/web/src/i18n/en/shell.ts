@@ -2,6 +2,7 @@
 // This file is the source of truth for the dictionary type; pl/shell.ts must mirror its shape.
 // Later areas (systems, chat, flow, learn) live in their own files next to this one.
 import type { ApiErrorCode } from '@shared/api-types'
+import type { RunNoticeKey } from '@/agent/types'
 
 type ErrorCode = ApiErrorCode | 'network' | 'aborted'
 
@@ -97,5 +98,27 @@ export const shell = {
     activateFirst: 'Please activate Service Agent Lab with your access code first.',
     requestFailed: (status: number) => `Request failed (HTTP ${status}).`,
     embeddingMalformed: 'The embedding response was malformed (wrong number of vectors or dimensions).',
+    agentMalformed: 'The agent response from the server was malformed.',
   },
+
+  /** Why a message could not be sent. */
+  runErrors: {
+    notReady: 'The app is still loading. Try again in a moment.',
+    busy: 'The agent is still working on the previous message.',
+    tooLong: (max: number) => `The message is too long (at most ${max} characters).`,
+  },
+
+  /** Chat notices for a run that ended without a normal answer (key: RunNoticeKey). */
+  runNotices: {
+    cancelled: 'You stopped the agent. Nothing more was done for this message.',
+    reload: 'The page was reloaded while the agent was working. The run was stopped and nothing more was done.',
+    max_steps: 'The agent reached its step limit and stopped before it could answer.',
+    run_timeout: 'The agent took too long and was stopped. Try again, perhaps with a shorter question.',
+    model_timeout: 'The AI model did not answer in time, so the agent stopped.',
+    tool_loop: 'The agent kept repeating the same tool call and was stopped.',
+    forced_final: 'The agent reached its limit of steps or tool calls. The answer may be incomplete.',
+    run_limit_exceeded: 'The agent reached the step or token limit for this question.',
+    quota_exceeded: 'The AI allowance of this access code is used up.',
+    error: 'The agent could not finish because of an error.',
+  } satisfies Record<RunNoticeKey, string>,
 }

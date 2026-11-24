@@ -4,14 +4,16 @@
  * can watch the same rows in the data explorer. `resetSimulation` restores the
  * seed and removes tickets created by the agent.
  *
- * Schema versions: version 1 holds the company tables. Later tasks add their own
- * tables (runs, conversation, prefs) with `this.version(2).stores({...})`;
- * Dexie keeps the tables of earlier versions.
+ * Schema versions: version 1 holds the company tables, version 2 adds the app
+ * state tables (runs, conversation, prefs); Dexie keeps the tables of earlier
+ * versions. `resetSimulation` touches only the company tables.
  */
 import Dexie, { liveQuery, type Table } from 'dexie'
 import { useEffect, useState } from 'react'
 import { COMPANY_SEED, type CompanySeed } from '@/data/company'
 import type { Customer, Interaction, Order, Product, ServiceCase, Shipment, Ticket, Warranty } from '@/data/company/types'
+import type { RunRecord } from '@/agent/types'
+import type { StoredConversation, StoredPrefs } from './runs'
 
 export const SIM_DB_NAME = 'agent-lab-sim'
 
@@ -27,6 +29,18 @@ export const SIM_SCHEMA_V1 = {
   tickets: 'id, customerId',
 } as const
 
+/**
+ * Tables of schema version 2 (Task 6): the app's own state, not company data.
+ * `runs`: the last finished runs with their trace events; `conversation`: one
+ * row (`id: 'current'`) with the chat items and the model history; `prefs`: one
+ * row (`id: 'prefs'`) with the user's preferences.
+ */
+export const SIM_SCHEMA_V2 = {
+  runs: 'id, startedAt',
+  conversation: 'id',
+  prefs: 'id',
+} as const
+
 export type TableName = keyof CompanySeed
 
 export const TABLE_NAMES = Object.keys(SIM_SCHEMA_V1) as TableName[]
@@ -40,9 +54,13 @@ export class SimDatabase extends Dexie {
   cases!: Table<ServiceCase, string>
   interactions!: Table<Interaction, string>
   tickets!: Table<Ticket, string>
+  runs!: Table<RunRecord, string>
+  conversation!: Table<StoredConversation, string>
+  prefs!: Table<StoredPrefs, string>
   constructor(name = SIM_DB_NAME) {
     super(name)
     this.version(1).stores(SIM_SCHEMA_V1)
+    this.version(2).stores(SIM_SCHEMA_V2)
   }
 }
 
