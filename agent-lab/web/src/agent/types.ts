@@ -21,12 +21,21 @@ import type { ToolContext, ToolResult, executeTool } from '@/sim/tools'
  *      parallel, so the order of their `tool_finished` events may differ);
  *   3. one at a time, for each call that needs a confirmation: `tool_started`,
  *      `confirmation_requested`, `confirmation_resolved`, `tool_finished`
- *      (`rejected_by_user` when not approved; the tool did not run).
+ *      (`rejected_by_user` when not approved; the tool did not run). For an
+ *      approved call `durationMs` covers the execution only, not the decision.
  * - `run_finished` (always last; once per run).
  *
- * `seq` increases over the whole run. A run that is cancelled while a call
- * waits for its confirmation ends that call with a `tool_finished` error result
- * (`failed`, "not executed") and no `confirmation_resolved`.
+ * `seq` increases over the whole run. Calls that never ran (rejected, repeated,
+ * rejected by the user, not run) have `durationMs: 0`. Engine-made closures use
+ * two codes that are not tool failures:
+ * - `not_executed`: the call certainly did not run (cancel before or at the
+ *   decision, valid calls on a forced-final turn); no `confirmation_resolved`
+ *   is emitted for a cancelled confirmation;
+ * - `result_unknown`: the call was started and may have run, but its result was
+ *   not recorded (cancel or run timeout during read-only calls; on restore after
+ *   a reload: a read-only call or an approved call without a result).
+ * Restore closures (`sim/runs.ts`) are appended when the run is loaded and are
+ * dated at the last recorded event of the run.
  *
  * `run_finished.detail` is a `RunEndReason` code (absent when `answered`).
  */

@@ -128,4 +128,24 @@ describe('sendMessage with a ticket confirmation (Review Focus 3)', () => {
     expect(s.conversation.at(-1)).toMatchObject({ kind: 'notice', outcome: 'limit', messageKey: 'run_limit_exceeded', detail: 'Run limit reached.' })
     expect(s.conversation.some((i) => i.kind === 'agent')).toBe(false)
   })
+  it('approve and cancel in the same tick writes nothing', async () => {
+    scriptTicketRun()
+    const done = sendMessage('Please open a repair ticket.')
+    await waitForConfirmation()
+    resolveConfirmation(true)
+    cancelRun()
+    await done
+    await persistenceIdle()
+    expect(await simDb.tickets.count()).toBe(0)
+    expect(getState().runs.at(-1)!.outcome).toBe('cancelled')
+  })
+
+  it('a cancel right after sending (before the run is set up) stops it before any request', async () => {
+    scriptTicketRun()
+    const done = sendMessage('Please open a repair ticket.', 'product-failure-e04')
+    cancelRun()
+    await done
+    expect(agentStep).not.toHaveBeenCalled()
+    expect(getState().currentRun).toBeNull()
+  })
 })

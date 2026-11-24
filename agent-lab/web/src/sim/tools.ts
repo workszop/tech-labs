@@ -26,6 +26,8 @@ export type ToolErrorCode =
   | 'duplicate_call'
   | 'index_not_ready'
   | 'failed'
+  | 'not_executed' // engine-made: the call certainly did not run (cancel, reload before a decision, forced-final turn)
+  | 'result_unknown' // engine-made: the call may have run but its result was not recorded (reload or cancel while it ran)
 
 export type ToolResult =
   | { ok: true; data: unknown; summary: string }

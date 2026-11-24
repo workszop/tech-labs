@@ -69,7 +69,10 @@ function setup(script: Script[], opts: { confirm?: EngineDeps['confirm']; exec?:
     emit: (e) => events.push(e),
     now: () => (clock += 10),
   }
-  return { deps, events, requests, executed }
+  const tick = (ms: number) => {
+    clock += ms
+  }
+  return { deps, events, requests, executed, tick }
 }
 
 function input(history: AgentMessage[] = [], message = 'My Barista Pro 500 shows E04.'): RunInput {
@@ -187,7 +190,7 @@ describe('runAgent: loop', () => {
     expect(executed.map((e) => e.name)).toEqual(['get_customer_orders'])
     const tools = requests[1]!.messages.filter((m) => m.role === 'tool') as Extract<AgentMessage, { role: 'tool' }>[]
     expect(tools.map((m) => [m.toolCallId, m.name])).toEqual([['ok1', 'get_customer_orders'], ['r1', 'delete_everything'], ['r2', ''], ['r3', 'check_warranty']])
-    expect(JSON.parse(tools[1]!.content)).toEqual({ error: { code: 'unknown_tool', message: 'rejected: unknown_tool' } })
+    expect(JSON.parse(tools[1]!.content)).toEqual({ error: { code: 'unknown_tool', message: 'rejected: unknown_tool (reason: unknown_tool; arguments sent: {})' } })
     expect(JSON.parse(tools[3]!.content).error.code).toBe('invalid_arguments')
     const started = events.filter((e) => e.type === 'tool_started') as Extract<TraceEvent, { type: 'tool_started' }>[]
     expect(started.map((e) => [e.callId, e.system])).toEqual([['ok1', 'orders'], ['r1', null], ['r2', null], ['r3', 'warranty']])
@@ -294,7 +297,7 @@ describe('runAgent: cancellation', () => {
     expect(executed).toEqual([])
     expect(requests).toHaveLength(1)
     expect(events.some((e) => e.type === 'confirmation_resolved')).toBe(false)
-    expect(events.find((e) => e.type === 'tool_finished')).toMatchObject({ callId: 't1', result: { ok: false, error: { code: 'failed' } } })
+    expect(events.find((e) => e.type === 'tool_finished')).toMatchObject({ callId: 't1', result: { ok: false, error: { code: 'not_executed' } } })
     expect(events.at(-1)).toMatchObject({ type: 'run_finished', outcome: 'cancelled' })
     expect(res.outcome).toBe('cancelled')
     expectValidTranscript(res.transcript)
@@ -493,5 +496,109 @@ describe('limits helpers', () => {
     const last = fitToolContent(many, 1000)
     expect(last.length).toBeLessThanOrEqual(1000)
     expect(JSON.parse(last).truncated).toBe(true)
+  })
+})
+
+describe('fix round 1: honest closures and durations', () => {
+  const ticketArgs = { customer_id: 'CUST-1042', product_id: 'PRD-COFFEE-1', issue_description: 'E04', priority: 'normal' }
+  const finishedOf = (events: TraceEvent[], id: string) =>
+    events.find((e) => e.type === 'tool_finished' && e.callId === id) as Extract<TraceEvent, { type: 'tool_finished' }>
+
+  it('durationMs of an approved call excludes the time the user took to decide', async () => {
+    let tickRef: (ms: number) => void = () => undefined
+    const { deps, events, tick } = setup([toolTurn(1, [call('t1', 'create_service_ticket', ticketArgs)]), finalTurn(2, 'ok')], {
+      confirm: async () => {
+        tickRef(600_000) // the user thinks for ten minutes
+        return true
+      },
+    })
+    tickRef = tick
+    await runAgent(input(), deps, new AbortController().signal)
+    expect(finishedOf(events, 't1').durationMs).toBeLessThan(1000)
+  })
+
+  it('a rejected confirmation has durationMs 0 (the tool never ran)', async () => {
+    const { deps, events } = setup([toolTurn(1, [call('t1', 'create_service_ticket', ticketArgs)]), finalTurn(2, 'ok')], { confirm: async () => false })
+    await runAgent(input(), deps, new AbortController().signal)
+    expect(finishedOf(events, 't1')).toMatchObject({ durationMs: 0, result: { error: { code: 'rejected_by_user' } } })
+  })
+
+  it('cancel during a confirmation closes the call as not_executed with durationMs 0', async () => {
+    const ctl = new AbortController()
+    const { deps, events } = setup([toolTurn(1, [call('t1', 'create_service_ticket', ticketArgs)])], { confirm: () => new Promise<boolean>(() => undefined) })
+    const run = runAgent(input(), deps, ctl.signal)
+    await vi.waitFor(() => expect(events.some((e) => e.type === 'confirmation_requested')).toBe(true))
+    ctl.abort()
+    await run
+    expect(finishedOf(events, 't1')).toMatchObject({ durationMs: 0, result: { ok: false, error: { code: 'not_executed' } } })
+  })
+
+  it('cancel and approve in the same tick executes nothing', async () => {
+    const ctl = new AbortController()
+    const { deps, executed, events } = setup([toolTurn(1, [call('t1', 'create_service_ticket', ticketArgs)]), finalTurn(2, 'x')], {
+      confirm: () =>
+        new Promise<boolean>((resolve) => {
+          resolve(true)
+          ctl.abort()
+        }),
+    })
+    const res = await runAgent(input(), deps, ctl.signal)
+    expect(executed).toEqual([])
+    expect(res.outcome).toBe('cancelled')
+    expect(finishedOf(events, 't1').result).toMatchObject({ error: { code: 'not_executed' } })
+  })
+
+  it('a duplicate of a confirmation-gated call never asks again and never creates a second ticket', async () => {
+    const confirm = vi.fn(async () => true)
+    const { deps, executed, requests } = setup(
+      [toolTurn(1, [call('t1', 'create_service_ticket', ticketArgs)]), toolTurn(2, [call('t2', 'create_service_ticket', { ...ticketArgs })]), finalTurn(3, 'done')],
+      { confirm },
+    )
+    await runAgent(input(), deps, new AbortController().signal)
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(executed.filter((e) => e.name === 'create_service_ticket')).toHaveLength(1)
+    expect(JSON.parse((requests[2]!.messages.at(-1) as { content: string }).content).error.code).toBe('duplicate_call')
+  })
+
+  it('a forced-final turn with valid calls executes nothing, asks for no confirmation and ends with limit', async () => {
+    const confirm = vi.fn(async () => true)
+    const { deps, events, executed, requests } = setup(
+      [toolTurn(1, [call('o1', 'get_customer_orders', { customer_id: 'CUST-1042' }), call('t1', 'create_service_ticket', ticketArgs)], [], { forcedFinal: true }), finalTurn(2, 'never')],
+      { confirm },
+    )
+    const res = await runAgent(input(), deps, new AbortController().signal)
+    expect(executed).toEqual([])
+    expect(confirm).not.toHaveBeenCalled()
+    expect(requests).toHaveLength(1)
+    expect(res).toMatchObject({ outcome: 'limit', reason: 'forced_final' })
+    for (const id of ['o1', 't1']) expect(finishedOf(events, id)).toMatchObject({ durationMs: 0, result: { error: { code: 'not_executed' } } })
+    expect(events.some((e) => e.type === 'confirmation_requested')).toBe(false)
+    expectValidTranscript(res.transcript)
+  })
+
+  it('cancel during parallel read-only calls ends promptly and closes them as result_unknown', async () => {
+    const ctl = new AbortController()
+    const { deps, events, executed } = setup(
+      [toolTurn(1, [call('a', 'get_customer_orders', { customer_id: 'CUST-1042' }), call('b', 'get_crm_history', { customer_id: 'CUST-1042' })])],
+      { exec: () => new Promise<ToolResult>(() => undefined) },
+    )
+    const run = runAgent(input(), deps, ctl.signal)
+    await vi.waitFor(() => expect(executed).toHaveLength(2))
+    const t0 = Date.now()
+    ctl.abort()
+    const res = await run
+    expect(Date.now() - t0).toBeLessThan(1000)
+    expect(res.outcome).toBe('cancelled')
+    for (const id of ['a', 'b']) expect(finishedOf(events, id)).toMatchObject({ durationMs: 0, result: { ok: false, error: { code: 'result_unknown' } } })
+    expect(events.at(-1)!.type).toBe('run_finished')
+    expectValidTranscript(res.transcript)
+  })
+
+  it('a rejected call carries the reason and the raw arguments the model sent in its error message', async () => {
+    const { deps, events } = setup([toolTurn(1, [], [rejected('r1', 'check_warranty', 'invalid_arguments', '{"serial_number": BP500')]), finalTurn(2, 'ok')])
+    await runAgent(input(), deps, new AbortController().signal)
+    const msg = (finishedOf(events, 'r1').result as Extract<ToolResult, { ok: false }>).error.message
+    expect(msg).toContain('invalid_arguments')
+    expect(msg).toContain('{"serial_number": BP500')
   })
 })

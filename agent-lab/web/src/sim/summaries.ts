@@ -123,6 +123,8 @@ const ERROR: Record<ToolErrorCode, { en: string; pl: string }> = {
   duplicate_call: { en: 'Repeated identical call', pl: 'Powtórzone identyczne wywołanie' },
   index_not_ready: { en: 'Knowledge base not ready', pl: 'Baza wiedzy nie jest gotowa' },
   failed: { en: 'Tool failed', pl: 'Narzędzie zakończyło się błędem' },
+  not_executed: { en: 'Not run', pl: 'Nie uruchomiono' },
+  result_unknown: { en: 'Result not recorded', pl: 'Wynik nie został zapisany' },
 }
 
 /** Generic summary for an error code (used when no more specific sentence applies). */

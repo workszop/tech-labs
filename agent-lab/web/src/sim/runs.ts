@@ -10,6 +10,7 @@ import type { ToolName } from '@shared/tools'
 import { MAX_STORED_RUNS } from '@/agent/limits'
 import type { ChatItem, RunRecord, TraceEvent } from '@/agent/types'
 import { simDb } from './db'
+import { errorSummary } from './summaries'
 import type { ToolResult } from './tools'
 
 export interface StoredConversation {
@@ -29,30 +30,47 @@ export interface StoredPrefs {
   enabledTools: ToolName[]
 }
 
-const RELOAD_SUMMARY: Record<Lang, string> = {
-  en: 'Interrupted by a page reload; not executed',
-  pl: 'Przerwane przez odświeżenie strony; nie wykonano',
+/**
+ * `tool_finished` events that close every started call without a result, for a
+ * run that stopped without the engine closing it (page reload, or an engine bug).
+ * What is known is said, nothing more:
+ * - a call that was approved, or a read-only call, may have run: `result_unknown`;
+ * - a call that waited for a decision never ran: `not_executed`.
+ * They are dated `at` (the last recorded moment of the run) with `durationMs: 0`.
+ */
+export function closingEvents(events: TraceEvent[], at: number, lang: Lang): TraceEvent[] {
+  const done = new Set(events.flatMap((e) => (e.type === 'tool_finished' ? [e.callId] : [])))
+  const approved = new Set(events.flatMap((e) => (e.type === 'confirmation_resolved' && e.approved ? [e.callId] : [])))
+  const out: TraceEvent[] = []
+  for (const e of events) {
+    if (e.type !== 'tool_started' || done.has(e.callId)) continue
+    const unknown = approved.has(e.callId) || e.readOnly
+    const result: ToolResult = unknown
+      ? {
+          ok: false,
+          error: { code: 'result_unknown', message: 'The run stopped while this call was running. Whether it completed is not known; its result was not recorded.' },
+          summary: errorSummary(lang, 'result_unknown'),
+        }
+      : {
+          ok: false,
+          error: { code: 'not_executed', message: 'The run stopped before a decision was made on this call. Nothing was executed.' },
+          summary: errorSummary(lang, 'not_executed'),
+        }
+    out.push({ type: 'tool_finished', callId: e.callId, at, durationMs: 0, result })
+  }
+  return out
 }
 
 /**
- * Closes a run that has no outcome: every started tool without a result gets a
- * `failed` result (it was not executed, or its result was lost), then the run
- * ends as `cancelled` with reason `reload`. Finished runs are returned unchanged.
+ * Closes a run that has no outcome (`closingEvents`), then ends it as `cancelled`
+ * with reason `reload`, dated at its last recorded event (the reload time is not
+ * part of the run). Finished runs are returned unchanged.
  */
-export function restoreInterruptedRun(run: RunRecord, now: number): RunRecord {
+export function restoreInterruptedRun(run: RunRecord): RunRecord {
   if (run.outcome) return run
-  const events: TraceEvent[] = [...run.events]
-  const done = new Set(events.flatMap((e) => (e.type === 'tool_finished' ? [e.callId] : [])))
-  for (const e of run.events) {
-    if (e.type !== 'tool_started' || done.has(e.callId)) continue
-    const result: ToolResult = {
-      ok: false,
-      error: { code: 'failed', message: 'The page was reloaded before this call finished. Nothing was executed.' },
-      summary: RELOAD_SUMMARY[run.lang],
-    }
-    events.push({ type: 'tool_finished', callId: e.callId, at: now, durationMs: Math.max(0, now - e.at), result })
-  }
-  if (events.at(-1)?.type !== 'run_finished') events.push({ type: 'run_finished', at: now, outcome: 'cancelled', detail: 'reload', answer: '' })
+  const last = run.events.at(-1)?.at ?? run.startedAt
+  const events: TraceEvent[] = [...run.events, ...closingEvents(run.events, last, run.lang)]
+  if (events.at(-1)?.type !== 'run_finished') events.push({ type: 'run_finished', at: last, outcome: 'cancelled', detail: 'reload', answer: '' })
   return { ...run, events, outcome: 'cancelled', answer: '' }
 }
 
@@ -85,14 +103,14 @@ export async function pruneRuns(keep = MAX_STORED_RUNS): Promise<void> {
  * The stored runs, oldest first. Runs without an outcome are restored as
  * cancelled (and saved that way); `interrupted` lists their ids.
  */
-export async function loadRuns(now = Date.now()): Promise<{ runs: RunRecord[]; interrupted: Set<string> }> {
+export async function loadRuns(): Promise<{ runs: RunRecord[]; interrupted: Set<string> }> {
   await pruneRuns()
   const stored = await simDb.runs.orderBy('startedAt').toArray()
   const interrupted = new Set<string>()
   const runs = stored.map((r) => {
     if (r.outcome) return r
     interrupted.add(r.id)
-    return restoreInterruptedRun(r, now)
+    return restoreInterruptedRun(r)
   })
   if (interrupted.size) await simDb.runs.bulkPut(runs.filter((r) => interrupted.has(r.id)))
   return { runs, interrupted }

@@ -36,23 +36,39 @@ beforeEach(async () => {
 })
 
 describe('restoring after a reload', () => {
-  it('a run in progress or waiting for confirmation becomes cancelled and its open call is closed', () => {
-    const restored = restoreInterruptedRun(waitingRun('r1', 100), 500)
+  it('a run waiting for an undecided confirmation becomes cancelled; the call is closed as not_executed', () => {
+    const restored = restoreInterruptedRun(waitingRun('r1', 100))
     expect(restored.outcome).toBe('cancelled')
     expect(restored.answer).toBe('')
+    // Closing events are dated at the last recorded event, not at the reload; the call never ran: durationMs 0.
     expect(restored.events.slice(-2)).toEqual([
-      { type: 'tool_finished', callId: 't1', at: 500, durationMs: 397, result: { ok: false, error: { code: 'failed', message: expect.stringContaining('Nothing was executed') }, summary: expect.stringContaining('odświeżenie') } },
-      { type: 'run_finished', at: 500, outcome: 'cancelled', detail: 'reload', answer: '' },
+      { type: 'tool_finished', callId: 't1', at: 104, durationMs: 0, result: { ok: false, error: { code: 'not_executed', message: expect.stringContaining('Nothing was executed') }, summary: 'Nie uruchomiono' } },
+      { type: 'run_finished', at: 104, outcome: 'cancelled', detail: 'reload', answer: '' },
     ])
     expect(restored.events.some((e) => e.type === 'confirmation_resolved')).toBe(false)
     const done = run('r2', 1, { outcome: 'answered', answer: 'ok' })
-    expect(restoreInterruptedRun(done, 5)).toBe(done)
+    expect(restoreInterruptedRun(done)).toBe(done)
+  })
+
+  it('an approved but unfinished ticket call is closed as result_unknown, never as "nothing was done"', () => {
+    const r = waitingRun('r1', 100)
+    r.events.push({ type: 'confirmation_resolved', callId: 't1', approved: true, at: 105 })
+    const closed = restoreInterruptedRun(r).events.find((e) => e.type === 'tool_finished')!
+    expect(closed).toMatchObject({ at: 105, durationMs: 0, result: { ok: false, error: { code: 'result_unknown' }, summary: 'Wynik nie został zapisany' } })
+    expect(JSON.stringify(closed)).not.toMatch(/Nothing was executed/)
+  })
+
+  it('an in-flight read-only call is closed as result_unknown', () => {
+    const r = run('r1', 100)
+    r.events.push({ type: 'tool_started', step: 1, callId: 'o1', seq: 1, name: 'get_customer_orders', system: 'orders', readOnly: true, args: {}, at: 103 })
+    const closed = restoreInterruptedRun(r).events.find((e) => e.type === 'tool_finished')!
+    expect(closed).toMatchObject({ callId: 'o1', durationMs: 0, result: { error: { code: 'result_unknown' } } })
   })
 
   it('loadRuns restores interrupted runs from IndexedDB, saves them as cancelled and writes no ticket', async () => {
     await saveRun(run('old', 10, { outcome: 'answered', answer: 'done' }))
     await saveRun(waitingRun('live', 20))
-    const { runs, interrupted } = await loadRuns(1000)
+    const { runs, interrupted } = await loadRuns()
     expect(runs.map((r) => [r.id, r.outcome])).toEqual([['old', 'answered'], ['live', 'cancelled']])
     expect([...interrupted]).toEqual(['live'])
     expect((await simDb.runs.get('live'))!.outcome).toBe('cancelled')

@@ -17,6 +17,7 @@ import { resetSimulation, seedIfEmpty, simDb } from '@/sim/db'
 import {
   clearConversation,
   clearRuns,
+  closingEvents,
   loadConversation,
   loadPrefs,
   loadRuns,
@@ -91,8 +92,10 @@ async function restoreState(): Promise<void> {
       history: same ? same.history : [],
     })
   } catch {
-    // IndexedDB unavailable (private mode, blocked storage): run in memory only.
+    // IndexedDB unavailable or partly unreadable: run in memory only, and do not
+    // overwrite what is stored with the empty in-memory state.
     setState({ ready: true })
+    return
   }
   persistConversation()
   persistPrefs()
@@ -287,12 +290,27 @@ export function sendMessage(text: string, scenarioId?: string): Promise<void> {
 }
 
 async function runMessage(session: SessionInfo, message: string, scenarioId?: string): Promise<void> {
-  const scenario = scenarioId ? SCENARIOS.find((x) => x.id === scenarioId) : undefined
-  if (scenario && scenario.customerId !== getState().activeCustomerId) await setActiveCustomer(scenario.customerId)
+  // Registered before the first await, so `cancelRun` (also through a customer or
+  // language switch) stops this message even while the run is being set up.
+  const ctl = new AbortController()
+  runCtl = ctl
+  try {
+    await startRun(ctl, session, message, scenarioId)
+  } finally {
+    if (runCtl === ctl) runCtl = null
+  }
+}
 
+async function startRun(ctl: AbortController, session: SessionInfo, message: string, scenarioId?: string): Promise<void> {
+  const scenario = scenarioId ? SCENARIOS.find((x) => x.id === scenarioId) : undefined
+  // Scenario customers are seed customers; the switch must not cancel this run.
+  if (scenario && scenario.customerId !== getState().activeCustomerId) switchCustomer(scenario.customerId)
+  const customer = await simDb.customers.get(getState().activeCustomerId)
+  if (ctl.signal.aborted) return
+
+  // Snapshot after the last await: nothing can change it unnoticed from here (a switch cancels `ctl`).
   const s = getState()
   const customerId = s.activeCustomerId
-  const customer = await simDb.customers.get(customerId)
   const lang = s.settings.lang
   const enabledTools = [...s.enabledTools]
   const conversationId = s.conversationId
@@ -302,8 +320,6 @@ async function runMessage(session: SessionInfo, message: string, scenarioId?: st
   const record: RunRecord = {
     id: runId, scenarioId: scenario?.id ?? null, customerId, message, enabledTools, startedAt, events: [], model: session.capabilities.chatModel, lang,
   }
-  const ctl = new AbortController()
-  runCtl = ctl
   setState((st) => ({ currentRun: runId, runs: [...st.runs, record].slice(-MAX_STORED_RUNS), selectedTraceItem: null }))
   addItems({ kind: 'customer', id: `msg-${runId}`, runId, text: message, at: startedAt })
   persistRun(runId)
@@ -331,11 +347,18 @@ async function runMessage(session: SessionInfo, message: string, scenarioId?: st
   try {
     result = await runAgent({ runId, lang, customer: { id: customerId, name: customer?.name ?? customerId }, enabledTools, history, message }, deps, ctl.signal)
   } catch (e) {
-    // The engine does not throw; this guards against a bug so that a run never stays "in progress".
-    deps.emit({ type: 'run_finished', at: Date.now(), outcome: 'error', detail: 'unexpected', answer: '' })
+    // The engine does not throw; this guards against a bug so that a run never stays "in progress":
+    // open calls are closed (as `result_unknown` / `not_executed`), a pending card is cancelled.
+    ctl.abort()
+    decide = null
+    const at = Date.now()
+    const events = getState().runs.find((r) => r.id === runId)?.events ?? []
+    for (const ev of closingEvents(events, at, lang)) deps.emit(ev)
+    deps.emit({ type: 'run_finished', at, outcome: 'error', detail: 'unexpected', answer: '' })
+    setState((st) => ({
+      conversation: st.conversation.map((i) => (i.kind === 'confirmation' && i.runId === runId && i.state === 'pending' ? { ...i, state: 'cancelled' } : i)),
+    }))
     result = { transcript: history, outcome: 'error', answer: '', reason: 'unexpected', detail: e instanceof Error ? e.message : String(e) }
-  } finally {
-    if (runCtl === ctl) runCtl = null
   }
 
   updateRun(runId, (r) => ({ ...r, outcome: result.outcome, answer: result.answer }))
@@ -357,11 +380,22 @@ async function runMessage(session: SessionInfo, message: string, scenarioId?: st
   persistConversation()
 }
 
+function resetConversation() {
+  setState({ conversationId: newConversationId(), conversation: [], history: [], pendingConfirmation: null, selectedTraceItem: null })
+  persistConversation()
+}
+
 /** Starts an empty conversation (the model history starts again); the run log is kept. */
 export function startNewConversation() {
   cancelRun()
-  setState({ conversationId: newConversationId(), conversation: [], history: [], pendingConfirmation: null, selectedTraceItem: null })
-  persistConversation()
+  resetConversation()
+}
+
+/** Makes `id` the active customer with a new conversation, without touching the run in progress. */
+function switchCustomer(id: string) {
+  setState({ activeCustomerId: id })
+  resetConversation()
+  persistPrefs()
 }
 
 /** The agent serves another customer: a new conversation. */
@@ -369,9 +403,7 @@ export async function setActiveCustomer(id: string): Promise<void> {
   if (getState().activeCustomerId === id) return
   if (!(await simDb.customers.get(id))) return
   cancelRun()
-  setState({ activeCustomerId: id })
-  startNewConversation()
-  persistPrefs()
+  switchCustomer(id)
 }
 
 /** Turns one tool on or off for the next runs (registry order is kept). */
