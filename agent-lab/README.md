@@ -93,7 +93,7 @@ cd agent-lab/web    && npm run typecheck && npm test && npm run build
 cd agent-lab/worker && npm run typecheck && npm test
 ```
 
-**End-to-end check** (`web/scripts/e2e.mjs`): drives headless Chrome through the raw DevTools Protocol (no Playwright needed) against a running Worker with the mock provider and a built app. It activates with a fresh code, waits for the knowledge-base index, runs scenario 1 (at least three tool rows, a reply with sources), scenario 8 rejected and then approved (the ticket count in IndexedDB), scenario 9 (an access-denied step), reloads (conversation and data survive), switches the language (interface and document titles change) and checks for page errors and leaked secrets. It takes well under a minute.
+**End-to-end check** (`web/scripts/e2e.mjs`): drives headless Chrome through the raw DevTools Protocol (no Playwright needed) against a running Worker with the mock provider and a built app. It activates with a fresh code, waits for the knowledge-base index, runs scenario 1 (at least three tool rows, a reply with sources), scenario 8 rejected and then approved (the ticket count in IndexedDB), scenario 9 (an access-denied step), reloads (conversation and data survive), reloads four more times with the same code (it allows 3 sessions, and the lab must open after every re-activation), switches the language (interface and document titles change) and checks for page errors and leaked secrets. It takes well under a minute.
 
 ```sh
 cd agent-lab/web
@@ -114,7 +114,9 @@ Set in `worker/.dev.vars` (locally) or in `wrangler.jsonc` plus a secret (deploy
 - `EMBEDDING_MODEL` and `EMBEDDING_DIMENSIONS`: an embedding model, for example `text-embedding-3-small` with 1536 dimensions
 - both models listed in `ALLOWED_MODELS`; `PROVIDER_BASE_URL` for another OpenAI-compatible endpoint; prices in `*_PRICE_PER_MTOK`
 
-After switching the embedding model the browser re-indexes the knowledge base by itself: vectors of different models are never mixed, and a search against an index built with another model is refused with a clear error.
+- The Worker sends `max_tokens` and `temperature: 0.2` with every agent turn. Reasoning-model families that refuse these parameters on the Chat Completions API (for example OpenAI's o-series) do not work here; use a non-reasoning chat model with function calling, such as `gpt-4o-mini` or `gpt-4.1-mini`.
+
+After switching the embedding model the browser re-indexes the knowledge base on the next activation: vectors of different models are never mixed, and a search against an index built with another model is refused with a clear error.
 
 ## 2. GitHub Pages deployment
 
@@ -124,8 +126,20 @@ The whole site (labs index, RAG Lab, Service Agent Lab) is published by one work
 2. Under **Settings → Secrets and variables → Actions → Variables**, add `AGENT_LAB_API_BASE_URL`, for example `https://agent-lab-api.<account>.workers.dev` (no trailing slash).
    - Make it a *variable*, not a secret. It ends up in public JavaScript.
    - **Never** put API keys in `VITE_*` variables.
-   - Until the variable exists, the lab still builds and deploys; it then shows its "cannot reach the server" state.
+   - Until the variable exists, the lab still builds and deploys, and the workflow shows a warning annotation. The production build then has no server: it sends nothing (never to `localhost`) and the activation screen says that the lab's server is not configured yet.
 3. Push to `main`, or run the workflow by hand. It type-checks, tests and builds `agent-lab/web` (with `VITE_API_BASE_URL` from the variable), type-checks and tests `agent-lab/worker`, does the same for RAG Lab, and publishes Service Agent Lab at `https://tech-labs.warsztaty-ai.com/agent-lab/`.
+
+### Release order (first publication)
+
+Merging to `main` publishes the labs index card and `/agent-lab/` at once, so the Worker must exist first. Do these steps in this order:
+
+1. Create the D1 database (`npx wrangler d1 create agent-lab`) and commit its `database_id` over `REPLACE_WITH_D1_ID` in `worker/wrangler.jsonc` on the branch.
+2. Apply the migrations: `npm run db:migrate:remote` in `agent-lab/worker`.
+3. Set the secrets `CODE_PEPPER`, `ADMIN_TOKEN` (and `PROVIDER_API_KEY` for real models) with `npx wrangler secret put`.
+4. Deploy the Worker from the branch (`npm run deploy`) and check `GET /api/health`.
+5. Set the repository variable `AGENT_LAB_API_BASE_URL` to the Worker's URL.
+6. Open a pull request: the `pull_request` trigger runs every check job and the site assembly once, without deploying. Neither workflow has run on GitHub before, so this is their rehearsal.
+7. Merge the pull request: the Pages workflow publishes the site with the Worker URL in the bundle.
 
 The build uses a **relative base path** (`base: './'`), so the same output works at any sub-path (override with `VITE_BASE`). The app has no client-side routes, so deep-link 404s cannot happen on Pages.
 
@@ -179,7 +193,7 @@ Admin endpoints (`/api/admin/codes...`) never accept participant codes or sessio
 export AGENT_LAB_API=https://agent-lab-api.<account>.workers.dev
 export AGENT_LAB_ADMIN_TOKEN=...          # or CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET
 npm run admin -- create --count 20 --label "Workshop 2026-12-03" --expires 2026-12-04 \
-                        --requests 300 --tokens 300000 --max-sessions 2 --csv codes.csv
+                        --requests 600 --tokens 1500000 --max-sessions 2 --csv codes.csv
 npm run admin -- list                     # usage, estimated cost, active sessions
 npm run admin -- update <id> --tokens 500000 --reset-usage
 npm run admin -- revoke <id>              # immediate; ends every session of that code
@@ -193,27 +207,32 @@ The Worker enforces its limits; the browser adds its own run guards. The UI only
 
 | Limit | Default | Where |
 |-------|---------|-------|
-| Requests per code | 300 | `access_codes.request_limit` (`DEFAULT_REQUEST_LIMIT`) |
-| Tokens per code | 300,000 | `access_codes.token_limit` (`DEFAULT_TOKEN_LIMIT`) |
-| Concurrent sessions per code | 3 | `max_sessions` (`DEFAULT_MAX_SESSIONS`) |
+| Requests per code | 600 | `access_codes.request_limit` (`DEFAULT_REQUEST_LIMIT`) |
+| Tokens per code | 1,500,000 | `access_codes.token_limit` (`DEFAULT_TOKEN_LIMIT`) |
+| Concurrent sessions per code | 3 (a 4th activation ends the least recently used session) | `max_sessions` (`DEFAULT_MAX_SESSIONS`) |
 | Session lifetime | 4 h | `SESSION_TTL_MINUTES` |
 | Requests per session per minute | 90 | `RATE_LIMIT_PER_MINUTE`. Indexing the knowledge base costs about 7 embedding requests per language and every agent step is one request. |
 | Activation attempts per IP | 10 / 15 min | `ACTIVATION_MAX_ATTEMPTS`, `ACTIVATION_WINDOW_SECONDS` |
 | Global failed activations | 60 / min | `ACTIVATION_GLOBAL_FAILURES_PER_MINUTE` |
 | Model turns per run | 8 (the last one without tools) | `AGENT_MAX_STEPS` |
-| Tool calls per run / per turn | 12 / 5 | `AGENT_MAX_TOOL_CALLS` / Worker constant |
-| Tokens per run | 40,000 | `AGENT_MAX_RUN_TOKENS` |
+| Tool calls per run / per turn | 12 / 5 (then one last turn without tools) | `AGENT_MAX_TOOL_CALLS` / Worker constant |
+| Tokens per run | 80,000 (the turn whose estimate would cross it runs without tools) | `AGENT_MAX_RUN_TOKENS` |
 | One agent request | 60 messages, customer message ≤ 1,000 chars, tool result ≤ 16,000 chars, ≤ 24,000 estimated input tokens, 700 output tokens, temperature 0.2 | Worker constants |
 | Embedding batch | 64 inputs, ≤ 2,000 tokens each | Worker constants |
 | Model turn / tool / whole run | 60 s / 20 s / 180 s | browser (`web/src/agent/limits.ts`) |
 | Identical tool calls | the third identical call (same tool and arguments) ends the run | browser |
 
-A run that reaches a limit always ends with a visible notice and an honest final message. Quotas are reserved **atomically** before each upstream call and reconciled to the provider's token counts afterwards, so parallel requests cannot overshoot a limit.
+A run that reaches a limit always ends with a visible notice and an honest final message: the step, tool-call and token limits of a run all end the same way, with one last model turn without tools (`forcedFinal`), so the customer still gets an answer. `run_limit_exceeded` (409) only refuses a client that keeps calling after that turn.
+
+Quotas are reserved **atomically** before each upstream call and reconciled to the provider's token counts afterwards. Parallel requests therefore cannot overshoot the code's request and token limits or a run's step limit. A run's token budget can be exceeded by at most one model turn (its forced final turn, at most about 24,700 estimated tokens), and its tool-call budget by at most the calls of one step per parallel request.
+
+**What a code needs with a real model** (estimates for `gpt-4o-mini`, Polish or English): indexing the knowledge base costs about 25,000-35,000 tokens per language. Every model turn re-sends the system prompt (about 1,000 tokens), the tool definitions (about 1,300 tokens), the conversation and all earlier tool results, so a typical run of 3-4 turns costs about 15,000-25,000 tokens, and a follow-up question in a long conversation more. A workshop code with the defaults (1,500,000 tokens, 600 requests) therefore covers indexing both languages plus about 60 typical runs (each run is 3-4 requests, so the token budget runs out first), at the default prices about USD 0.25. For a longer workshop raise `--tokens`; to size codes exactly, run the nine scenarios once with one code and read its usage with `admin list`.
 
 ## 7. Security notes
 
 - **No secrets in the browser.** The provider key exists only as a Worker secret; the bundle contains only the Worker's public URL. The browser cannot choose models, upstream URLs, the system prompt or the tool definitions; a request that tries is refused.
-- **Sessions use bearer tokens, not cookies.** 256-bit random token, only its SHA-256 is stored, kept **in browser memory only** (reloading the page means entering the code again; the simulated data and the conversation are kept in IndexedDB). CORS allows only the configured origins and is not treated as authentication.
+- **Sessions use bearer tokens, not cookies.** 256-bit random token, only its SHA-256 is stored, kept **in browser memory only** (reloading the page means entering the code again; the simulated data and the conversation are kept in IndexedDB). On reload or when the tab closes, the browser sends a best-effort logout (`keepalive`, bearer header, never the token in a URL), so the session slot is freed at once.
+- **One code, at most `max_sessions` sessions.** An activation beyond the limit ends the code's least recently used session instead of failing, so a reload never locks a learner out. A code shared by more people than its session limit therefore makes them log each other out: give every learner (or every pair) their own code. CORS allows only the configured origins and is not treated as authentication.
 - **The Worker validates every tool call** of the model: unknown tools, disabled tools, malformed or schema-violating arguments and calls beyond the limits are rejected and reported to the model as errors, so the run goes on and the trace shows the rejection.
 - **Tools see one customer.** The tools execute for the signed-in customer only; a request for another customer's order, shipment, case or serial number returns `forbidden` and no field of that record.
 - **Human approval** guards the only state-changing tool: no ticket is written, and none is claimed, unless the customer approves it.
@@ -228,12 +247,16 @@ A run that reaches a limit always ends with a visible notice and an honest final
 
 | Symptom | Fix |
 |---------|-----|
-| "Cannot reach the server" on the activation screen | `AGENT_LAB_API_BASE_URL` was not set when the Pages workflow ran (the build then points at `localhost:8787`), the Worker is not deployed, or `ALLOWED_ORIGINS` does not contain the page's origin exactly. Set the variable and run the workflow again. |
+| "This lab's server is not configured yet" on the activation screen | `AGENT_LAB_API_BASE_URL` was empty when the Pages workflow ran (the run shows a warning annotation). Deploy the Worker, set the variable and run the workflow again (see the release order in section 2). |
+| "Cannot reach the server" on the activation screen | The Worker is not deployed or not reachable, or `ALLOWED_ORIGINS` does not contain the page's origin exactly. |
 | `origin_not_allowed` | Same as above. For local work, add `http://localhost:5173` and `http://localhost:4173`. |
 | Activation always fails | The code has a typo, has expired or been revoked, or `CODE_PEPPER` changed after the code was created. `npm run admin -- list` shows the status. |
 | Every agent turn fails right after a new deployment | The D1 migrations were not applied (`usage_events` rejects `agent` events without `0002`). Run `npm run db:migrate:remote`. |
 | `rate_limited` while the knowledge base is indexed or right after a language switch | Indexing a language takes about 7 embedding requests; raise `RATE_LIMIT_PER_MINUTE` (default 90) for heavy use or wait a minute. |
-| The knowledge base keeps showing "indexing" or the search tool reports "not ready" | The index of the current language is missing or was built with another embedding model; it is rebuilt automatically. If IndexedDB is blocked (some private windows), the lab cannot keep its data. |
+| The knowledge base shows "Error" or the search tool reports "not ready" | The index of the current language is built after activation and after a language switch. Network errors, rate limits and provider errors are retried automatically (three times, with growing waits); after that, or after an error a wait cannot fix (for example a spent quota), the header status and the line above the message box show the failure with a **Retry** button, and a new activation retries too. A search during a run while the index is not ready returns an honest `index_not_ready` error result. |
+| "This browser does not let the lab store its simulated company data" | IndexedDB is blocked (some private windows, or site data blocked in the settings). The lab cannot run there: open it in a normal window or allow the site to store data, then reload. |
+| Two tabs of the lab show different conversations or a run marked as interrupted | Both tabs share one browser database without coordination (the last one to write wins). Use the lab in one tab. Tickets still need approval and keep unique IDs. |
+| A learner is logged out after someone else activated the same code | The code reached its session limit and the newest activation ended the least recently used session. Give each learner a code, or raise `--max-sessions`. |
 | The agent with a real model never calls tools | The chat model does not support function calling. Use a model that does. |
 | `quota_exceeded` | The code's request or token budget is spent. Raise it with `admin update <id> --tokens ...` or `--reset-usage`. |
 | Pages shows a blank page | Make sure the Pages source is **GitHub Actions** and the lab is opened at `.../agent-lab/`. |

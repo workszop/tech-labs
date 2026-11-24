@@ -56,7 +56,7 @@ Request (`AgentRequest`):
 
 - `runId`: a UUID, new for every customer message; all turns of one answer share it.
   A run belongs to the session that started it.
-- `customer.id` must look like `CUST-1234`, `customer.name` 1 to 80 characters.
+- `customer.id` must look like `CUST-1234`, `customer.name` 1 to 80 characters (line breaks and control characters are collapsed to single spaces before it goes into the system prompt).
 - `enabledTools`: known tool names, no duplicates. Only these are sent to the model.
 - `messages`: no system message; the first is a user message, every assistant
   tool call is answered by exactly one tool message before anything else, tool
@@ -89,15 +89,20 @@ Reject reasons (`rejected[].reason`):
 |---|---|
 | `unknown_tool` | the name is not in the tool registry (a nameless call gets the name `unknown`) |
 | `tool_disabled` | a known tool that is not in `enabledTools` |
-| `invalid_arguments` | arguments are not JSON or fail the tool's schema |
+| `invalid_arguments` | arguments are not JSON or fail the tool's schema (an optional argument sent as `""` or `null` counts as omitted; a required one is an error) |
 | `too_many_calls` | more than 5 valid calls in one turn, beyond the run's remaining tool calls, or any call on a forced-final turn |
 
 Runs are tracked in `agent_runs` (counters only, owned by the session that
-started them). The last allowed step (`maxSteps`), or any step after the run
-used `maxToolCalls`, is sent without tools and returns `forcedFinal: true`;
-after `maxSteps` steps or `maxRunTokens` tokens the next request is
-`run_limit_exceeded` (409). A `runId` of another session is `invalid_request`.
-A failed upstream call gives its step back to the run.
+started them). Each step reserves its token estimate (input estimate + 700)
+atomically together with the step. The last allowed step (`maxSteps`), any
+step after the run used `maxToolCalls`, and the step whose estimate would take
+the run past `maxRunTokens` are sent without tools and return
+`forcedFinal: true`, so the agent still writes an answer. Only a request after
+that (`maxSteps` steps used, or `maxRunTokens` tokens reached) is
+`run_limit_exceeded` (409); the forced final turn can take a run past
+`maxRunTokens` by at most that one turn. A `runId` of another session is
+`invalid_request`. A failed upstream call gives its step and its token
+reservation back to the run (a run left without steps is removed).
 
 With `PROVIDER=mock` the turn is answered by `mock-rule-based-agent`
 (`src/providers/mock-agent.ts`), a deterministic rule-based stand-in that reads
@@ -188,11 +193,11 @@ Generate secrets with `node -e "console.log(require('crypto').randomBytes(32).to
 | `SESSION_TTL_MINUTES` | 240 | absolute session lifetime (never beyond code expiry) |
 | `SESSION_IDLE_TIMEOUT_MINUTES` | 0 (off) | idle timeout using sliding `last_activity_at` |
 | `RATE_LIMIT_PER_MINUTE` | 90 | per session, embeddings + agent turns. Indexing the knowledge base takes about 7 embedding requests per language and every agent step is one request, so a learner who switches language and then runs a scenario needs well over 30 |
-| `AGENT_MAX_STEPS` / `AGENT_MAX_TOOL_CALLS` / `AGENT_MAX_RUN_TOKENS` | 8 / 12 / 40000 | per agent run; published in `capabilities.agent` |
+| `AGENT_MAX_STEPS` / `AGENT_MAX_TOOL_CALLS` / `AGENT_MAX_RUN_TOKENS` | 8 / 12 / 80000 | per agent run; published in `capabilities.agent`; reaching any of them gives one last turn without tools |
 | `ACTIVATION_MAX_ATTEMPTS` / `ACTIVATION_WINDOW_SECONDS` | 10 / 900 | per client IP (failed + in-flight attempts) |
 | `ACTIVATION_GLOBAL_FAILURES_PER_MINUTE` | 60 | all IPs together |
 | `ACTIVATION_MIN_RESPONSE_MS` | 250 | failed activations are padded to this duration |
-| `DEFAULT_REQUEST_LIMIT` / `DEFAULT_TOKEN_LIMIT` / `DEFAULT_MAX_SESSIONS` | 300 / 300000 / 3 | for new codes |
+| `DEFAULT_REQUEST_LIMIT` / `DEFAULT_TOKEN_LIMIT` / `DEFAULT_MAX_SESSIONS` | 600 / 1500000 / 3 | for new codes. With a real model one agent run costs about 15,000-25,000 tokens and indexing the knowledge base about 25,000-35,000 per language, so the defaults cover both languages plus about 60 runs (see `../README.md`, section 6) |
 | `CLEANUP_RETENTION_DAYS` | 7 | cron deletes sessions expired/revoked longer ago, and agent runs older than that |
 | `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD` | empty | enable Cloudflare Access JWT verification for admin |
 
@@ -225,7 +230,7 @@ limiter works on its own.
 
 ```bash
 npm run admin -- create --count 10 --label "Workshop Nov" --expires 2026-12-31 \
-  --requests 300 --tokens 300000 --max-sessions 3 --csv codes.csv
+  --requests 600 --tokens 1500000 --max-sessions 3 --csv codes.csv
 npm run admin -- list
 npm run admin -- update <id> --requests 500 --tokens 500000 --expires none
 npm run admin -- update <id> --disable            # or --enable
@@ -245,7 +250,7 @@ day (UTC). Plaintext codes are printed once; `--csv` writes them to a file with 
 | Estimated tokens per embedding input | 2000 | 413 |
 | Agent transcript | 60 messages; user message 1000 chars; tool result 16000 chars | 413 |
 | Estimated agent input tokens (system + tools + transcript) | 24000 | 413 |
-| Agent run | 8 steps, 12 tool calls (5 per step), 40000 tokens | `forcedFinal`, then `run_limit_exceeded` 409 |
+| Agent run | 8 steps, 12 tool calls (5 per step), 80000 tokens | `forcedFinal` (one last turn without tools), then `run_limit_exceeded` 409 |
 | Requests per session per minute | `RATE_LIMIT_PER_MINUTE` (90) | `rate_limited` 429 + `retryAfterSeconds` |
 | Activation attempts per IP | 10 / 15 min (failed + in-flight) | 429 |
 | Failed activations, global | 60 / min | 429 |
@@ -259,8 +264,11 @@ The client can never choose provider URLs, models, tools or the system prompt.
 - Before calling upstream, one conditional `UPDATE … RETURNING` reserves
   `requests_used + 1` and `tokens_used + estimate` only if the code is active,
   not revoked/expired, and both budgets have room. D1 executes statements
-  serially, so parallel requests cannot overshoot (tested: 10 parallel requests
-  against a limit of 3 → exactly 3 succeed).
+  serially, so parallel requests cannot overshoot the code's budgets (tested: 10
+  parallel requests against a limit of 3 → exactly 3 succeed). Within a run,
+  parallel requests cannot exceed the step limit; the run's token budget can be
+  exceeded by at most one (forced final) turn, and its tool-call budget by at
+  most the calls of one step per parallel request.
   - estimate: embeddings = Σ ⌈len/4⌉; agent turn = estimated input tokens + 700.
 - Afterwards a single D1 batch replaces the estimate with the provider-reported
   usage (or the estimate if none is reported), adds the cost, and inserts a
@@ -268,6 +276,9 @@ The client can never choose provider URLs, models, tools or the system prompt.
   `agent`; token counts only - never prompt or document text).
 - **Upstream failure:** the token reservation is refunded; **the request stays
   counted** (it used a request slot; this also caps retry storms against a failing provider).
+  A **timed-out or abandoned** agent turn is charged its input estimate instead
+  (usage event `aborted`): the provider has usually billed the input, and
+  aborting every request must not bypass the code's token limit.
   A failed agent turn also gives its step back to the run.
 
 ## Security notes
@@ -279,8 +290,12 @@ The client can never choose provider URLs, models, tools or the system prompt.
   get an identical `invalid_code` response, padded to a minimum duration.
 - **Sessions**: 32 random bytes, base64url; only `SHA-256(token)` is stored as the
   session id. Cross-site (github.io ↔ workers.dev) → bearer tokens, no cookies,
-  so no CSRF surface. Tokens live in browser memory only. `max_sessions` is
-  enforced in the same atomic statement that creates the session.
+  so no CSRF surface. Tokens live in browser memory only; the web app sends a
+  best-effort `keepalive` logout on page unload. `max_sessions` is enforced in
+  the same D1 batch (a transaction) that creates the session: an activation
+  beyond the limit revokes the code's least recently used session instead of
+  failing, so a reload never locks a learner out. A code shared by more people
+  than its session limit makes them log each other out.
 - **Brute force**: per-IP counter keyed by `HMAC(pepper, CF-Connecting-IP)` (raw IPs
   are never stored), incremented atomically *before* checking the code; successes
   give their slot back. Plus a global failed-attempts ceiling.

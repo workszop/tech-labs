@@ -96,6 +96,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: Check the Worker URL
+        if: ${{ vars.AGENT_LAB_API_BASE_URL == '' }}
+        run: echo "::warning title=Service Agent Lab::The repository variable AGENT_LAB_API_BASE_URL is empty. The published lab will say that its server is not configured and cannot be activated. Deploy the Worker and set the variable first (agent-lab/README.md, section 2, release order)."
       - name: Build
         run: npm run build
         env:
