@@ -10,7 +10,8 @@
  * Rules it never breaks:
  * - only tools from the list it was given, at most 3 per turn;
  * - never a call whose identical arguments already have a result (so an error
- *   result such as forbidden or rejected_by_user is not retried);
+ *   result such as forbidden or rejected_by_user is not retried); a follow-up
+ *   message in the same conversation is answered from those earlier results;
  * - more than one matching appliance: it asks which one instead of guessing;
  * - it says a ticket exists only when create_service_ticket returned it.
  *
@@ -75,6 +76,8 @@ interface Plan {
   unit: Unit | null
   /** The orders were read but no appliance matches the request. */
   noMatch: boolean
+  /** Successful results of earlier runs the rules wanted again: the answer uses them instead of a new call. */
+  reused: Done[]
 }
 
 // ---------------------------------------------------------------- keyword rules (pl + en)
@@ -233,7 +236,7 @@ function pickUnit(intents: Intents, units: Unit[]): { unit: Unit | null; ambiguo
 // ---------------------------------------------------------------- planning
 
 function plan(intents: Intents, done: Done[], customerId: string, available: Set<string>): Plan {
-  const result: Plan = { calls: [], missing: new Set(), ambiguous: null, unit: null, noMatch: false }
+  const result: Plan = { calls: [], missing: new Set(), ambiguous: null, unit: null, noMatch: false, reused: [] }
   const doneKeys = new Set(done.map((d) => d.key))
   // Calls the Worker rejected come back with `arguments: {}`, so their key never matches a
   // planned call: a tool that got such an error in this run is not requested again.
@@ -245,7 +248,12 @@ function plan(intents: Intents, done: Done[], customerId: string, available: Set
   }
   const add = (name: ToolName, args: Json): void => {
     const key = callKey(name, args)
-    if (doneKeys.has(key) || rejectedNames.has(name) || result.calls.some((c) => c.key === key)) return
+    if (doneKeys.has(key)) {
+      const prev = find(name, args)
+      if (prev && prev.ok && !prev.inRun && !result.reused.includes(prev)) result.reused.push(prev)
+      return
+    }
+    if (rejectedNames.has(name) || result.calls.some((c) => c.key === key)) return
     if (!available.has(name)) {
       result.missing.add(name)
       return
@@ -561,8 +569,10 @@ function answer(lang: Lang, intents: Intents, done: Done[], p: Plan, limitReache
   else if (p.noMatch) out.push(t.noMatch)
 
   const run = done.filter((d) => d.inRun)
+  // Facts for this answer: earlier results the request needs again, then this run's results.
+  const facts = [...p.reused, ...run]
   let useful = !!p.unit
-  for (const d of run) {
+  for (const d of facts) {
     if (!d.ok) {
       out.push(errorLine(lang, d))
       continue
@@ -598,7 +608,7 @@ function answer(lang: Lang, intents: Intents, done: Done[], p: Plan, limitReache
       case 'get_shipments': {
         const rows = ((data?.shipments as unknown[] | undefined) ?? []).map(asObject).filter((x): x is Json => !!x)
         useful = true
-        const tracked = run.some((x) => x.ok && x.name === 'track_shipment')
+        const tracked = facts.some((x) => x.ok && x.name === 'track_shipment')
         if (!tracked) {
           out.push(t.shipments(rows.length))
           for (const s of rows.slice(0, 3)) out.push(t.shipmentRow(s))
@@ -646,7 +656,7 @@ function answer(lang: Lang, intents: Intents, done: Done[], p: Plan, limitReache
   if (intents.repeated && !ticketDone) out.push(t.escalate)
   if (p.missing.size && !limitReached) out.push(t.missing([...p.missing].join(', ')))
   if (limitReached) out.push(t.limit)
-  if (!useful && !run.length) out.push(t.nothing)
+  if (!useful && !facts.length) out.push(t.nothing)
   else if (run.some((d) => !d.ok) || p.missing.size) out.push(t.human)
   return out.join('\n\n')
 }

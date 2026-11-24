@@ -27,7 +27,7 @@ describe('admin codes CRUD', () => {
     expect(codes).toHaveLength(3)
     expect(new Set(codes.map((c) => c.code)).size).toBe(3)
     for (const c of codes) {
-      expect(c).toMatchObject({ label: 'Workshop Nov', status: 'active', requestLimit: 300, tokenLimit: 300000, maxSessions: 3, requestsUsed: 0, activeSessions: 0 })
+      expect(c).toMatchObject({ label: 'Workshop Nov', status: 'active', requestLimit: 600, tokenLimit: 1500000, maxSessions: 3, requestsUsed: 0, activeSessions: 0 })
       expect(c.code).toMatch(/^AGT(-[0-9A-Z]{4}){5}$/)
     }
     const list = (await (await api('/api/admin/codes', { headers: adminHeaders() })).json()) as AdminListCodesResponse

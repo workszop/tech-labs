@@ -137,3 +137,11 @@ describe('scheduled cleanup', () => {
     expect(await env.DB.prepare('SELECT run_id FROM agent_runs WHERE run_id = ?1').bind(liveRun).first()).not.toBeNull()
   })
 })
+
+describe('config defaults (final fix finding 2)', () => {
+  it('a new code gets 600 requests and 1 500 000 tokens unless the vars say otherwise', async () => {
+    const { loadConfig } = await import('../src/env')
+    const cfg = loadConfig({} as never)
+    expect([cfg.defaultRequestLimit, cfg.defaultTokenLimit, cfg.agentMaxRunTokens]).toEqual([600, 1_500_000, 80_000])
+  })
+})

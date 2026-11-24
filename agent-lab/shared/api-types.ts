@@ -19,7 +19,6 @@ export type ApiErrorCode =
   | 'invalid_code' // 401 activation: unknown code
   | 'expired_code' // 403 activation or later: the code passed its expiry date
   | 'revoked_code' // 403 the administrator revoked / disabled the code
-  | 'too_many_sessions' // 403 activation: code reached max concurrent sessions
   | 'unauthorized' // 401 missing / unknown bearer token
   | 'session_expired' // 401 session past expires_at or revoked
   | 'quota_exceeded' // 402 request or token budget of the code is spent
@@ -30,7 +29,7 @@ export type ApiErrorCode =
   | 'upstream_unavailable' // 502 provider failed / network
   | 'upstream_timeout' // 504 provider took too long
   | 'upstream_bad_response' // 502 provider answered with something malformed
-  | 'run_limit_exceeded' // 409 the agent run already used its steps or token budget
+  | 'run_limit_exceeded' // 409 the agent run already used its steps or token budget (after its forced final turn)
   | 'not_found' // 404
   | 'internal' // 500
 
@@ -56,11 +55,16 @@ export interface Capabilities {
   maxEmbeddingBatch: number
   /** Max estimated tokens for a single embedding input string. */
   maxEmbeddingInputTokens: number
-  /** Per-run limits of POST /api/agent. */
+  /**
+   * Per-run limits of POST /api/agent. When a run reaches `maxSteps` or
+   * `maxToolCalls`, or the next turn's estimate would cross `maxRunTokens`, that
+   * turn runs without tools (`forcedFinal: true`) so the agent still answers.
+   */
   agent: {
     maxSteps: number
     maxToolCalls: number
     maxParallelToolCalls: number
+    /** The forced final turn may take the run past this by at most one turn. */
     maxRunTokens: number
     maxMessageChars: number
   }
@@ -207,7 +211,7 @@ export interface AgentResponse {
   toolCalls: ValidatedToolCall[]
   /** Answer each with an error tool message, do not execute. */
   rejected: RejectedToolCall[]
-  /** True when the Worker removed the tools because a run limit was reached. */
+  /** True when the Worker removed the tools because a run limit (steps, tool calls or tokens) was reached. */
   forcedFinal: boolean
   finishReason: string | null
   usage: ChatUsage

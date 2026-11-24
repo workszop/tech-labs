@@ -225,6 +225,10 @@ export function validateToolArgs(
   for (const [key, raw] of Object.entries(args)) {
     const prop = own(properties, key) ? properties[key] : undefined
     if (!prop) return fail(`unknown argument "${key}". Allowed: ${Object.keys(properties).join(', ')}.`)
+    const optional = !required.includes(key)
+    // Models routinely send an optional argument they do not use as "" or null: that means omitted.
+    if (optional && (raw === null || (typeof raw === 'string' && !raw.trim()))) continue
+    if (raw === null) return fail(`missing required argument "${key}".`)
     if (typeof raw !== 'string') return fail(`argument "${key}" must be a string.`)
     const value = raw.trim()
     if (!value) return fail(`argument "${key}" must not be empty.`)

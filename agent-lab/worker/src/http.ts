@@ -5,7 +5,6 @@ export const ERROR_STATUS: Record<ApiErrorCode, number> = {
   invalid_code: 401,
   expired_code: 403,
   revoked_code: 403,
-  too_many_sessions: 403,
   unauthorized: 401,
   session_expired: 401,
   quota_exceeded: 402,

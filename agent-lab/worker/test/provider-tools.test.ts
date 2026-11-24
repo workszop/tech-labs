@@ -155,6 +155,56 @@ describe('mock agent (rule-based, offline)', () => {
     }
   })
 
+  it('a follow-up question in the same conversation answers from the earlier results (final fix finding 12)', () => {
+    const cases = [
+      ['en', 'Hi, my Barista Pro 500 shows error E04 and will not brew coffee. What should I do, and is this covered?', 'Is it still under warranty?', 'Warranty WAR-0031 is active until 2028-03-12'],
+      ['pl', 'Dzień dobry, mój ekspres Barista Pro 500 pokazuje błąd E04 i nie parzy kawy. Co mam zrobić i czy obejmuje to gwarancja?', 'Czy nadal jest na gwarancji?', 'Gwarancja WAR-0031 jest ważna do 2028-03-12'],
+    ] as const
+    for (const [lang, first, follow, expected] of cases) {
+      const r1 = runMock('CUST-1042', first, lang)
+      const r2 = runMock('CUST-1042', follow, lang, { history: r1.messages })
+      expect(r2.calls, lang).toEqual([])
+      expect(r2.answer, lang).toContain(expected)
+      expect(r2.answer, lang).toContain('BP500-26-10482')
+    }
+  })
+
+  it('"and when will it arrive?" after the delivery question answers with the tracked shipment (finding 12)', () => {
+    const cases = [
+      ['en', 'You promised to send me a new brush motor for my robot vacuum and said it would arrive on 14 November. It still has not come. Where is it?', 'And when will it arrive?'],
+      ['pl', 'Obiecaliście wysłać mi nowy silnik szczotki do robota sprzątającego i miał dotrzeć 14 listopada. Nadal go nie ma. Gdzie jest?', 'A kiedy dotrze?'],
+    ] as const
+    for (const [lang, first, follow] of cases) {
+      const r1 = runMock('CUST-1017', first, lang)
+      const r2 = runMock('CUST-1017', follow, lang, { history: r1.messages })
+      expect(r2.calls, lang).toEqual([])
+      expect(r2.answer, lang).toContain('SHIP-2026-100')
+      expect(r2.answer, lang).toContain('2026-11-27')
+    }
+  })
+
+  it('"ok, please book the repair" after the E04 answer proposes a ticket for the owned unit (finding 12)', () => {
+    const cases = [
+      ['en', 'Hi, my Barista Pro 500 shows error E04 and will not brew coffee. What should I do, and is this covered?', 'OK, please book the repair.', 'Service ticket TCK-2026-0001 was created'],
+      ['pl', 'Dzień dobry, mój ekspres Barista Pro 500 pokazuje błąd E04 i nie parzy kawy. Co mam zrobić i czy obejmuje to gwarancja?', 'Dobrze, proszę umówić naprawę.', 'Zgłoszenie serwisowe TCK-2026-0001 zostało utworzone'],
+    ] as const
+    for (const [lang, first, follow, expected] of cases) {
+      const r1 = runMock('CUST-1042', first, lang)
+      const r2 = runMock('CUST-1042', follow, lang, { history: r1.messages })
+      expect(r2.calls, lang).toEqual([['create_service_ticket']])
+      const ticket = r2.messages.flatMap((m) => (m.role === 'assistant' ? (m.toolCalls ?? []) : [])).find((c) => c.name === 'create_service_ticket')!
+      expect(ticket.arguments).toMatchObject({ customer_id: 'CUST-1042', product_id: 'PRD-COFFEE-1' })
+      expect(r2.answer, lang).toContain(expected)
+    }
+  })
+
+  it('a follow-up the rules do not understand gets a clarifying question, not a bare unit line (finding 12)', () => {
+    const r1 = runMock('CUST-1042', 'Hi, my Barista Pro 500 shows error E04 and will not brew coffee. What should I do, and is this covered?')
+    const r2 = runMock('CUST-1042', 'Thanks. Anything else?', 'en', { history: r1.messages })
+    expect(r2.calls).toEqual([])
+    expect(r2.answer).toMatch(/Could you tell me a bit more/)
+  })
+
   it('3. vacuum warranty: picks the vacuum by model name, warns that the warranty ends soon', () => {
     const r = runMock('CUST-1008', 'The battery of my AeroClean V10 now lasts only a few minutes. Is the vacuum still under warranty?')
     expect(r.calls[0]).toEqual(['get_customer_orders'])

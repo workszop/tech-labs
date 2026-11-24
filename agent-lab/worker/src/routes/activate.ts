@@ -75,32 +75,35 @@ export async function handleActivate(c: RequestContext): Promise<Response> {
     return fail(err as ApiError)
   }
 
-  // Create the session only if the code still has a free session slot (single atomic statement).
+  // When the code already has max_sessions active sessions, its least recently used
+  // session is revoked to make room (a reload or a new device must never lock the
+  // learner out). Both statements run in one D1 batch (a transaction), so parallel
+  // activations never leave more than max_sessions sessions active.
   const token = newSessionToken()
   const sessionId = await sessionIdFromToken(token)
   const ttlEnd = now + cfg.sessionTtlMinutes * 60_000
   const expiresAt = code.expires_at !== null ? Math.min(ttlEnd, code.expires_at) : ttlEnd
   const idleCutoff = cfg.sessionIdleTimeoutMinutes > 0 ? now - cfg.sessionIdleTimeoutMinutes * 60_000 : 0
-  const session = await env.DB.prepare(
-    `INSERT INTO sessions (id, access_code_id, created_at, expires_at, revoked_at, last_activity_at)
-     SELECT ?1, c.id, ?3, ?4, NULL, ?3
-       FROM access_codes c
-      WHERE c.id = ?2
-        AND (SELECT COUNT(*) FROM sessions s
-              WHERE s.access_code_id = c.id AND s.revoked_at IS NULL
-                AND s.expires_at > ?3 AND s.last_activity_at >= ?5) < c.max_sessions
-     RETURNING *`,
-  )
-    .bind(sessionId, code.id, now, expiresAt, idleCutoff)
-    .first<SessionRow>()
+  const active = `access_code_id = ?2 AND revoked_at IS NULL AND expires_at > ?3 AND last_activity_at >= ?4`
+  const [, inserted] = await env.DB.batch<SessionRow>([
+    env.DB.prepare(
+      `UPDATE sessions SET revoked_at = ?3
+        WHERE id IN (
+          SELECT id FROM sessions WHERE ${active}
+           ORDER BY last_activity_at ASC, created_at ASC
+           LIMIT MAX(0, (SELECT COUNT(*) FROM sessions WHERE ${active})
+                        - (SELECT max_sessions FROM access_codes WHERE id = ?2) + 1))`,
+    ).bind(sessionId, code.id, now, idleCutoff),
+    env.DB.prepare(
+      `INSERT INTO sessions (id, access_code_id, created_at, expires_at, revoked_at, last_activity_at)
+       VALUES (?1, ?2, ?3, ?4, NULL, ?3)
+       RETURNING *`,
+    ).bind(sessionId, code.id, now, expiresAt),
+  ])
+  const session = inserted?.results?.[0] as SessionRow | undefined
 
   await giveBackSlot()
-  if (!session) {
-    throw new ApiError(
-      'too_many_sessions',
-      `This access code is already in use in ${code.max_sessions} active session(s). Log out elsewhere or ask the organiser for help.`,
-    )
-  }
+  if (!session) throw new ApiError('internal', 'The session could not be created.')
   await env.DB.prepare('UPDATE access_codes SET last_used_at = ?2 WHERE id = ?1').bind(code.id, now).run()
 
   const res: ActivateResponse = { token, session: sessionInfo(session, code, cfg) }

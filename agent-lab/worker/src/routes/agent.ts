@@ -122,7 +122,8 @@ export function validateAgentRequest(body: unknown): AgentRequest {
   if (!isObject(customer) || typeof customer.id !== 'string' || !CUSTOMER_ID.test(customer.id)) {
     throw bad('`customer.id` must look like CUST-1234.')
   }
-  const name = typeof customer.name === 'string' ? customer.name.trim() : ''
+  // The name goes into the system prompt: one line, no control characters.
+  const name = typeof customer.name === 'string' ? customer.name.replace(/[\p{Cc}\p{Cf}\s]+/gu, ' ').trim() : ''
   if (!name || name.length > LIMITS.agentRequest.maxCustomerNameChars) {
     throw bad(`\`customer.name\` must be 1 to ${LIMITS.agentRequest.maxCustomerNameChars} characters.`)
   }
@@ -165,10 +166,11 @@ export function checkToolCalls(
   const rejected: RejectedToolCall[] = []
   const transcript: ToolCall[] = []
   const reject = (c: UpstreamToolCall, reason: RejectReason, message: string) => {
-    // A nameless call gets a placeholder name so the transcript stays valid on the next request.
+    // A nameless call gets a placeholder name so the transcript stays valid on the next request;
+    // the transcript name must also be one an OpenAI-style API accepts back (the raw one stays in `rejected`).
     const name = c.name || 'unknown'
     rejected.push({ id: c.id, name, rawArguments: c.rawArguments, reason, message })
-    transcript.push({ id: c.id, name, arguments: {} })
+    transcript.push({ id: c.id, name: name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64), arguments: {} })
   }
   for (const c of calls) {
     if (!isToolName(c.name)) {
@@ -252,16 +254,17 @@ export async function handleAgent(c: RequestContext): Promise<Response> {
   }
 
   const limits = { maxSteps: c.cfg.agentMaxSteps, maxToolCalls: c.cfg.agentMaxToolCalls, maxRunTokens: c.cfg.agentMaxRunTokens }
-  const run = await reserveRunStep(c.env.DB, req.runId, session.id, limits, c.now)
+  const est = inputEstimate + L.maxOutputTokens
+  const run = await reserveRunStep(c.env.DB, req.runId, session.id, limits, est, c.now)
   const step = run.steps
-  const forcedFinal = step >= limits.maxSteps || run.tool_calls >= limits.maxToolCalls
+  // The step, tool-call and token limits all end the same way: one last turn without tools.
+  const forcedFinal = step >= limits.maxSteps || run.tool_calls >= limits.maxToolCalls || run.overBudget
   const tools = forcedFinal ? [] : allTools
 
-  const est = inputEstimate + L.maxOutputTokens
   try {
     await reserveQuota(c.env.DB, code.id, est, c.now)
   } catch (err) {
-    await releaseRunStep(c.env.DB, req.runId).catch((e) => toApiError(e, 'agent.release'))
+    await releaseRunStep(c.env.DB, req.runId, est).catch((e) => toApiError(e, 'agent.release'))
     throw err
   }
 
@@ -277,13 +280,17 @@ export async function handleAgent(c: RequestContext): Promise<Response> {
     )
   } catch (err) {
     const apiErr = toApiError(err, 'agent')
+    // A timed-out or abandoned call has usually been billed for its input by the provider:
+    // charge the input estimate, so aborting every request cannot bypass the code's token limit.
+    const billed = apiErr.code === 'upstream_timeout' || c.request.signal.aborted
+    const inputTokens = billed ? inputEstimate : 0
     await settleUsage(
       c.env.DB,
-      { accessCodeId: code.id, sessionId: session.id, model: provider.chatModel, operation: 'agent', inputTokens: 0, outputTokens: 0, cost: 0, status: 'error' },
+      { accessCodeId: code.id, sessionId: session.id, model: provider.chatModel, operation: 'agent', inputTokens, outputTokens: 0, cost: cost(c.cfg, 'agent', inputTokens, 0), status: billed ? 'aborted' : 'error' },
       est,
       Date.now(),
     ).catch((e) => toApiError(e, 'agent.refund'))
-    await releaseRunStep(c.env.DB, req.runId).catch((e) => toApiError(e, 'agent.release'))
+    await releaseRunStep(c.env.DB, req.runId, est).catch((e) => toApiError(e, 'agent.release'))
     throw apiErr
   }
   const durationMs = Date.now() - t0
@@ -313,7 +320,7 @@ export async function handleAgent(c: RequestContext): Promise<Response> {
     est,
     Date.now(),
   )
-  const after = await recordRunStep(c.env.DB, req.runId, checked.valid.length, usage.inputTokens + usage.outputTokens)
+  const after = await recordRunStep(c.env.DB, req.runId, checked.valid.length, usage.inputTokens + usage.outputTokens, est)
 
   const assistantMessage: AgentResponse['assistantMessage'] = { role: 'assistant', content: result.text }
   if (checked.transcript.length) assistantMessage.toolCalls = checked.transcript

@@ -157,8 +157,8 @@ export function loadConfig(env: Env): Config {
     activationGlobalFailuresPerMinute: Math.round(num(env.ACTIVATION_GLOBAL_FAILURES_PER_MINUTE, 60, 1, 1_000_000)),
     activationMinResponseMs: num(env.ACTIVATION_MIN_RESPONSE_MS, 250, 0, 5000),
 
-    defaultRequestLimit: Math.round(num(env.DEFAULT_REQUEST_LIMIT, 300, 0, 10_000_000)),
-    defaultTokenLimit: Math.round(num(env.DEFAULT_TOKEN_LIMIT, 300_000, 0, 10_000_000_000)),
+    defaultRequestLimit: Math.round(num(env.DEFAULT_REQUEST_LIMIT, 600, 0, 10_000_000)),
+    defaultTokenLimit: Math.round(num(env.DEFAULT_TOKEN_LIMIT, 1_500_000, 0, 10_000_000_000)),
     defaultMaxSessions: Math.round(num(env.DEFAULT_MAX_SESSIONS, 3, 1, 10_000)),
 
     agentMaxSteps: Math.round(num(env.AGENT_MAX_STEPS, LIMITS.agent.maxSteps, 1, 50)),

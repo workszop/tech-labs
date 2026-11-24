@@ -5,6 +5,7 @@ import {
   activateRaw,
   adminHeaders,
   api,
+  auth,
   callWith,
   createCode,
   env,
@@ -12,6 +13,7 @@ import {
   freshIp,
   jsonInit,
 } from './helpers'
+import { sha256Hex } from '../src/crypto'
 
 describe('POST /api/activate', () => {
   it('activates a valid code and returns token + SessionInfo', async () => {
@@ -31,9 +33,9 @@ describe('POST /api/activate', () => {
       chatModel: 'mock-rule-based-agent',
       maxEmbeddingBatch: 64,
       maxEmbeddingInputTokens: 2000,
-      agent: { maxSteps: 8, maxToolCalls: 12, maxParallelToolCalls: 5, maxRunTokens: 40000, maxMessageChars: 1000 },
+      agent: { maxSteps: 8, maxToolCalls: 12, maxParallelToolCalls: 5, maxRunTokens: 80000, maxMessageChars: 1000 },
     })
-    expect(body.session.usage).toMatchObject({ requestsUsed: 0, requestLimit: 300, tokensUsed: 0, tokenLimit: 300000 })
+    expect(body.session.usage).toMatchObject({ requestsUsed: 0, requestLimit: 600, tokensUsed: 0, tokenLimit: 1500000 })
   })
 
   it('stores only the token hash and the code HMAC, never plaintext', async () => {
@@ -96,22 +98,41 @@ describe('POST /api/activate', () => {
     await expectError(await activateRaw(disabled.code), 403, 'revoked_code')
   })
 
-  it('enforces max_sessions (too_many_sessions), and a logout frees a slot', async () => {
+  it('a code at max_sessions revokes its least recently used session on the next activation (finding 5)', async () => {
+    const code = await createCode({ maxSessions: 3 })
+    const s1 = await activate(code.code)
+    const s2 = await activate(code.code)
+    const s3 = await activate(code.code)
+    // Make s2 the least recently used: s1 and s3 are used after it.
+    const t0 = Date.now() - 60_000
+    for (const [s, at] of [[s2, t0], [s1, t0 + 10_000], [s3, t0 + 20_000]] as const) {
+      await env.DB.prepare('UPDATE sessions SET last_activity_at = ?2 WHERE id = ?1').bind(await sha256Hex(s.token), at).run()
+    }
+    const s4 = await activate(code.code)
+    expect(s4.token).toMatch(/\S+/)
+    // Exactly the least recently used session (s2) is revoked; the others keep working.
+    await expectError(await api('/api/session', { headers: auth(s2.token) }), 401, 'session_expired')
+    for (const s of [s1, s3, s4]) expect((await api('/api/session', { headers: auth(s.token) })).status).toBe(200)
+    const { results } = await env.DB.prepare('SELECT COUNT(*) AS n FROM sessions WHERE access_code_id = ?1 AND revoked_at IS NULL').bind(code.id).all<{ n: number }>()
+    expect(results[0]!.n).toBe(3)
+  })
+
+  it('a logout frees a slot without revoking anyone', async () => {
     const code = await createCode({ maxSessions: 2 })
     const s1 = await activate(code.code)
-    await activate(code.code)
-    await expectError(await activateRaw(code.code), 403, 'too_many_sessions')
+    const s2 = await activate(code.code)
     const out = await api('/api/logout', { method: 'POST', headers: { Authorization: `Bearer ${s1.token}` } })
     expect(out.status).toBe(204)
     expect((await activateRaw(code.code)).status).toBe(200)
+    expect((await api('/api/session', { headers: auth(s2.token) })).status).toBe(200)
   })
 
-  it('max_sessions holds under concurrent activations', async () => {
+  it('concurrent activations never leave more than max_sessions active sessions', async () => {
     const code = await createCode({ maxSessions: 2 })
     const results = await Promise.all(Array.from({ length: 6 }, () => activateRaw(code.code)))
-    const statuses = results.map((r) => r.status)
-    expect(statuses.filter((s) => s === 200)).toHaveLength(2)
-    expect(statuses.filter((s) => s === 403)).toHaveLength(4)
+    expect(results.every((r) => r.status === 200)).toBe(true)
+    const { results: rows } = await env.DB.prepare('SELECT COUNT(*) AS n FROM sessions WHERE access_code_id = ?1 AND revoked_at IS NULL').bind(code.id).all<{ n: number }>()
+    expect(rows[0]!.n).toBe(2)
   })
 
   it('throttles per client IP after ACTIVATION_MAX_ATTEMPTS failures (429 + retryAfterSeconds)', async () => {

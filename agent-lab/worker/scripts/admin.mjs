@@ -10,8 +10,8 @@ import { parseArgs } from 'node:util'
 const HELP = `Service Agent Lab admin CLI
 
 Usage:
-  admin create [--count 10] [--label "Workshop Nov"] [--expires 2026-12-31] [--requests 300]
-               [--tokens 300000] [--max-sessions 3] [--csv codes.csv] [--json]
+  admin create [--count 10] [--label "Workshop Nov"] [--expires 2026-12-31] [--requests 600]
+               [--tokens 1500000] [--max-sessions 3] [--csv codes.csv] [--json]
   admin list   [--json]
   admin update <id> [--requests n] [--tokens n] [--max-sessions n] [--label text|none]
                [--expires ISO|none] [--disable | --enable] [--reset-usage] [--revoke-sessions] [--json]

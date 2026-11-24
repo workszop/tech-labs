@@ -15,7 +15,7 @@ export const LIMITS = {
   maxCodeInputChars: 64,
 
   /** Per-run limits of POST /api/agent, published in Capabilities.agent (the first three are overridable by vars). */
-  agent: { maxSteps: 8, maxToolCalls: 12, maxParallelToolCalls: 5, maxRunTokens: 40_000, maxMessageChars: 1000 },
+  agent: { maxSteps: 8, maxToolCalls: 12, maxParallelToolCalls: 5, maxRunTokens: 80_000, maxMessageChars: 1000 },
   /** POST /api/agent request shape and model call. */
   agentRequest: {
     maxMessages: 60,
