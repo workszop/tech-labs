@@ -84,7 +84,7 @@ cd rag-lab/web    && node scripts/e2e.mjs   # end-to-end: needs the worker (mock
    - **Never** put API keys in `VITE_*` variables.
 3. Push to the default branch, or run the workflow by hand.
    - The workflow type-checks, tests and builds both apps.
-   - It then publishes RAG Lab at the site root (`https://rag-lab.warsztaty-ai.com/`); `/rag-lab/` redirects there.
+   - It then publishes RAG Lab at the site root (`https://rag-lab.warsztaty-ai.com/`).
 
 The build uses a **relative base path** (`base: './'`), so the same output works at any sub-path. You can override it with `VITE_BASE`. The app has no client-side routes (state lives in memory), so deep-link 404s cannot happen on Pages.
 
