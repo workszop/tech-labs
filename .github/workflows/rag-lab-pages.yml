@@ -1,5 +1,6 @@
-# Builds RAG Lab (rag-lab/web) and publishes it to GitHub Pages at the site root
-# (custom domain https://rag-lab.warsztaty-ai.com/).
+# Builds RAG Lab (rag-lab/web) and publishes the site to GitHub Pages
+# (custom domain https://tech-labs.warsztaty-ai.com/): the labs index (index.html)
+# at the root, RAG Lab at /rag-lab/.
 #
 # One-time setup (repository Settings):
 #   - Pages → Build and deployment → Source: "GitHub Actions"
@@ -12,9 +13,9 @@ name: RAG Lab → GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['rag-lab/**', '.github/workflows/rag-lab-pages.yml']
+    paths: ['rag-lab/**', 'index.html', '.github/workflows/rag-lab-pages.yml']
   pull_request:
-    paths: ['rag-lab/**', '.github/workflows/rag-lab-pages.yml']
+    paths: ['rag-lab/**', 'index.html', '.github/workflows/rag-lab-pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -45,12 +46,12 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE_URL: ${{ vars.RAG_LAB_API_BASE_URL }}
-      - name: Assemble site (RAG Lab at the root)
+      - name: Assemble site (labs index at the root, RAG Lab at /rag-lab/)
         working-directory: .
         run: |
-          mkdir -p _site
-          cp -r rag-lab/web/dist/. _site/
-          cp .nojekyll _site/
+          mkdir -p _site/rag-lab
+          cp index.html .nojekyll _site/
+          cp -r rag-lab/web/dist/. _site/rag-lab/
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:
