@@ -369,3 +369,19 @@
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   .rl-spotlight::after { animation: none !important; }
 }
+
+/* ---------- Task 9: agent workspace graph (features/workspace) ----------
+   A node whose call is in progress: ink contour with a breathing yellow band (full contour,
+   no glow). With reduced motion the band stays still. */
+@layer components {
+  @keyframes wl-pulse { 0%, 100% { box-shadow: 0 0 0 2px var(--yellow); } 50% { box-shadow: 0 0 0 5px var(--yellow); } }
+  .wl-active { animation: wl-pulse 1.2s ease-in-out infinite; }
+  [data-panel='workspace'] .react-flow__node { cursor: default; }
+  [data-panel='workspace'] .react-flow__edge-path { stroke-linecap: round; }
+  /* React Flow asks free users to keep its attribution link visible: shown small in this graph. */
+  [data-panel='workspace'] .react-flow__attribution { display: block; background: transparent; padding: 0 6px 2px; font-family: var(--font-mono); font-size: 9px; }
+  [data-panel='workspace'] .react-flow__attribution a { color: var(--ink-3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wl-active { animation: none !important; box-shadow: 0 0 0 4px var(--yellow); }
+}
