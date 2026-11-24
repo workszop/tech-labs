@@ -1,5 +1,5 @@
 /**
- * Admin authentication — completely separate from participant sessions.
+ * Admin authentication - completely separate from participant sessions.
  *
  * 1. Cloudflare Access: when ACCESS_TEAM_DOMAIN + ACCESS_AUD are set and the
  *    request carries `Cf-Access-Jwt-Assertion`, the RS256 JWT is verified

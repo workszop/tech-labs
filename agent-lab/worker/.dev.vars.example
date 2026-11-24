@@ -1,10 +1,13 @@
 # Local development only. Copy to .dev.vars (gitignored); values override wrangler.jsonc vars.
 PROVIDER=mock
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:4173
-# Secrets — generate your own, e.g.: node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+# Secrets - generate your own, e.g.: node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 CODE_PEPPER=replace-with-random-32-bytes-base64url
 ADMIN_TOKEN=dev-admin-token-change-me-0123456789
 # Only needed with PROVIDER=openai-compatible
 PROVIDER_API_KEY=sk-replace-me
 # Faster dev experience
 ACTIVATION_MIN_RESPONSE_MS=100
+# Requests per minute per session. Indexing the knowledge base takes about 7 embedding
+# requests per language and every agent step is one request, so keep headroom.
+RATE_LIMIT_PER_MINUTE=90

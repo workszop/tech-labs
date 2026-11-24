@@ -1,4 +1,4 @@
--- Service Agent Lab Worker — initial schema.
+-- Service Agent Lab Worker - initial schema.
 -- All timestamps are INTEGER milliseconds since the Unix epoch (UTC).
 -- No prompt, question or document text is ever stored.
 

@@ -182,7 +182,7 @@ export async function handleUpdateCode(c: RequestContext): Promise<Response> {
   return json(await loadRecord(c, id))
 }
 
-/** DELETE /api/admin/codes/:id — revokes the code and all its sessions (the row and its usage are kept). */
+/** DELETE /api/admin/codes/:id - revokes the code and all its sessions (the row and its usage are kept). */
 export async function handleRevokeCode(c: RequestContext): Promise<Response> {
   await requireAdmin(c.request, c.cfg, c.fetch)
   const id = c.params.id!

@@ -451,6 +451,39 @@ function clip(s: string, n: number): string {
   return t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t
 }
 
+/** Model-specific documents and service bulletins beat general documents of the same search. */
+const PREFERRED_AUTHORITY = new Set(['model_specific', 'service_bulletin'])
+
+/** The hit to quote: never a superseded one; a model-specific or bulletin hit first, else the best-ranked current hit. */
+function topCurrentHit(hits: Json[]): Json | null {
+  const current = hits.filter((h) => h.status !== 'superseded')
+  return current.find((h) => PREFERRED_AUTHORITY.has(String(h.authority))) ?? current[0] ?? null
+}
+
+/**
+ * One or two plain sentences of a knowledge chunk: markdown headings are dropped,
+ * list markers and emphasis removed, and each list line becomes its own sentence.
+ */
+function quoteSentences(markdown: string): string {
+  const lines = markdown
+    .split('\n')
+    .filter((l) => !/^\s*#/.test(l))
+    .map((l) =>
+      l
+        .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
+        .replace(/(\*\*|__|\*|`)/g, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    .filter(Boolean)
+    .map((l) => (/[.!?:;,]$/.test(l) ? l : `${l}.`))
+  const text = lines.join(' ')
+  const sentences = text.match(/[^.!?]+[.!?]+(?=\s|$)/g)?.map((x) => x.trim()) ?? []
+  if (!sentences.length) return clip(text, 240)
+  const two = sentences.slice(0, 2).join(' ')
+  return two.length <= 320 ? two : clip(sentences[0]!, 320)
+}
+
 function errorLine(lang: Lang, d: Done): string {
   const t = T[lang]
   const id = Object.values(d.args).find((v) => typeof v === 'string' && /^(ORD|CASE|SHIP|PRD)-/.test(v)) as string | undefined
@@ -514,11 +547,12 @@ function answer(lang: Lang, intents: Intents, done: Done[], p: Plan, limitReache
       }
       case 'search_service_knowledge': {
         const hits = (Array.isArray(d.data) ? d.data : []).map(asObject).filter((h): h is Json => !!h)
-        const current = hits.filter((h) => h.status !== 'superseded').slice(0, 2)
-        if (!current.length) out.push(t.kbEmpty)
-        for (const h of current) out.push(t.kb(String(h.docTitle), clip(String(h.text ?? ''), 320)))
+        const top = topCurrentHit(hits)
+        const quote = top ? quoteSentences(String(top.text ?? '')) : ''
+        if (top && quote) out.push(t.kb(String(top.docTitle), quote))
+        else out.push(t.kbEmpty)
         for (const h of hits.filter((x) => x.status === 'superseded').slice(0, 1)) out.push(t.superseded(String(h.docTitle)))
-        useful = useful || current.length > 0
+        useful = useful || !!quote
         break
       }
       case 'get_shipments': {

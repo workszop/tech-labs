@@ -6,7 +6,7 @@ import { TOOLS, TOOL_NAMES, type ToolName } from '../../shared/tools'
 import { ApiError } from '../src/http'
 import { mockAgentTurn } from '../src/providers/mock-agent'
 import { OpenAICompatibleProvider } from '../src/providers/openai-compatible'
-import { runMock } from './fake-world'
+import { hit, runMock } from './fake-world'
 
 // ---------------------------------------------------------------- openai-compatible chatWithTools
 
@@ -244,6 +244,33 @@ describe('mock agent (rule-based, offline)', () => {
     }
     expect(r.calls).toEqual([['search_service_knowledge']])
     expect(r.answer).toContain('get_customer_orders')
+  })
+
+  it('quotes one or two clean sentences from the top current hit, preferring a model-specific or bulletin document', () => {
+    const knowledge = [
+      hit('Barista series manual (2023)', '## E04\n- Descale the machine.', 'superseded', 'manual', 0.95),
+      hit('Barista Pro 500 user manual', '## Error codes\nThe display shows a code from E01 to E09.', 'current', 'manual', 0.9),
+      hit(
+        'Barista Pro 500 - error codes',
+        '## E04: water flow blocked\n**E04** means the brewing unit is blocked. Switch the machine off and rinse the *brew unit*.\n- Restart the machine.\n- Call service if it returns.',
+        'current',
+        'model_specific',
+        0.85,
+      ),
+    ]
+    const r = runMock('CUST-1042', 'My Barista Pro 500 shows error E04. What should I do?', 'en', { enabled: ['search_service_knowledge'], knowledge })
+    expect(r.calls).toEqual([['search_service_knowledge']])
+    expect(r.answer).toContain('From "Barista Pro 500 - error codes": E04 means the brewing unit is blocked. Switch the machine off and rinse the brew unit.')
+    expect(r.answer).not.toContain('Restart the machine')
+    expect(r.answer).not.toContain('Barista Pro 500 user manual')
+    expect(r.answer).toContain('did not rely on "Barista series manual (2023)"')
+    expect(r.answer).not.toMatch(/##|\*|^\s*- /m)
+
+    const pl = runMock('CUST-1042', 'Mój Barista Pro 500 pokazuje błąd E04. Co robić?', 'pl', {
+      enabled: ['search_service_knowledge'],
+      knowledge: [hit('Instrukcja Barista Pro 500', '## Kody błędów\n- **E04**: zablokowany przepływ wody\n- E05: brak ciśnienia', 'current', 'manual')],
+    })
+    expect(pl.answer).toContain('Według dokumentu „Instrukcja Barista Pro 500”: E04: zablokowany przepływ wody. E05: brak ciśnienia.')
   })
 
   it('index_not_ready: does not retry the search and says the knowledge base is not ready', () => {

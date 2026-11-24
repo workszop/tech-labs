@@ -2,7 +2,7 @@ import type { RequestContext } from '../context'
 import { MIN_ADMIN_TOKEN_LENGTH, MIN_PEPPER_LENGTH } from '../env'
 import { json } from '../http'
 
-/** GET /api/health — liveness + coarse readiness. Never returns secret values. */
+/** GET /api/health - liveness + coarse readiness. Never returns secret values. */
 export async function handleHealth(c: RequestContext): Promise<Response> {
   let db = 'ok'
   try {

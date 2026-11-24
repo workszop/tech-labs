@@ -1,7 +1,7 @@
-import type { Capabilities, NumberRange } from '../../shared/api-types'
+import type { Capabilities } from '../../shared/api-types'
 import type { Config } from './env'
 
-/** Server-side hard limits. Client values are validated / clamped against these. */
+/** Server-side hard limits. Client values are validated against these. */
 export const LIMITS = {
   maxEmbeddingsBodyBytes: 512 * 1024,
   maxAgentBodyBytes: 256 * 1024,
@@ -10,12 +10,6 @@ export const LIMITS = {
 
   maxEmbeddingBatch: 64,
   maxEmbeddingInputTokens: 2000,
-  maxContextChunks: 10,
-  maxQuestionChars: 1000,
-  maxChatInputTokens: 12_000,
-
-  maxOutputTokens: { min: 64, max: 1024, default: 500 } satisfies NumberRange,
-  temperature: { min: 0, max: 1, default: 0.2 } satisfies NumberRange,
 
   /** Raw access-code input length before normalisation. */
   maxCodeInputChars: 64,
@@ -41,12 +35,6 @@ export function capabilities(cfg: Config): Capabilities {
     chatModel: cfg.chatModel,
     maxEmbeddingBatch: LIMITS.maxEmbeddingBatch,
     maxEmbeddingInputTokens: LIMITS.maxEmbeddingInputTokens,
-    maxContextChunks: LIMITS.maxContextChunks,
-    maxChatInputTokens: LIMITS.maxChatInputTokens,
-    maxQuestionChars: LIMITS.maxQuestionChars,
-    maxOutputTokens: { ...LIMITS.maxOutputTokens },
-    temperature: { ...LIMITS.temperature },
-    streaming: false,
     agent: {
       ...LIMITS.agent,
       maxSteps: cfg.agentMaxSteps,
@@ -54,8 +42,4 @@ export function capabilities(cfg: Config): Capabilities {
       maxRunTokens: cfg.agentMaxRunTokens,
     },
   }
-}
-
-export function clamp(n: number, range: NumberRange): number {
-  return Math.min(range.max, Math.max(range.min, n))
 }

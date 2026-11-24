@@ -1,8 +1,9 @@
 # Service Agent Lab - Worker API gateway
 
-The only server-side component of Service Agent Lab. The browser app (GitHub Pages) does
-chunking, vector storage (IndexedDB) and cosine search itself; this Cloudflare
-Worker handles:
+The only server-side component of Service Agent Lab. The browser app (GitHub Pages) holds
+the simulated company systems, executes the agent's tools and does chunking,
+vector storage (IndexedDB) and cosine search of the knowledge base itself; this
+Cloudflare Worker handles:
 
 - access codes → bearer-token sessions
 - the embeddings proxy to an OpenAI-compatible provider (or an offline `mock` provider)
@@ -36,25 +37,75 @@ includes them.
 
 The browser drives the agent loop and executes the tools against the simulated
 company systems; each model turn is one request carrying the whole transcript.
+
+Request (`AgentRequest`):
+
+```json
+{
+  "runId": "8f3c2a9e-6b1d-4c2e-9a7f-0d5e4b3c2a10",
+  "lang": "en",
+  "customer": { "id": "CUST-1042", "name": "Emma Wilson" },
+  "enabledTools": ["get_customer_orders", "check_warranty", "search_service_knowledge"],
+  "messages": [
+    { "role": "user", "content": "My Barista Pro 500 shows E04. Is it covered?" },
+    { "role": "assistant", "content": "", "toolCalls": [{ "id": "call_1", "name": "get_customer_orders", "arguments": { "customer_id": "CUST-1042" } }] },
+    { "role": "tool", "toolCallId": "call_1", "name": "get_customer_orders", "content": "{\"customer_id\":\"CUST-1042\",\"orders\":[...]}" }
+  ]
+}
+```
+
+- `runId`: a UUID, new for every customer message; all turns of one answer share it.
+  A run belongs to the session that started it.
+- `customer.id` must look like `CUST-1234`, `customer.name` 1 to 80 characters.
+- `enabledTools`: known tool names, no duplicates. Only these are sent to the model.
+- `messages`: no system message; the first is a user message, every assistant
+  tool call is answered by exactly one tool message before anything else, tool
+  call ids are unique, and the last message is a user or tool message.
+- A `model` other than the server's is `model_not_allowed`; `system`, `tools`
+  or `temperature` in the body is `invalid_request`.
+
 The Worker builds the system prompt (`buildAgentSystemPrompt`, date `SIM_TODAY`),
 sends only the enabled tools, calls the model (temperature 0.2, at most 700
-output tokens) and checks every tool call in order: unknown name →
-`unknown_tool`, not enabled → `tool_disabled`, arguments not JSON or failing the
-tool schema → `invalid_arguments`, beyond 5 per step or the run's remaining
-calls → `too_many_calls`. Rejected calls come back in `rejected` (the browser
-answers them with an error tool message, the run goes on); valid calls in
-`toolCalls` (`create_service_ticket` has `requiresConfirmation: true`).
+output tokens) and checks every tool call in order.
+
+Response (`AgentResponse`):
+
+| Field | Meaning |
+|---|---|
+| `runId`, `step` | the run and the 1-based model turn within it |
+| `model` | the server's chat model |
+| `kind` | `tool_calls` or `final` |
+| `assistantMessage` | append verbatim to the transcript (rejected calls appear with `arguments: {}`) |
+| `toolCalls` | validated calls to execute: `name`, parsed `arguments`, `system`, `readOnly`, `requiresConfirmation` (true for `create_service_ticket`) |
+| `rejected` | calls not to execute: `id`, `name`, `rawArguments`, `reason`, `message`; answer each with an error tool message and the run goes on |
+| `forcedFinal` | true when this turn was sent without tools because a run limit was reached |
+| `finishReason`, `usage`, `durationMs` | from the provider (usage estimated when it reports none) |
+| `quota` | `UsageInfo` after this turn was accounted |
+| `limits` | `maxSteps`, `maxToolCalls`, `maxRunTokens` and what the run has used so far |
+
+Reject reasons (`rejected[].reason`):
+
+| Reason | When |
+|---|---|
+| `unknown_tool` | the name is not in the tool registry (a nameless call gets the name `unknown`) |
+| `tool_disabled` | a known tool that is not in `enabledTools` |
+| `invalid_arguments` | arguments are not JSON or fail the tool's schema |
+| `too_many_calls` | more than 5 valid calls in one turn, beyond the run's remaining tool calls, or any call on a forced-final turn |
 
 Runs are tracked in `agent_runs` (counters only, owned by the session that
 started them). The last allowed step (`maxSteps`), or any step after the run
 used `maxToolCalls`, is sent without tools and returns `forcedFinal: true`;
 after `maxSteps` steps or `maxRunTokens` tokens the next request is
-`run_limit_exceeded` (409). A client-supplied `model`, `system`, `tools` or
-`temperature` is refused.
+`run_limit_exceeded` (409). A `runId` of another session is `invalid_request`.
+A failed upstream call gives its step back to the run.
 
 With `PROVIDER=mock` the turn is answered by `mock-rule-based-agent`
 (`src/providers/mock-agent.ts`), a deterministic rule-based stand-in that reads
 the latest customer message and the tool results already in the transcript.
+It quotes one or two plain sentences of the best current knowledge-base hit
+(model-specific documents and service bulletins first, never a superseded
+document) and says so when it skipped a superseded one. It is a teaching
+stand-in, not a language model.
 
 Session auth = `Authorization: Bearer <token>`. Tokens are never accepted in
 query strings (a request with `?token=`, `?access_token=`, `?code=`… is refused).
@@ -69,8 +120,9 @@ npm run db:migrate:local            # creates the local D1 in .wrangler/
 npm run dev                         # http://localhost:8787
 ```
 
-`.dev.vars` overrides the production-safe `vars` in `wrangler.jsonc` (which
-default to `PROVIDER=openai-compatible`). With `PROVIDER=mock` no API key is needed.
+`.dev.vars` overrides the `vars` in `wrangler.jsonc`. Both ship with
+`PROVIDER=mock`, so no API key is needed; if `PROVIDER` is missing entirely the
+code falls back to `openai-compatible`.
 
 Create a code and try it:
 
@@ -95,24 +147,34 @@ npm test
 
 ## Deploy
 
+The Worker is called `agent-lab-api` (`name` in `wrangler.jsonc`); its D1
+database is `agent-lab`.
+
 ```bash
 npx wrangler login
-npx wrangler d1 create agent-lab                 # paste the database_id into wrangler.jsonc
-npm run db:migrate:remote
-npx wrangler secret put CODE_PEPPER            # ≥ 16 chars, random, e.g. 32 bytes base64url - never change it later (all codes depend on it)
-npx wrangler secret put ADMIN_TOKEN            # ≥ 24 chars, random
-npx wrangler secret put PROVIDER_API_KEY       # your OpenAI / compatible key
-# edit vars in wrangler.jsonc: ALLOWED_ORIGINS, models, prices, limits
+npx wrangler d1 create agent-lab                 # paste the database_id over REPLACE_WITH_D1_ID in wrangler.jsonc
+npm run db:migrate:remote                        # applies migrations/0001_init.sql and 0002_agent_runs.sql
+npx wrangler secret put CODE_PEPPER              # >= 16 chars, random, e.g. 32 bytes base64url - never change it later (all codes depend on it)
+npx wrangler secret put ADMIN_TOKEN              # >= 24 chars, random
+npx wrangler secret put PROVIDER_API_KEY         # only for PROVIDER=openai-compatible
+# edit vars in wrangler.jsonc: PROVIDER, ALLOWED_ORIGINS, models, prices, limits
 npm run deploy
 ```
 
 Generate secrets with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`.
 
+**Apply migrations before deploying.** Migration `0002_agent_runs.sql` creates
+`agent_runs` and rebuilds `usage_events` so that its `operation` column accepts
+`agent`. A Worker version that writes `agent` usage events fails every
+`POST /api/agent` on a database without that migration, so always run
+`npm run db:migrate:remote` first (the GitHub workflow
+`.github/workflows/agent-lab-worker-deploy.yml` does it in that order).
+
 ### Configuration (vars)
 
 | Var | Default | Meaning |
 |---|---|---|
-| `PROVIDER` | `openai-compatible` | or `mock` (offline, deterministic) |
+| `PROVIDER` | `mock` in `wrangler.jsonc` (code fallback: `openai-compatible`) | `mock` (offline, deterministic) or `openai-compatible` |
 | `PROVIDER_BASE_URL` | `https://api.openai.com/v1` | any OpenAI-compatible endpoint |
 | `EMBEDDING_MODEL` / `CHAT_MODEL` | `text-embedding-3-small` / `gpt-4o-mini` | must be in `ALLOWED_MODELS` (else requests fail with `model_not_allowed`) |
 | `EMBEDDING_DIMENSIONS` | `1536` | vectors are validated against it (mock: always 256) |
@@ -121,7 +183,7 @@ Generate secrets with `node -e "console.log(require('crypto').randomBytes(32).to
 | `ALLOWED_ORIGINS` | `https://tech-labs.warsztaty-ai.com,https://workszop.github.io` | comma list, exact match |
 | `SESSION_TTL_MINUTES` | 240 | absolute session lifetime (never beyond code expiry) |
 | `SESSION_IDLE_TIMEOUT_MINUTES` | 0 (off) | idle timeout using sliding `last_activity_at` |
-| `RATE_LIMIT_PER_MINUTE` | 30 | per session, embeddings + agent turns |
+| `RATE_LIMIT_PER_MINUTE` | 90 | per session, embeddings + agent turns. Indexing the knowledge base takes about 7 embedding requests per language and every agent step is one request, so a learner who switches language and then runs a scenario needs well over 30 |
 | `AGENT_MAX_STEPS` / `AGENT_MAX_TOOL_CALLS` / `AGENT_MAX_RUN_TOKENS` | 8 / 12 / 40000 | per agent run; published in `capabilities.agent` |
 | `ACTIVATION_MAX_ATTEMPTS` / `ACTIVATION_WINDOW_SECONDS` | 10 / 900 | per client IP (failed + in-flight attempts) |
 | `ACTIVATION_GLOBAL_FAILURES_PER_MINUTE` | 60 | all IPs together |
@@ -130,7 +192,7 @@ Generate secrets with `node -e "console.log(require('crypto').randomBytes(32).to
 | `CLEANUP_RETENTION_DAYS` | 7 | cron deletes sessions expired/revoked longer ago, and agent runs older than that |
 | `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD` | empty | enable Cloudflare Access JWT verification for admin |
 
-Secrets: `CODE_PEPPER`, `ADMIN_TOKEN`, `PROVIDER_API_KEY`.
+Secrets: `CODE_PEPPER`, `ADMIN_TOKEN`, `PROVIDER_API_KEY` (only for `openai-compatible`).
 
 Optional: uncomment the `ratelimits` block in `wrangler.jsonc` to add a Workers
 Rate Limiting binding (`RATE_LIMITER`) as an extra per-session limiter; the D1
@@ -180,7 +242,7 @@ day (UTC). Plaintext codes are printed once; `--csv` writes them to a file with 
 | Agent transcript | 60 messages; user message 1000 chars; tool result 16000 chars | 413 |
 | Estimated agent input tokens (system + tools + transcript) | 24000 | 413 |
 | Agent run | 8 steps, 12 tool calls (5 per step), 40000 tokens | `forcedFinal`, then `run_limit_exceeded` 409 |
-| Requests per session per minute | `RATE_LIMIT_PER_MINUTE` (30) | `rate_limited` 429 + `retryAfterSeconds` |
+| Requests per session per minute | `RATE_LIMIT_PER_MINUTE` (90) | `rate_limited` 429 + `retryAfterSeconds` |
 | Activation attempts per IP | 10 / 15 min (failed + in-flight) | 429 |
 | Failed activations, global | 60 / min | 429 |
 

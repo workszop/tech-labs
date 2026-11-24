@@ -151,7 +151,7 @@ export function loadConfig(env: Env): Config {
 
     sessionTtlMinutes: num(env.SESSION_TTL_MINUTES, 240, 1, 60 * 24 * 30),
     sessionIdleTimeoutMinutes: num(env.SESSION_IDLE_TIMEOUT_MINUTES, 0, 0, 60 * 24 * 30),
-    rateLimitPerMinute: Math.round(num(env.RATE_LIMIT_PER_MINUTE, 30, 1, 100_000)),
+    rateLimitPerMinute: Math.round(num(env.RATE_LIMIT_PER_MINUTE, 90, 1, 100_000)),
     activationMaxAttempts: Math.round(num(env.ACTIVATION_MAX_ATTEMPTS, 10, 1, 100_000)),
     activationWindowSeconds: Math.round(num(env.ACTIVATION_WINDOW_SECONDS, 900, 10, 86_400)),
     activationGlobalFailuresPerMinute: Math.round(num(env.ACTIVATION_GLOBAL_FAILURES_PER_MINUTE, 60, 1, 1_000_000)),

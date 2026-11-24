@@ -1,5 +1,5 @@
 /**
- * POST /api/activate — exchange an access code for a session bearer token.
+ * POST /api/activate - exchange an access code for a session bearer token.
  *
  * Brute-force protection:
  *  - per-client-IP fixed window (key = HMAC(pepper, CF-Connecting-IP), never the raw IP).

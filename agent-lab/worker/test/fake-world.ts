@@ -21,8 +21,8 @@ function order(order_id: string, date: string, items: Json[]) {
 function warranty(warranty_id: string, serial: string, product_id: string, model: string, status: string, end: string, days: number) {
   return { warranty_id, serial_number: serial, product_id, model, order_id: null, start_date: '2025-01-01', end_date: end, months: 24, status, days_remaining: days, exclusion: null, transferred_on: null, checked_on: SIM_TODAY }
 }
-function hit(docTitle: string, text: string, status: 'current' | 'superseded') {
-  return { chunkId: `${docTitle}#0`, docId: 'DOC-x', docTitle, section: 'Errors', text, score: 0.8, authority: 'model_specific', status, appliesTo: [], effectiveDate: '2026-01-01' }
+export function hit(docTitle: string, text: string, status: 'current' | 'superseded', authority = 'model_specific', score = 0.8) {
+  return { chunkId: `${docTitle}#0`, docId: 'DOC-x', docTitle, section: 'Errors', text, score, authority, status, appliesTo: [], effectiveDate: '2026-01-01' }
 }
 
 interface Customer {
@@ -122,6 +122,8 @@ export interface ExecOptions {
   approveTicket?: boolean
   /** Make search_service_knowledge report index_not_ready. */
   indexNotReady?: boolean
+  /** Hits search_service_knowledge returns instead of the customer's own. */
+  knowledge?: Json[]
 }
 
 /** Executes one tool for `customerId` and returns the JSON text the browser would send back. */
@@ -137,7 +139,7 @@ export function execute(customerId: string, name: string, args: Json, opts: Exec
         return c.warranties?.[String(args.serial_number)] ?? err('not_found')
       }
       case 'search_service_knowledge':
-        return opts.indexNotReady ? err('index_not_ready', 'The knowledge base is not indexed yet.') : (c.knowledge ?? [])
+        return opts.indexNotReady ? err('index_not_ready', 'The knowledge base is not indexed yet.') : (opts.knowledge ?? c.knowledge ?? [])
       case 'get_shipments': {
         if (args.customer_id !== undefined && !own(args.customer_id)) return err('forbidden')
         if (args.order_id !== undefined) {

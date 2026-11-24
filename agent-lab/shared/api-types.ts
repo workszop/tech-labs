@@ -46,14 +46,8 @@ export interface ApiErrorBody {
 
 // ---------------------------------------------------------------- session
 
-export interface NumberRange {
-  min: number
-  max: number
-  default: number
-}
-
 export interface Capabilities {
-  /** 'mock' = deterministic offline dev provider (hash embeddings, extractive answers). */
+  /** 'mock' = deterministic offline dev provider (hash embeddings, rule-based agent). */
   provider: 'openai-compatible' | 'mock'
   embeddingModel: string
   embeddingDimensions: number
@@ -62,14 +56,6 @@ export interface Capabilities {
   maxEmbeddingBatch: number
   /** Max estimated tokens for a single embedding input string. */
   maxEmbeddingInputTokens: number
-  /** Max number of context chunks in one POST /api/chat. */
-  maxContextChunks: number
-  /** Max estimated input tokens (system + context + question) for chat. */
-  maxChatInputTokens: number
-  maxQuestionChars: number
-  maxOutputTokens: NumberRange
-  temperature: NumberRange
-  streaming: boolean
   /** Per-run limits of POST /api/agent. */
   agent: {
     maxSteps: number
@@ -137,8 +123,6 @@ export interface EmbeddingsResponse {
 
 /** Language of the UI, the company texts, the knowledge base and the agent's system prompt. */
 export type Lang = 'pl' | 'en'
-
-export const DEFAULT_PROMPT_LANG: Lang = 'en'
 
 export function isLang(v: unknown): v is Lang {
   return v === 'pl' || v === 'en'

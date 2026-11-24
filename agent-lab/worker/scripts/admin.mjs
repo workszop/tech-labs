@@ -82,7 +82,7 @@ function expires(v) {
   return new Date(v).toISOString()
 }
 
-const fmtDate = (s) => (s ? s.replace('T', ' ').replace(/\.\d{3}Z$/, 'Z') : '—')
+const fmtDate = (s) => (s ? s.replace('T', ' ').replace(/\.\d{3}Z$/, 'Z') : '-')
 const fmtUsd = (n) => `$${n.toFixed(4)}`
 
 function table(rows, cols) {
@@ -97,7 +97,7 @@ function table(rows, cols) {
 
 const CODE_COLS = [
   { title: 'ID', get: (r) => r.id },
-  { title: 'LABEL', get: (r) => r.label ?? '—' },
+  { title: 'LABEL', get: (r) => r.label ?? '-' },
   { title: 'STATUS', get: (r) => r.status },
   { title: 'REQUESTS', get: (r) => `${r.requestsUsed}/${r.requestLimit}`, right: true },
   { title: 'TOKENS', get: (r) => `${r.tokensUsed}/${r.tokenLimit}`, right: true },
@@ -149,13 +149,13 @@ async function main() {
     }
     const res = await call('POST', '/api/admin/codes', body)
     if (o.json) return console.log(JSON.stringify(res, null, 2))
-    console.log(`Created ${res.codes.length} code(s). Plaintext codes are shown ONCE — store them now.\n`)
+    console.log(`Created ${res.codes.length} code(s). Plaintext codes are shown ONCE - store them now.\n`)
     table(res.codes, [{ title: 'CODE', get: (r) => r.code }, ...CODE_COLS.slice(0, 3), CODE_COLS[3], CODE_COLS[4], CODE_COLS[6], CODE_COLS[7]])
     if (o.csv) {
       const cols = ['code', 'id', 'label', 'expiresAt', 'requestLimit', 'tokenLimit', 'maxSessions']
       const csv = [cols.join(','), ...res.codes.map((r) => cols.map((c) => csvCell(r[c])).join(','))].join('\n') + '\n'
       writeFileSync(o.csv, csv, { mode: 0o600 })
-      console.log(`\nWrote ${o.csv} (contains plaintext codes — handle with care).`)
+      console.log(`\nWrote ${o.csv} (contains plaintext codes - handle with care).`)
     }
     return
   }
