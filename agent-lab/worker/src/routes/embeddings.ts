@@ -1,5 +1,4 @@
-import type { EmbeddingsResponse } from '../../../shared/api-types'
-import { estimateTokens, isLang } from '../../../shared/prompt'
+import { type EmbeddingsResponse, estimateTokens, isLang } from '../../../shared/api-types'
 import { requireSession } from '../auth/session'
 import { cost, type RequestContext } from '../context'
 import { reserveQuota, settleUsage, usageInfo } from '../db'

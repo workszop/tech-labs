@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { EmbeddingsResponse } from '../../shared/api-types'
-import { estimateTokens } from '../../shared/prompt'
+import { type EmbeddingsResponse, estimateTokens } from '../../shared/api-types'
 import { api, auth, avoidMinuteBoundary, callWith, expectError, jsonInit, newSession } from './helpers'
 
 function cosine(a: number[], b: number[]): number {

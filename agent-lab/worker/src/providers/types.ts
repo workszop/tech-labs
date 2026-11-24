@@ -1,4 +1,4 @@
-import type { ChatMessage, Lang } from '../../../shared/api-types'
+import type { Lang } from '../../../shared/api-types'
 
 export interface EmbedResult {
   model: string
@@ -19,6 +19,7 @@ export interface TokenUsage {
   outputTokens: number
 }
 
+/** Result of OpenAICompatibleProvider.chat. No route calls chat since /api/chat was removed. */
 export interface ChatResult {
   text: string
   finishReason: string | null
@@ -41,7 +42,4 @@ export interface Provider {
   readonly embeddingDimensions: number
   /** `lang` is a hint about the inputs' language; real providers ignore it. */
   embed(inputs: string[], signal?: AbortSignal, lang?: Lang): Promise<EmbedResult>
-  chat(messages: ChatMessage[], opts: ChatOptions, signal?: AbortSignal): Promise<ChatResult>
-  /** Yields deltas then exactly one `finish` chunk. */
-  chatStream(messages: ChatMessage[], opts: ChatOptions, signal?: AbortSignal): AsyncIterable<ChatStreamChunk>
 }

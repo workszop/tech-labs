@@ -37,6 +37,7 @@ describe('POST /api/activate', () => {
       maxOutputTokens: { min: 64, max: 1024, default: 500 },
       temperature: { min: 0, max: 1, default: 0.2 },
       streaming: true,
+      agent: { maxSteps: 8, maxToolCalls: 12, maxParallelToolCalls: 5, maxRunTokens: 40000, maxMessageChars: 1000 },
     })
     expect(body.session.usage).toMatchObject({ requestsUsed: 0, requestLimit: 300, tokensUsed: 0, tokenLimit: 300000 })
   })

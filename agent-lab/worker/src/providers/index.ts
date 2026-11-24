@@ -17,7 +17,7 @@ export function createProvider(cfg: Config, fetchImpl?: FetchLike): Provider {
       throw new ApiError('model_not_allowed', 'The server is configured with a model that is not on the allowlist.')
     }
   }
-  if (cfg.provider === 'mock') return new MockProvider(cfg.mockStreamDelayMs)
+  if (cfg.provider === 'mock') return new MockProvider()
   return new OpenAICompatibleProvider({
     baseUrl: cfg.providerBaseUrl,
     apiKey: cfg.providerApiKey,

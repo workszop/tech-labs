@@ -93,6 +93,7 @@ export const shell = {
       upstream_unavailable: 'Dostawca modelu AI teraz nie odpowiada. Spróbuj ponownie za chwilę.',
       upstream_timeout: 'Model AI zbyt długo nie odpowiadał. Spróbuj ponownie.',
       upstream_bad_response: 'Model AI przysłał nieoczekiwaną odpowiedź. Spróbuj ponownie.',
+      run_limit_exceeded: 'Agent wykorzystał limit kroków albo tokenów dla tego pytania. Zadaj pytanie jeszcze raz w nowej wiadomości.',
       not_found: 'Nie znaleziono.',
       internal: 'Nieoczekiwany błąd serwera.',
       network: 'Nie udało się połączyć z serwerem Service Agent Lab. Sprawdź połączenie z internetem i spróbuj ponownie.',

@@ -16,6 +16,7 @@ export const ERROR_STATUS: Record<ApiErrorCode, number> = {
   upstream_unavailable: 502,
   upstream_timeout: 504,
   upstream_bad_response: 502,
+  run_limit_exceeded: 409,
   not_found: 404,
   internal: 500,
 }

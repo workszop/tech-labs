@@ -21,6 +21,9 @@ export const LIMITS = {
 
   /** Raw access-code input length before normalisation. */
   maxCodeInputChars: 64,
+
+  /** Per-run limits of POST /api/agent, published in Capabilities.agent. */
+  agent: { maxSteps: 8, maxToolCalls: 12, maxParallelToolCalls: 5, maxRunTokens: 40_000, maxMessageChars: 1000 },
 } as const
 
 export function capabilities(cfg: Config): Capabilities {
@@ -37,6 +40,7 @@ export function capabilities(cfg: Config): Capabilities {
     maxOutputTokens: { ...LIMITS.maxOutputTokens },
     temperature: { ...LIMITS.temperature },
     streaming: true,
+    agent: { ...LIMITS.agent },
   }
 }
 

@@ -2,19 +2,9 @@ import { createExecutionContext, createScheduledController, env, waitOnExecution
 import { describe, expect, it } from 'vitest'
 import { CROCKFORD, generateCode, normalizeCode } from '../src/codes'
 import worker from '../src/index'
-import { hashEmbedding, looksPolish, mockAnswer, stem, stemPl, terms } from '../src/providers/mock'
+import { hashEmbedding, looksPolish, stem, stemPl, terms } from '../src/providers/mock'
 import { parseSse } from '../src/providers/sse'
-import {
-  NO_RAG_SYSTEM_PROMPT,
-  NO_RAG_SYSTEM_PROMPT_PL,
-  RAG_SYSTEM_PROMPT,
-  RAG_SYSTEM_PROMPT_PL,
-  buildChatMessages,
-  detectPromptLang,
-  formatContext,
-  getSystemPrompt,
-} from '../../shared/prompt'
-import { newSession, sampleContext, sampleContextPl } from './helpers'
+import { newSession, sampleContextPl } from './helpers'
 import { sha256Hex } from '../src/crypto'
 
 describe('access codes', () => {
@@ -61,77 +51,6 @@ describe('mock embeddings', () => {
     const c = hashEmbedding('Vacation days roll over to next year')
     expect(dot(a, b)).toBeGreaterThan(dot(a, c))
     expect(hashEmbedding('!!!').some((v) => v !== 0)).toBe(true)
-  })
-})
-
-describe('mock chat', () => {
-  it('extractive with citations and the mock prefix', () => {
-    const m = buildChatMessages({ question: 'How many days per week remote?', context: sampleContext, mode: 'rag' })
-    const ans = mockAnswer(m)
-    expect(ans.startsWith('(Mock model — offline demo) ')).toBe(true)
-    expect(ans).toMatch(/three days per week\. \[1\]/)
-    expect(ans).not.toContain('[2]')
-  })
-})
-
-describe('prompt template languages', () => {
-  it('English output is unchanged, with and without lang', () => {
-    const m = buildChatMessages({ question: '  How many days?  ', context: sampleContext.slice(0, 1), mode: 'rag' })
-    expect(m).toEqual(buildChatMessages({ question: 'How many days?', context: sampleContext.slice(0, 1), mode: 'rag', lang: 'en' }))
-    expect(m[0]).toEqual({ role: 'system', content: RAG_SYSTEM_PROMPT })
-    expect(RAG_SYSTEM_PROMPT.startsWith('You are the Northstar Technologies knowledge assistant inside RAG Lab, a teaching tool.\n\nAnswer the user')).toBe(true)
-    expect(RAG_SYSTEM_PROMPT.endsWith('6. Keep the answer short and clear: a few sentences or a short list.')).toBe(true)
-    expect(RAG_SYSTEM_PROMPT).toHaveLength(1027)
-    expect(NO_RAG_SYSTEM_PROMPT).toHaveLength(493)
-    expect(m[1]!.content).toBe(
-      'Document excerpts:\n\n' +
-        '[1] Source: Remote Work Policy — HR (chunk hr-remote-work#1)\n' +
-        '<<<EXCERPT\nEmployees may work remotely up to three days per week. Remote work requires manager approval. The office is open from 8am to 6pm.\nEXCERPT>>>' +
-        '\n\n---\nQuestion: How many days?',
-    )
-    expect(buildChatMessages({ question: 'q', context: [], mode: 'rag' })[1]!.content).toBe('Document excerpts:\n\n(No excerpts were retrieved.)\n\n---\nQuestion: q')
-    expect(buildChatMessages({ question: ' q ', context: [], mode: 'no-rag' })).toEqual([
-      { role: 'system', content: NO_RAG_SYSTEM_PROMPT },
-      { role: 'user', content: 'q' },
-    ])
-  })
-
-  it('Polish template: Polish system prompts and wrappers, same numbering and delimiters', () => {
-    const m = buildChatMessages({ question: ' Ile dni urlopu? ', context: sampleContextPl, mode: 'rag', lang: 'pl' })
-    expect(m[0]).toEqual({ role: 'system', content: RAG_SYSTEM_PROMPT_PL })
-    expect(RAG_SYSTEM_PROMPT_PL).toContain('Odpowiadaj po polsku.')
-    expect(RAG_SYSTEM_PROMPT_PL.match(/^\d\. /gm)).toHaveLength(6)
-    expect(m[1]!.content).toBe(
-      'Fragmenty dokumentów:\n\n' +
-        `[1] Źródło: Zasady pracy zdalnej – Kadry (fragment hr-remote-work#1)\n<<<EXCERPT\n${sampleContextPl[0]!.text}\nEXCERPT>>>\n\n` +
-        `[2] Źródło: Zasady urlopowe – Kadry (fragment hr-leave-policy#0)\n<<<EXCERPT\n${sampleContextPl[1]!.text}\nEXCERPT>>>` +
-        '\n\n---\nPytanie: Ile dni urlopu?',
-    )
-    expect(formatContext(sampleContextPl, 'pl')).toContain('[2] Źródło: Zasady urlopowe')
-    expect(buildChatMessages({ question: 'q', context: [], mode: 'rag', lang: 'pl' })[1]!.content).toBe(
-      'Fragmenty dokumentów:\n\n(Nie znaleziono żadnych fragmentów.)\n\n---\nPytanie: q',
-    )
-    const noRag = buildChatMessages({ question: 'q', context: [], mode: 'no-rag', lang: 'pl' })
-    expect(noRag).toEqual([
-      { role: 'system', content: NO_RAG_SYSTEM_PROMPT_PL },
-      { role: 'user', content: 'q' },
-    ])
-    expect(NO_RAG_SYSTEM_PROMPT_PL).toContain('po polsku')
-    // No em dashes and no straight closing quotes in the Polish text.
-    for (const text of [RAG_SYSTEM_PROMPT_PL, NO_RAG_SYSTEM_PROMPT_PL, m[1]!.content]) {
-      expect(text).not.toContain('—')
-      expect(text).not.toMatch(/„[^”"]*"/)
-    }
-  })
-
-  it('accessors', () => {
-    expect(getSystemPrompt('rag')).toBe(RAG_SYSTEM_PROMPT)
-    expect(getSystemPrompt('no-rag', 'en')).toBe(NO_RAG_SYSTEM_PROMPT)
-    expect(getSystemPrompt('rag', 'pl')).toBe(RAG_SYSTEM_PROMPT_PL)
-    expect(getSystemPrompt('no-rag', 'pl')).toBe(NO_RAG_SYSTEM_PROMPT_PL)
-    expect(detectPromptLang(buildChatMessages({ question: 'q', context: [], mode: 'rag', lang: 'pl' }))).toEqual({ lang: 'pl', mode: 'rag' })
-    expect(detectPromptLang(buildChatMessages({ question: 'q', context: [], mode: 'no-rag' }))).toEqual({ lang: 'en', mode: 'no-rag' })
-    expect(detectPromptLang([{ role: 'system', content: 'something else' }])).toBeNull()
   })
 })
 
@@ -191,30 +110,6 @@ describe('Polish text in the mock provider', () => {
     expect(dot(q, leave)).toBeGreaterThan(dot(q, remote))
     const q2 = hashEmbedding('Ile dni można pracować zdalnie?')
     expect(dot(q2, remote)).toBeGreaterThan(dot(q2, leave))
-  })
-
-  it('answers in Polish with citations and the Polish mock prefix', () => {
-    const m = buildChatMessages({ question: 'Ile dni urlopu przysługuje w roku?', context: sampleContextPl, mode: 'rag', lang: 'pl' })
-    const ans = mockAnswer(m)
-    expect(ans.startsWith('(Model testowy – demo offline) ')).toBe(true)
-    expect(ans).toContain('20 dni urlopu w roku. [2]')
-    expect(ans).not.toContain('[1]')
-    expect(ans).not.toContain('Mock model')
-
-    const remote = mockAnswer(buildChatMessages({ question: 'Przez ile dni w tygodniu można pracować zdalnie?', context: sampleContextPl, mode: 'rag', lang: 'pl' }))
-    expect(remote).toContain('trzy dni w tygodniu. [1]')
-    // "2026 r." must not cut the sentence in two
-    const dated = mockAnswer(buildChatMessages({ question: 'Od kiedy obowiązują zasady pracy zdalnej?', context: sampleContextPl, mode: 'rag', lang: 'pl' }))
-    expect(dated).toContain('Zasady obowiązują od 1 marca 2026 r. we wszystkich biurach. [1]')
-  })
-
-  it('fixed Polish sentences: no documents, no answer', () => {
-    const noRag = mockAnswer(buildChatMessages({ question: 'Jakie są zasady pracy zdalnej w Northstar?', context: [], mode: 'no-rag', lang: 'pl' }))
-    expect(noRag).toMatch(/^\(Model testowy – demo offline\) Nie mam dostępu do wewnętrznych dokumentów Northstar Technologies/)
-    const empty = mockAnswer(buildChatMessages({ question: 'Ile kosztuje parking?', context: [], mode: 'rag', lang: 'pl' }))
-    expect(empty).toBe('(Model testowy – demo offline) W znalezionych dokumentach nie ma odpowiedzi na to pytanie.')
-    const miss = mockAnswer(buildChatMessages({ question: 'Chromodynamika kwantowa?', context: sampleContextPl, mode: 'rag', lang: 'pl' }))
-    expect(miss).toBe(empty)
   })
 })
 

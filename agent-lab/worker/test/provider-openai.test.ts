@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { ChatResponse, EmbeddingsResponse } from '../../shared/api-types'
-import { buildChatMessages } from '../../shared/prompt'
+import type { ChatMessage, EmbeddingsResponse } from '../../shared/api-types'
 import { ApiError } from '../src/http'
 import { OpenAICompatibleProvider } from '../src/providers/openai-compatible'
 import type { ChatStreamChunk } from '../src/providers/types'
-import { PROVIDER_KEY, auth, callWith, expectError, jsonInit, newSession, parseSseText, sampleContext } from './helpers'
+import { PROVIDER_KEY, auth, callWith, expectError, jsonInit, newSession } from './helpers'
 
 const KEY = 'sk-unit-test-key'
 
@@ -55,7 +54,10 @@ const hangingFetch = (_url: string, init?: RequestInit) =>
     init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
   })
 
-const messages = buildChatMessages({ question: 'q?', context: sampleContext, mode: 'rag' })
+const messages: ChatMessage[] = [
+  { role: 'system', content: 'You are a test assistant.' },
+  { role: 'user', content: 'q?' },
+]
 const chatOpts = { model: 'gpt-4o-mini', temperature: 0.2, maxTokens: 100 }
 
 describe('openai-compatible provider (mocked fetch)', () => {
@@ -195,60 +197,25 @@ describe('Worker with openai-compatible provider', () => {
     expect(info.capabilities).toMatchObject({ provider: 'openai-compatible', embeddingModel: 'text-embedding-3-small', embeddingDimensions: 4, chatModel: 'gpt-4o-mini' })
   })
 
-  it('embeddings + chat (stream) end-to-end, with provider-reported usage', async () => {
+  it('embeddings end-to-end, with provider-reported usage', async () => {
     const { token } = await newSession()
     const fetchImpl = async (url: string, init?: RequestInit) => {
+      expect(url).toBe('https://upstream.test/v1/embeddings')
       expect((init!.headers as Record<string, string>).Authorization).toBe(`Bearer ${PROVIDER_KEY}`)
-      if (url.endsWith('/embeddings')) {
-        return Response.json({ data: [{ index: 0, embedding: [0.1, 0.2, 0.3, 0.4] }], usage: { prompt_tokens: 3 } })
-      }
-      return sseResponse([
-        'data: {"choices":[{"delta":{"content":"Three "}}]}\n\n',
-        'data: {"choices":[{"delta":{"content":"days [1]."},"finish_reason":"stop"}]}\n\n',
-        'data: {"choices":[],"usage":{"prompt_tokens":400,"completion_tokens":4}}\n\n',
-        'data: [DONE]\n\n',
-      ])
+      return Response.json({ data: [{ index: 0, embedding: [0.1, 0.2, 0.3, 0.4] }], usage: { prompt_tokens: 3 } })
     }
     const e = await callWith(OPENAI_ENV, '/api/embeddings', jsonInit('POST', { inputs: ['hello'] }, auth(token)), fetchImpl)
     const eb = (await e.json()) as EmbeddingsResponse
     expect(eb).toMatchObject({ model: 'text-embedding-3-small', dimensions: 4, embeddings: [[0.1, 0.2, 0.3, 0.4]], usage: { inputTokens: 3 } })
     expect(eb.quota.tokensUsed).toBe(3)
-
-    const c = await callWith(
-      OPENAI_ENV,
-      '/api/chat',
-      jsonInit('POST', { question: 'How many days?', context: sampleContext, mode: 'rag' }, auth(token)),
-      fetchImpl,
-    )
-    const events = parseSseText(await c.text())
-    expect(events.map((x) => x.event)).toEqual(['prompt', 'delta', 'delta', 'done'])
-    expect(events[0]!.data.model).toBe('gpt-4o-mini')
-    expect(events[3]!.data.usage).toEqual({ inputTokens: 400, outputTokens: 4 })
-    expect(events[3]!.data.quota.tokensUsed).toBe(3 + 404)
-  })
-
-  it('upstream failure mid-stream ends with an error event; the token reservation is refunded', async () => {
-    const { token } = await newSession()
-    const fetchImpl = async () => new Response('{"error":{"message":"overloaded"}}', { status: 500 })
-    const res = await callWith(
-      OPENAI_ENV,
-      '/api/chat',
-      jsonInit('POST', { question: 'How many days?', context: sampleContext, mode: 'rag' }, auth(token)),
-      fetchImpl,
-    )
-    const events = parseSseText(await res.text())
-    expect(events.map((x) => x.event)).toEqual(['prompt', 'error'])
-    expect(events[1]!.data.code).toBe('upstream_unavailable')
-    const usage = await (await callWith(OPENAI_ENV, '/api/usage', { headers: auth(token) })).json()
-    expect(usage).toMatchObject({ requestsUsed: 1, tokensUsed: 0 })
   })
 
   it('upstream errors → proper HTTP status for non-streaming requests (502 / 504)', async () => {
     const { token } = await newSession()
-    const body = jsonInit('POST', { question: 'q?', context: [], mode: 'no-rag', stream: false }, auth(token))
-    await expectError(await callWith(OPENAI_ENV, '/api/chat', body, async () => new Response('x', { status: 500 })), 502, 'upstream_unavailable')
+    const body = jsonInit('POST', { inputs: ['a'] }, auth(token))
+    await expectError(await callWith(OPENAI_ENV, '/api/embeddings', body, async () => new Response('x', { status: 500 })), 502, 'upstream_unavailable')
     await expectError(
-      await callWith({ ...OPENAI_ENV, CHAT_TIMEOUT_MS: '100' }, '/api/chat', jsonInit('POST', { question: 'q?', context: [], mode: 'no-rag', stream: false }, auth(token)), hangingFetch),
+      await callWith({ ...OPENAI_ENV, EMBED_TIMEOUT_MS: '100' }, '/api/embeddings', jsonInit('POST', { inputs: ['a'] }, auth(token)), hangingFetch),
       504,
       'upstream_timeout',
     )
@@ -262,7 +229,7 @@ describe('Worker with openai-compatible provider', () => {
   it('a configured model outside ALLOWED_MODELS fails closed', async () => {
     const { token } = await newSession()
     await expectError(
-      await callWith({ ...OPENAI_ENV, CHAT_MODEL: 'gpt-4.5-preview' }, '/api/chat', jsonInit('POST', { question: 'q', context: [], mode: 'no-rag', stream: false }, auth(token)), async () => {
+      await callWith({ ...OPENAI_ENV, CHAT_MODEL: 'gpt-4.5-preview' }, '/api/embeddings', jsonInit('POST', { inputs: ['q'] }, auth(token)), async () => {
         throw new Error('must not be called')
       }),
       400,
@@ -277,8 +244,6 @@ describe('Worker with openai-compatible provider', () => {
       new Response(JSON.stringify({ error: { message: `Invalid key ${PROVIDER_KEY}`, key: PROVIDER_KEY } }), { status: 401 })
     const responses: Response[] = [
       await callWith(OPENAI_ENV, '/api/embeddings', jsonInit('POST', { inputs: ['a'] }, auth(token)), leaky),
-      await callWith(OPENAI_ENV, '/api/chat', jsonInit('POST', { question: 'q', context: [], mode: 'no-rag' }, auth(token)), leaky),
-      await callWith(OPENAI_ENV, '/api/chat', jsonInit('POST', { question: 'q', context: [], mode: 'no-rag', stream: false }, auth(token)), leaky),
       await callWith(OPENAI_ENV, '/api/health', {}),
       await callWith(OPENAI_ENV, '/api/session', { headers: auth(token) }),
       await callWith({}, '/api/health', {}),

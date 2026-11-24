@@ -98,46 +98,11 @@ export async function callWith(
   return new Response(text, { status: res.status, headers: res.headers })
 }
 
-export interface SseEvt {
-  event: string
-  data: any
-}
-
-export function parseSseText(text: string): SseEvt[] {
-  return text
-    .split('\n\n')
-    .filter((b) => b.trim())
-    .map((block) => {
-      let event = 'message'
-      const data: string[] = []
-      for (const line of block.split('\n')) {
-        if (line.startsWith('event: ')) event = line.slice(7)
-        else if (line.startsWith('data: ')) data.push(line.slice(6))
-      }
-      return { event, data: JSON.parse(data.join('\n')) }
-    })
-}
-
 /** Waits until we're not within `marginMs` of a minute boundary (fixed-window tests). */
 export async function avoidMinuteBoundary(marginMs = 3000): Promise<void> {
   const into = Date.now() % 60_000
   if (into > 60_000 - marginMs) await new Promise((r) => setTimeout(r, 60_000 - into + 50))
 }
-
-export const sampleContext = [
-  {
-    chunkId: 'hr-remote-work#1',
-    documentTitle: 'Remote Work Policy',
-    folder: 'HR',
-    text: 'Employees may work remotely up to three days per week. Remote work requires manager approval. The office is open from 8am to 6pm.',
-  },
-  {
-    chunkId: 'it-laptops#0',
-    documentTitle: 'Laptop Policy',
-    folder: 'IT',
-    text: 'Every new employee receives a laptop on the first day. Laptops are replaced every three years.',
-  },
-]
 
 export { env }
 

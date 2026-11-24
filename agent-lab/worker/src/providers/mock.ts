@@ -5,36 +5,12 @@
  *   unigrams + bigrams (light stemming, stop words dropped), FNV-1a into 256
  *   signed buckets, L2-normalised. Deterministic, and texts sharing words
  *   really are closer in cosine space.
- * - Chat (`mock-extractive-chat`): parses the excerpts back out of the exact
- *   messages built by buildChatMessages and returns the sentences with the
- *   largest overlap with the question, with [n] citations. It answers in the
- *   language of the prompt template (English or Polish).
+ * - Chat: none yet. The rule-based tool-calling stand-in for the agent
+ *   endpoint arrives with Task 5.
  */
-import type { ChatMessage, Lang } from '../../../shared/api-types'
-import { PROMPT_TEMPLATES, detectPromptLang, estimateMessagesTokens, estimateTokens } from '../../../shared/prompt'
+import { type Lang, estimateTokens } from '../../../shared/api-types'
 import { MOCK_CHAT_MODEL, MOCK_EMBEDDING_DIMENSIONS, MOCK_EMBEDDING_MODEL } from '../env'
-import { ApiError } from '../http'
-import type { ChatOptions, ChatResult, ChatStreamChunk, EmbedResult, Provider } from './types'
-
-export const MOCK_PREFIX = '(Mock model — offline demo) '
-export const MOCK_PREFIX_PL = '(Model testowy – demo offline) '
-
-const MOCK_TEXT: Record<Lang, { prefix: string; noAccess: string; noAnswer: string }> = {
-  en: {
-    prefix: MOCK_PREFIX,
-    noAccess:
-      "I don't have access to Northstar Technologies' internal documents, so I can't answer questions about Northstar's own policies, prices or people. " +
-      'Switch to RAG mode so that relevant excerpts are retrieved and sent along with your question.',
-    noAnswer: "The retrieved documents don't contain the answer to this question.",
-  },
-  pl: {
-    prefix: MOCK_PREFIX_PL,
-    noAccess:
-      'Nie mam dostępu do wewnętrznych dokumentów Northstar Technologies, więc nie odpowiem na pytania o zasady, ceny ani pracowników tej firmy. ' +
-      'Przełącz na tryb RAG, żeby aplikacja wyszukała pasujące fragmenty i wysłała je razem z pytaniem.',
-    noAnswer: 'W znalezionych dokumentach nie ma odpowiedzi na to pytanie.',
-  },
-}
+import type { EmbedResult, Provider } from './types'
 
 const STOP_WORDS = new Set(
   (
@@ -67,7 +43,7 @@ export function stem(w: string): string {
 // through the English path, which is unchanged. A per-word mix was rejected
 // because Polish endings (-y, -e, -a, -em ...) would also be cut off English
 // words and "policy" would stop matching "policies". Callers that know the
-// language (the chat answer does, from the prompt template) pass it explicitly.
+// language (the embeddings `lang` hint) pass it explicitly.
 
 /** Polish stop words, already without diacritics (the form `terms` compares against). */
 const STOP_WORDS_PL = new Set(
@@ -185,93 +161,11 @@ export function hashEmbedding(text: string, dims = MOCK_EMBEDDING_DIMENSIONS, la
   return Array.from(v, (x) => Math.round((x / norm) * 1e7) / 1e7)
 }
 
-interface Excerpt {
-  n: number
-  text: string
-}
-
-// The header line differs per language ("Source:" / "Źródło:"); the delimiters do not.
-const EXCERPT_RE = /\[(\d+)\] [^\n]*\n<<<EXCERPT\n([\s\S]*?)\nEXCERPT>>>/g
-
-function parsePrompt(messages: ChatMessage[]): { mode: 'rag' | 'no-rag'; lang: Lang; question: string; excerpts: Excerpt[] } {
-  const user = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
-  const detected = detectPromptLang(messages)
-  if (detected?.mode === 'no-rag') return { mode: 'no-rag', lang: detected.lang, question: user, excerpts: [] }
-  // Unknown system prompt: fall back to whichever question wrapper is present.
-  const candidates: Lang[] = detected ? [detected.lang] : ['en', 'pl']
-  for (const lang of candidates) {
-    const marker = `\n---\n${PROMPT_TEMPLATES[lang].questionLabel} `
-    const qIdx = user.lastIndexOf(marker)
-    if (qIdx < 0) continue
-    const excerpts: Excerpt[] = []
-    for (const m of user.slice(0, qIdx).matchAll(EXCERPT_RE)) excerpts.push({ n: Number(m[1]), text: m[2]! })
-    return { mode: 'rag', lang, question: user.slice(qIdx + marker.length), excerpts }
-  }
-  return { mode: 'rag', lang: detected?.lang ?? 'en', question: user, excerpts: [] }
-}
-
-function sentences(text: string, lang: Lang): string[] {
-  // Polish text is full of mid-sentence abbreviations ("2026 r.", "np."), so a
-  // Polish sentence only ends where the next one does not start with a lowercase letter.
-  const boundary = lang === 'pl' ? /(?<=[.!?])\s+(?!\p{Ll})|\n+/u : /(?<=[.!?])\s+|\n+/
-  return text
-    .split(boundary)
-    .map((s) => s.replace(/^[#>*\-\s]+/, '').trim())
-    .filter((s) => s.length >= 3)
-}
-
-export function mockAnswer(messages: ChatMessage[]): string {
-  const { mode, lang, question, excerpts } = parsePrompt(messages)
-  const txt = MOCK_TEXT[lang]
-  if (mode === 'no-rag') return txt.prefix + txt.noAccess
-  const noAnswer = txt.prefix + txt.noAnswer
-  if (!excerpts.length) return noAnswer
-  const q = new Set(terms(question, lang))
-  if (!q.size) return noAnswer
-
-  const scored: { n: number; order: number; text: string; score: number }[] = []
-  let order = 0
-  for (const ex of excerpts) {
-    for (const s of sentences(ex.text, lang)) {
-      const st = new Set(terms(s, lang))
-      let score = 0
-      for (const w of q) if (st.has(w)) score++
-      scored.push({ n: ex.n, order: order++, text: s, score })
-    }
-  }
-  const top = Math.max(0, ...scored.map((s) => s.score))
-  // Keep only sentences that are about as relevant as the best one (≥ half its overlap).
-  const threshold = Math.max(1, Math.ceil(top / 2))
-  const best = scored
-    .filter((s) => s.score >= threshold)
-    .sort((a, b) => b.score - a.score || a.order - b.order)
-    .slice(0, 3)
-    .sort((a, b) => a.order - b.order)
-  if (!best.length) return noAnswer
-  return txt.prefix + best.map((s) => `${/[.!?]$/.test(s.text) ? s.text : s.text + '.'} [${s.n}]`).join(' ')
-}
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  if (ms <= 0) return Promise.resolve()
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(resolve, ms)
-    signal?.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(t)
-        reject(new ApiError('upstream_unavailable', 'The request was cancelled.'))
-      },
-      { once: true },
-    )
-  })
-}
-
 export class MockProvider implements Provider {
   readonly name = 'mock' as const
   readonly embeddingModel = MOCK_EMBEDDING_MODEL
   readonly chatModel = MOCK_CHAT_MODEL
   readonly embeddingDimensions = MOCK_EMBEDDING_DIMENSIONS
-  constructor(private readonly streamDelayMs = 25) {}
 
   async embed(inputs: string[], _signal?: AbortSignal, lang?: Lang): Promise<EmbedResult> {
     return {
@@ -279,35 +173,5 @@ export class MockProvider implements Provider {
       embeddings: inputs.map((t) => hashEmbedding(t, this.embeddingDimensions, lang)),
       inputTokens: inputs.reduce((n, t) => n + estimateTokens(t), 0),
     }
-  }
-
-  private answer(messages: ChatMessage[], opts: ChatOptions): ChatResult {
-    let text = mockAnswer(messages)
-    let finishReason = 'stop'
-    const maxChars = opts.maxTokens * 4
-    if (text.length > maxChars) {
-      text = text.slice(0, maxChars)
-      finishReason = 'length'
-    }
-    return {
-      text,
-      finishReason,
-      usage: { inputTokens: estimateMessagesTokens(messages), outputTokens: estimateTokens(text) },
-    }
-  }
-
-  async chat(messages: ChatMessage[], opts: ChatOptions): Promise<ChatResult> {
-    return this.answer(messages, opts)
-  }
-
-  async *chatStream(messages: ChatMessage[], opts: ChatOptions, signal?: AbortSignal): AsyncGenerator<ChatStreamChunk> {
-    const r = this.answer(messages, opts)
-    const pieces = r.text.match(/\S+\s*/g) ?? [r.text]
-    for (let i = 0; i < pieces.length; i += 3) {
-      if (signal?.aborted) throw new ApiError('upstream_unavailable', 'The request was cancelled.')
-      if (i > 0) await sleep(this.streamDelayMs, signal)
-      yield { type: 'delta', text: pieces.slice(i, i + 3).join('') }
-    }
-    yield { type: 'finish', finishReason: r.finishReason, usage: r.usage }
   }
 }

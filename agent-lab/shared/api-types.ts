@@ -1,14 +1,16 @@
 /**
- * RAG Lab — API contract shared by the browser app (rag-lab/web) and the
- * Cloudflare Worker (rag-lab/worker). Keep this file dependency-free.
+ * Service Agent Lab - API contract shared by the browser app (agent-lab/web) and
+ * the Cloudflare Worker (agent-lab/worker). It depends only on the other files
+ * in agent-lab/shared.
  *
  * Transport rules
- * - All bodies are JSON (UTF-8) unless noted. Streaming chat uses text/event-stream.
+ * - All bodies are JSON (UTF-8).
  * - Authenticated endpoints take `Authorization: Bearer <sessionToken>`.
  *   The session token is returned by POST /api/activate and is kept in browser
  *   memory only (never in URLs, localStorage or cookies).
  * - Every error response has the shape `ApiErrorBody` and a matching HTTP status.
  */
+import type { SystemId, ToolName } from './tools'
 
 // ---------------------------------------------------------------- errors
 
@@ -28,6 +30,7 @@ export type ApiErrorCode =
   | 'upstream_unavailable' // 502 provider failed / network
   | 'upstream_timeout' // 504 provider took too long
   | 'upstream_bad_response' // 502 provider answered with something malformed
+  | 'run_limit_exceeded' // 409 the agent run already used its steps or token budget
   | 'not_found' // 404
   | 'internal' // 500
 
@@ -67,6 +70,14 @@ export interface Capabilities {
   maxOutputTokens: NumberRange
   temperature: NumberRange
   streaming: boolean
+  /** Per-run limits of POST /api/agent. */
+  agent: {
+    maxSteps: number
+    maxToolCalls: number
+    maxParallelToolCalls: number
+    maxRunTokens: number
+    maxMessageChars: number
+  }
 }
 
 export interface UsageInfo {
@@ -122,46 +133,26 @@ export interface EmbeddingsResponse {
   quota: UsageInfo
 }
 
-// ---------------------------------------------------------------- chat
+// ---------------------------------------------------------------- language and helpers
 
-export interface ContextChunk {
-  /** Chunk id from the browser index, e.g. "hr-remote-work#2". */
-  chunkId: string
-  documentTitle: string
-  folder: string
-  text: string
-}
-
-export type ChatMode = 'rag' | 'no-rag'
-
-/** POST /api/chat */
-/** Language of the documents, the prompt template and the answer. */
+/** Language of the UI, the company texts, the knowledge base and the agent's system prompt. */
 export type Lang = 'pl' | 'en'
 
-export interface ChatRequest {
-  /** Default 'en'. Selects the prompt template (see shared/prompt.ts). */
-  lang?: Lang
-  question: string
-  /** Must be [] when mode === 'no-rag'. Order defines citation numbers [1], [2], ... */
-  context: ContextChunk[]
-  mode: ChatMode
-  temperature?: number
-  maxTokens?: number
-  /** Default true. When true the response is text/event-stream (see ChatStreamEvent). */
-  stream?: boolean
+export const DEFAULT_PROMPT_LANG: Lang = 'en'
+
+export function isLang(v: unknown): v is Lang {
+  return v === 'pl' || v === 'en'
 }
 
+/** Rough token estimate (about 4 characters per token) used for budgeting only. */
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4)
+}
+
+/** A plain chat message as sent upstream by the providers. */
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
-}
-
-/** The exact request the Worker sent upstream (minus credentials). */
-export interface PromptEcho {
-  model: string
-  temperature: number
-  maxTokens: number
-  messages: ChatMessage[]
 }
 
 export interface ChatUsage {
@@ -169,29 +160,77 @@ export interface ChatUsage {
   outputTokens: number
 }
 
-/** Non-streaming JSON response. */
-export interface ChatResponse {
-  prompt: PromptEcho
-  answer: string
+// ---------------------------------------------------------------- agent
+
+export interface ToolCall {
+  id: string
+  name: string
+  arguments: Record<string, unknown>
+}
+
+export type AgentMessage =
+  | { role: 'user'; content: string }
+  | { role: 'assistant'; content: string; toolCalls?: ToolCall[] }
+  /** content = JSON text of the tool result. */
+  | { role: 'tool'; toolCallId: string; name: string; content: string }
+
+/** POST /api/agent: one model turn of a run. */
+export interface AgentRequest {
+  /** uuid, new for every customer message. */
+  runId: string
+  lang: Lang
+  customer: { id: string; name: string }
+  enabledTools: ToolName[]
+  /** Whole conversation so far, no system message. */
+  messages: AgentMessage[]
+}
+
+export type RejectReason = 'unknown_tool' | 'tool_disabled' | 'invalid_arguments' | 'too_many_calls'
+
+export interface ValidatedToolCall extends ToolCall {
+  name: ToolName
+  system: SystemId
+  readOnly: boolean
+  requiresConfirmation: boolean
+}
+
+export interface RejectedToolCall {
+  id: string
+  name: string
+  rawArguments: string
+  reason: RejectReason
+  message: string
+}
+
+export interface AgentLimits {
+  maxSteps: number
+  maxToolCalls: number
+  maxRunTokens: number
+  stepsUsed: number
+  toolCallsUsed: number
+  runTokens: number
+}
+
+export interface AgentResponse {
+  runId: string
+  /** 1-based model turn within the run. */
+  step: number
+  model: string
+  kind: 'tool_calls' | 'final'
+  /** Append verbatim to the transcript. */
+  assistantMessage: Extract<AgentMessage, { role: 'assistant' }>
+  /** Execute these. */
+  toolCalls: ValidatedToolCall[]
+  /** Answer each with an error tool message, do not execute. */
+  rejected: RejectedToolCall[]
+  /** True when the Worker removed the tools because a run limit was reached. */
+  forcedFinal: boolean
   finishReason: string | null
   usage: ChatUsage
   durationMs: number
   quota: UsageInfo
+  limits: AgentLimits
 }
-
-/**
- * Streaming response: `text/event-stream`, each event is
- *   event: <type>\n data: <json>\n\n
- * Order: exactly one `prompt`, zero or more `delta`, then exactly one `done` or `error`.
- */
-export type ChatStreamEvent =
-  | { type: 'prompt'; data: PromptEcho }
-  | { type: 'delta'; data: { text: string } }
-  | {
-      type: 'done'
-      data: { finishReason: string | null; usage: ChatUsage; durationMs: number; quota: UsageInfo }
-    }
-  | { type: 'error'; data: ApiErrorBody['error'] }
 
 // ---------------------------------------------------------------- admin
 

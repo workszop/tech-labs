@@ -5,14 +5,14 @@ chunking, vector storage (IndexedDB) and cosine search itself; this Cloudflare
 Worker handles:
 
 - access codes → bearer-token sessions
-- the embeddings + chat proxy to an OpenAI-compatible provider (or an offline `mock` provider)
+- the embeddings proxy to an OpenAI-compatible provider (or an offline `mock` provider)
 - rate limits, quotas, usage and cost accounting (D1)
 - admin operations (create / list / update / revoke codes)
 
-The API contract is `../shared/api-types.ts`. The chat prompt is always built
-server-side with `../shared/prompt.ts` (`buildChatMessages`) and echoed back as
-`PromptEcho`. Both are imported by relative path; wrangler/esbuild bundles them
-and `tsc` includes them.
+The API contract is `../shared/api-types.ts`; the tool registry is
+`../shared/tools.ts` and the agent system prompt `../shared/agent-prompt.ts`.
+They are imported by relative path; wrangler/esbuild bundles them and `tsc`
+includes them. The agent endpoint (`POST /api/agent`) is not built yet.
 
 ## Endpoints
 
@@ -24,7 +24,6 @@ and `tsc` includes them.
 | POST | `/api/logout` | session | 204, revokes the session (idempotent) |
 | GET | `/api/usage` | session | `UsageInfo` |
 | POST | `/api/embeddings` | session | `{inputs}` → vectors, rate-limited + quota |
-| POST | `/api/chat` | session | `stream` defaults to `true` (SSE: `prompt` → `delta`* → `done` or `error`); optional `lang` (`"pl"` \| `"en"`, default `"en"`) picks the prompt template language |
 | POST | `/api/admin/codes` | admin | create 1..200 codes; plaintext returned once (201) |
 | GET | `/api/admin/codes` | admin | list + totals |
 | PATCH | `/api/admin/codes/:id` | admin | limits / expiry / label / status / resetUsage / revokeSessions |
