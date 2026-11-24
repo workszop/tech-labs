@@ -270,6 +270,17 @@ describe('mock agent (rule-based, offline)', () => {
     ]).text).toContain('repeated get_shipments call was blocked')
   })
 
+  it('a call the Worker rejected (arguments {}) is not requested again', () => {
+    const messages: AgentMessage[] = [
+      { role: 'user', content: 'Where is my parcel?' },
+      { role: 'assistant', content: '', toolCalls: [{ id: 'c1', name: 'get_shipments', arguments: {} }] },
+      { role: 'tool', toolCallId: 'c1', name: 'get_shipments', content: '{"error":{"code":"invalid_arguments","message":"bad"}}' },
+    ]
+    const r = turn('CUST-1017', messages)
+    expect(r.toolCalls).toEqual([])
+    expect(r.text.startsWith(INTRO_EN)).toBe(true)
+  })
+
   it("forced final ('none'): answers with what it has and says the answer may be incomplete", () => {
     const messages: AgentMessage[] = [{ role: 'user', content: 'Where is my parcel?' }]
     const r = turn('CUST-1017', messages, 'none')

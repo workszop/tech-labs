@@ -197,6 +197,44 @@ describe('POST /api/agent with a real-model upstream', () => {
     expect(errorsSent).toHaveLength(5)
   })
 
+  it('a nameless upstream call is rejected and the transcript built from it is accepted on the next request', async () => {
+    const { token } = await newSession()
+    const nameless = {
+      choices: [{ message: { content: null, tool_calls: [{ id: 'n1', type: 'function', function: { arguments: '{}' } }] }, finish_reason: 'tool_calls' }],
+      usage: { prompt_tokens: 100, completion_tokens: 5 },
+    }
+    const { f } = upstream([nameless, finalReply('Done.')])
+    const req = request()
+    const b1 = (await (await post(token, req, OPENAI_ENV, f)).json()) as AgentResponse
+    expect(b1.rejected).toEqual([expect.objectContaining({ id: 'n1', reason: 'unknown_tool' })])
+    const messages = continueTranscript(req.messages, b1, () => '{}')
+    const r2 = await post(token, { ...req, messages }, OPENAI_ENV, f)
+    expect(r2.status).toBe(200)
+    expect(((await r2.json()) as AgentResponse).kind).toBe('final')
+  })
+
+  it('upstream call ids that restart every turn do not break the run', async () => {
+    const { token } = await newSession()
+    const { f } = upstream([
+      toolReply([{ id: 'call_0', name: 'get_customer_orders', args: '{"customer_id":"CUST-1042"}' }]),
+      toolReply([{ id: 'call_0', name: 'get_crm_history', args: '{"customer_id":"CUST-1042"}' }]),
+      finalReply('Done.'),
+    ])
+    const req = request()
+    let messages = req.messages
+    const ids: string[] = []
+    for (let step = 1; step <= 3; step++) {
+      const res = await post(token, { ...req, messages }, OPENAI_ENV, f)
+      expect(res.status).toBe(200)
+      const b = (await res.json()) as AgentResponse
+      ids.push(...b.toolCalls.map((c) => c.id))
+      if (b.kind === 'final') break
+      messages = continueTranscript(messages, b, () => '{}')
+    }
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
+  })
+
   it("too_many_calls once the run's tool-call budget is spent", async () => {
     const { token } = await newSession()
     const calls = ['get_customer_profile', 'get_crm_history', 'get_customer_orders', 'get_shipments'].map((name, i) => ({ id: `t${i}`, name, args: '{"customer_id":"CUST-1042"}' }))

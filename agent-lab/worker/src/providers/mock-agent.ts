@@ -235,6 +235,9 @@ function pickUnit(intents: Intents, units: Unit[]): { unit: Unit | null; ambiguo
 function plan(intents: Intents, done: Done[], customerId: string, available: Set<string>): Plan {
   const result: Plan = { calls: [], missing: new Set(), ambiguous: null, unit: null, noMatch: false }
   const doneKeys = new Set(done.map((d) => d.key))
+  // Calls the Worker rejected come back with `arguments: {}`, so their key never matches a
+  // planned call: a tool that got such an error in this run is not requested again.
+  const rejectedNames = new Set(done.filter((d) => d.inRun && !d.ok && !Object.keys(d.args).length).map((d) => d.name))
   const find = (name: ToolName, args: Json) => {
     const key = callKey(name, args)
     for (let i = done.length - 1; i >= 0; i--) if (done[i]!.key === key) return done[i]!
@@ -242,7 +245,7 @@ function plan(intents: Intents, done: Done[], customerId: string, available: Set
   }
   const add = (name: ToolName, args: Json): void => {
     const key = callKey(name, args)
-    if (doneKeys.has(key) || result.calls.some((c) => c.key === key)) return
+    if (doneKeys.has(key) || rejectedNames.has(name) || result.calls.some((c) => c.key === key)) return
     if (!available.has(name)) {
       result.missing.add(name)
       return

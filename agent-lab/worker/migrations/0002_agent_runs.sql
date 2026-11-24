@@ -14,6 +14,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_runs_created ON agent_runs (created_at);
 
 -- usage_events.operation gains 'agent' ('chat' stays valid for old rows). SQLite cannot
 -- change a CHECK constraint in place, so the table is rebuilt with its rows.
+DROP TABLE IF EXISTS usage_events_new;
 CREATE TABLE usage_events_new (
   id             TEXT PRIMARY KEY,
   access_code_id TEXT NOT NULL,

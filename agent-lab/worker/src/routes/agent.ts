@@ -165,8 +165,10 @@ export function checkToolCalls(
   const rejected: RejectedToolCall[] = []
   const transcript: ToolCall[] = []
   const reject = (c: UpstreamToolCall, reason: RejectReason, message: string) => {
-    rejected.push({ id: c.id, name: c.name, rawArguments: c.rawArguments, reason, message })
-    transcript.push({ id: c.id, name: c.name, arguments: {} })
+    // A nameless call gets a placeholder name so the transcript stays valid on the next request.
+    const name = c.name || 'unknown'
+    rejected.push({ id: c.id, name, rawArguments: c.rawArguments, reason, message })
+    transcript.push({ id: c.id, name, arguments: {} })
   }
   for (const c of calls) {
     if (!isToolName(c.name)) {
@@ -214,6 +216,22 @@ export function checkToolCalls(
     transcript.push({ id: c.id, name: c.name, arguments: check.args })
   }
   return { valid, rejected, transcript }
+}
+
+/**
+ * Gives every upstream call an id not used anywhere in the transcript yet.
+ * Some compatible servers restart their ids each turn (call_0, call_1, ...),
+ * and the request validator requires ids to be unique across the transcript.
+ */
+export function uniqueCallIds(calls: UpstreamToolCall[], messages: AgentMessage[]): UpstreamToolCall[] {
+  const used = new Set<string>()
+  for (const m of messages) if (m.role === 'assistant') for (const c of m.toolCalls ?? []) used.add(c.id)
+  return calls.map((c) => {
+    let id = c.id
+    while (used.has(id)) id = `call_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`
+    used.add(id)
+    return id === c.id ? c : { ...c, id }
+  })
 }
 
 /** POST /api/agent */
@@ -274,7 +292,7 @@ export async function handleAgent(c: RequestContext): Promise<Response> {
     inputTokens: inputEstimate,
     outputTokens: estimateTokens(result.text) + estimateTokens(JSON.stringify(result.toolCalls)),
   }
-  const checked = checkToolCalls(result.toolCalls, req.enabledTools, {
+  const checked = checkToolCalls(uniqueCallIds(result.toolCalls, req.messages), req.enabledTools, {
     maxParallel: LIMITS.agent.maxParallelToolCalls,
     remainingRunCalls: Math.max(0, limits.maxToolCalls - run.tool_calls),
     toolsRemoved: forcedFinal,
