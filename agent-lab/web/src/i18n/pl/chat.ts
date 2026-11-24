@@ -42,6 +42,10 @@ export const chat: Dict['chat'] = {
     signsInAs: 'Logujesz się jako',
     teaches: 'Czego uczy',
     pick: (title: string) => `Wybierz scenariusz: ${title}`,
+    confirmTitle: (title: string) => `Uruchomić scenariusz „${title}”?`,
+    confirmBody: (name: string) => `Obecna rozmowa się zakończy i zacznie się nowa, jako ${name}. Wcześniejsze przebiegi zostają w panelu agenta.`,
+    confirm: 'Uruchom scenariusz',
+    cancel: 'Anuluj',
   },
 
   composer: {
@@ -115,15 +119,20 @@ export const chat: Dict['chat'] = {
   escalation: {
     ticketTitle: 'Przekazano do zespołu serwisu',
     ticketBody: 'Utworzono zgłoszenie serwisowe. Zajmie się nim technik Northstar.',
-    handoverTitle: 'Sprawę przejmie człowiek',
-    handoverBody: 'Agent nie mógł sam dokończyć tej sprawy. Dział obsługi klienta Northstar może ją z Tobą kontynuować.',
+    handoverTitle: 'Systemy firmy nie odpowiedziały',
+    handoverBody: 'Agent nie dostał się do systemów Northstar przy tej sprawie. W prawdziwym wdrożeniu rozmowa trafiłaby teraz do konsultanta. To laboratorium jest symulacją, więc tutaj nikt jej nie przejmie.',
   },
 
   notices: {
     cancelled: 'Zatrzymano',
-    limit: 'Osiągnięto limit',
+    limit: 'Zatrzymano na limicie laboratorium',
     error: 'Błąd',
     detail: 'Szczegóły',
+    limitNote: 'Laboratorium ogranicza liczbę kroków, wywołań narzędzi i tokenów na jedną wiadomość.',
+    rateLimitedTitle: 'Za dużo zapytań',
+    rateLimited: 'Serwer laboratorium dostał w ostatniej minucie za dużo zapytań z tej sesji. Odczekaj chwilę i wyślij wiadomość ponownie.',
+    quotaTitle: 'Budżet AI wyczerpany',
+    quota: 'Budżet AI tego kodu dostępu się wyczerpał, więc agent nie może odpowiedzieć. Poproś prowadzącego o zwiększenie limitu albo o nowy kod.',
   },
 
   confirmation: {

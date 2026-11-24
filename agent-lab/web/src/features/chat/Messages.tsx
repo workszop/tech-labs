@@ -1,7 +1,7 @@
 /** Chat bubbles and the parts of an agent reply: tool steps, sources, escalation and run notices. */
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import {
-  AlertTriangle, BookText, Bot, Check, ChevronDown, CircleSlash, Contact, FileText, Headset, Hourglass, LoaderCircle, Package, Receipt, ShieldCheck, Ticket, Truck, Wrench, XCircle, type LucideIcon,
+  AlertTriangle, BookText, Bot, Check, ChevronDown, CircleSlash, Contact, FileText, Gauge, Hourglass, LoaderCircle, Package, Receipt, ServerCrash, ShieldCheck, Ticket, Timer, Truck, Wrench, XCircle, type LucideIcon,
 } from 'lucide-react'
 import type { SystemId } from '@shared/tools'
 import type { ChatItem } from '@/agent/types'
@@ -74,7 +74,7 @@ export function Escalation({ view, standalone }: { view: RunView; standalone?: b
   const ticket = view.ticketId
   return (
     <div className={cn('flex gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5', standalone ? 'shadow-sm' : 'mt-2.5')} data-testid="escalation" data-kind={ticket ? 'ticket' : 'handover'}>
-      <IconBadge size="sm" tone={ticket ? 'ok' : 'warn'}>{ticket ? <Ticket /> : <Headset />}</IconBadge>
+      <IconBadge size="sm" tone={ticket ? 'ok' : 'warn'}>{ticket ? <Ticket /> : <ServerCrash />}</IconBadge>
       <div className="min-w-0 flex-1 text-[13px] leading-snug">
         <div className="font-display text-[14px] font-bold">{ticket ? tx.escalation.ticketTitle : tx.escalation.handoverTitle}</div>
         <p className="mt-0.5 text-[var(--ink-2)]">{ticket ? tx.escalation.ticketBody : tx.escalation.handoverBody}</p>
@@ -153,13 +153,17 @@ const STATUS_ICON: Record<StepView['status'], LucideIcon> = {
  * The tool calls of one run, compact. Open while the run is active; after it,
  * folded to a one-line summary unless a step did not succeed.
  */
-export function RunSteps({ runId, steps, active }: { runId: string; steps: StepView[]; active: boolean }) {
+export function RunSteps({ runId, steps, active, onResize }: { runId: string; steps: StepView[]; active: boolean; onResize?: () => void }) {
   const tx = useT().chat.steps
   const issues = steps.filter((s) => s.status === 'error' || s.status === 'warning' || s.status === 'neutral').length
   const [open, setOpen] = useState(active || issues > 0)
   useEffect(() => {
     setOpen(active || issues > 0)
   }, [active, issues])
+  // Folding changes the list height: let the panel keep the newest item in view when it was pinned there.
+  useLayoutEffect(() => {
+    onResize?.()
+  }, [open])
   if (!steps.length) return null
   return (
     <AgentRow testId="run-steps">
@@ -242,18 +246,39 @@ export function TypingIndicator() {
 const NOTICE_TONE = { cancelled: 'stone', limit: 'warn', error: 'danger' } as const
 const NOTICE_ICON = { cancelled: CircleSlash, limit: AlertTriangle, error: XCircle }
 
-export function NoticeItem({ item }: { item: Extract<ChatItem, { kind: 'notice' }> }) {
+type NoticeItemT = Extract<ChatItem, { kind: 'notice' }>
+type Dict = ReturnType<typeof useT>
+
+/**
+ * What a run notice says. `reason` is the run's end code (`run_finished.detail`):
+ * a Worker rate limit or a used-up budget is explained with what the learner can
+ * do; any other limit says it is a limit of this lab.
+ */
+export function noticeContent(item: NoticeItemT, reason: string | null, tx: Dict): { tone: 'stone' | 'warn' | 'danger'; icon: LucideIcon; title: string; body: string; note?: string; detail?: string } {
+  const n = tx.chat.notices
+  if (reason === 'rate_limited') return { tone: 'warn', icon: Timer, title: n.rateLimitedTitle, body: n.rateLimited }
+  if (reason === 'quota_exceeded' || item.messageKey === 'quota_exceeded') return { tone: 'warn', icon: Gauge, title: n.quotaTitle, body: n.quota }
+  const base = { tone: NOTICE_TONE[item.outcome], icon: NOTICE_ICON[item.outcome], title: n[item.outcome], body: tx.shell.runNotices[item.messageKey] }
+  if (item.outcome === 'limit') return { ...base, note: n.limitNote }
+  if (item.outcome === 'error' && item.detail) return { ...base, detail: item.detail }
+  return base
+}
+
+/** A run that ended without a normal answer. Not a live region itself: the panel's polite announcer reads it once. */
+export function NoticeItem({ item, reason }: { item: NoticeItemT; reason: string | null }) {
   const tx = useT()
-  const Icon = NOTICE_ICON[item.outcome]
+  const c = noticeContent(item, reason, tx)
+  const Icon = c.icon
   return (
     <AgentRow testId="run-notice">
-      <div className="flex gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5" role={item.outcome === 'error' ? 'alert' : undefined} data-outcome={item.outcome}>
-        <IconBadge size="sm" tone={NOTICE_TONE[item.outcome]}><Icon /></IconBadge>
+      <div className="flex gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5" data-outcome={item.outcome} data-reason={reason ?? undefined}>
+        <IconBadge size="sm" tone={c.tone}><Icon /></IconBadge>
         <div className="min-w-0 flex-1 text-[13px] leading-snug">
-          <div className="font-display text-[14px] font-bold">{tx.chat.notices[item.outcome]}</div>
-          <p className="mt-0.5 text-[var(--ink-2)]">{tx.shell.runNotices[item.messageKey]}</p>
-          {item.detail && item.outcome === 'error' && (
-            <p className="mt-1 break-words font-mono text-[11px] text-muted-foreground"><span className="uppercase tracking-[0.08em]">{tx.chat.notices.detail}:</span> {item.detail}</p>
+          <div className="font-display text-[14px] font-bold">{c.title}</div>
+          <p className="mt-0.5 text-[var(--ink-2)]">{c.body}</p>
+          {c.note && <p className="mt-1 text-[12px] text-muted-foreground">{c.note}</p>}
+          {c.detail && (
+            <p className="mt-1 break-words font-mono text-[11px] text-muted-foreground"><span className="uppercase tracking-[0.08em]">{tx.chat.notices.detail}:</span> {c.detail}</p>
           )}
         </div>
       </div>

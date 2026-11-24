@@ -111,11 +111,25 @@ describe('escalation', () => {
     expect(ticketIdOf([started('t', 'create_service_ticket', 'tickets'), finished('t', err('result_unknown'))])).toBeNull()
   })
 
-  it('hands over without a ticket when the run ended on a limit or an error', () => {
-    expect(handsOver(run([runStart, final('limit')], 'limit'))).toBe(true)
-    expect(handsOver(run([runStart, final('error')], 'error'))).toBe(true)
+  it('does not hand over just because the run ended on an error or a limit', () => {
+    // error with no tools, Worker rate limit, quota, run limit, cancel, plain answer: their own notice only
+    expect(handsOver(run([runStart, final('error')], 'error'))).toBe(false)
+    const rateLimited: TraceEvent = { type: 'run_finished', at: 9, outcome: 'error', detail: 'rate_limited', answer: '' }
+    expect(handsOver(run([runStart, rateLimited], 'error'))).toBe(false)
+    const quota: TraceEvent = { type: 'run_finished', at: 9, outcome: 'error', detail: 'quota_exceeded', answer: '' }
+    expect(handsOver(run([runStart, quota], 'error'))).toBe(false)
+    expect(handsOver(run([runStart, final('limit')], 'limit'))).toBe(false)
+    const okThenLimit = [runStart, started('a', 'get_customer_orders'), finished('a', ok({ orders: [] })), final('limit')]
+    expect(handsOver(run(okThenLimit, 'limit'))).toBe(false)
     expect(handsOver(run([runStart, final('cancelled')], 'cancelled'))).toBe(false)
     expect(handsOver(run([runStart, final('answered')], 'answered'))).toBe(false)
+  })
+
+  it('hands over when every tool that ran hit an unavailable system, whatever the run outcome except a cancel', () => {
+    const failedAll = [runStart, started('a', 'get_customer_orders'), finished('a', err('failed'))]
+    expect(handsOver(run([...failedAll, final('error')], 'error'))).toBe(true)
+    expect(handsOver(run([...failedAll, final('limit')], 'limit'))).toBe(true)
+    expect(handsOver(run([...failedAll, final('cancelled')], 'cancelled'))).toBe(false)
   })
 
   it('hands over when every tool that ran hit an unavailable system', () => {
@@ -129,8 +143,8 @@ describe('escalation', () => {
   })
 
   it('does not report a handover when a ticket was created, or while the run is in progress', () => {
-    const evs = [runStart, started('t', 'create_service_ticket', 'tickets'), finished('t', ok({ ticket_id: 'TCK-2026-0001' })), final('limit')]
-    expect(handsOver(run(evs, 'limit'))).toBe(false)
+    const evs = [runStart, started('t', 'create_service_ticket', 'tickets'), finished('t', ok({ ticket_id: 'TCK-2026-0001' })), started('b', 'check_warranty', 'warranty'), finished('b', err('failed')), final('answered')]
+    expect(handsOver(run(evs, 'answered'))).toBe(false)
     expect(handsOver(run([runStart, started('a', 'get_customer_orders'), finished('a', err('failed'))]))).toBe(false)
   })
 
@@ -140,6 +154,9 @@ describe('escalation', () => {
     expect(v.handover).toBe(false)
     expect(v.steps).toHaveLength(1)
     expect(v.sources).toEqual([{ kind: 'ticket', id: 'TCK-2026-0001' }])
-    expect(runView(undefined)).toEqual({ steps: [], sources: [], ticketId: null, handover: false })
+    expect(v.endReason).toBeNull()
+    expect(runView(undefined)).toEqual({ steps: [], sources: [], ticketId: null, handover: false, endReason: null })
+    const limited: TraceEvent = { type: 'run_finished', at: 9, outcome: 'error', detail: 'rate_limited', answer: '' }
+    expect(runView(run([runStart, limited], 'error')).endReason).toBe('rate_limited')
   })
 })

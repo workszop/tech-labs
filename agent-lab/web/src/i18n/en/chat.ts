@@ -36,6 +36,10 @@ export const chat = {
     signsInAs: 'Signs in as',
     teaches: 'What it shows',
     pick: (title: string) => `Use scenario: ${title}`,
+    confirmTitle: (title: string) => `Start the scenario “${title}”?`,
+    confirmBody: (name: string) => `The current conversation ends and a new one starts, signed in as ${name}. Earlier runs stay in the agent workspace.`,
+    confirm: 'Start scenario',
+    cancel: 'Cancel',
   },
 
   composer: {
@@ -109,15 +113,20 @@ export const chat = {
   escalation: {
     ticketTitle: 'Handed over to the service team',
     ticketBody: 'A service ticket was created. A Northstar technician will follow it up.',
-    handoverTitle: 'A person will take over',
-    handoverBody: 'The agent could not finish this request on its own. Northstar customer service can continue it with you.',
+    handoverTitle: 'The company systems did not respond',
+    handoverBody: 'The agent could not reach Northstar’s systems for this request. In a real deployment the conversation would now go to a human agent. This lab is a simulation, so nobody takes over here.',
   },
 
   notices: {
     cancelled: 'Stopped',
-    limit: 'Limit reached',
+    limit: 'Stopped at a lab limit',
     error: 'Error',
     detail: 'Details',
+    limitNote: 'This lab caps how many steps, tool calls and tokens one message may use.',
+    rateLimitedTitle: 'Too many requests',
+    rateLimited: 'The lab’s server received too many requests from this session in the last minute. Wait a moment and send your message again.',
+    quotaTitle: 'AI budget used up',
+    quota: 'The AI budget of this access code is used up, so the agent cannot answer. Ask your workshop host to raise the limit or for a new code.',
   },
 
   confirmation: {

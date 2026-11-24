@@ -4,7 +4,7 @@
  * tool steps, the ticket confirmation card and run notices come from the store.
  */
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, MessagesSquare } from 'lucide-react'
+import { ArrowDown, ListChecks, MessagesSquare } from 'lucide-react'
 import type { ChatItem } from '@/agent/types'
 import type { Customer, Product } from '@/data/company/types'
 import { SCENARIOS, type Scenario } from '@/data/scenarios'
@@ -16,11 +16,13 @@ import { IconBadge } from '../common'
 import { ChatHeader, type AgentStatus } from './ChatHeader'
 import { Composer, type BlockReason } from './Composer'
 import { ConfirmationCard } from './ConfirmationCard'
-import { AgentBubble, AgentRow, CustomerBubble, Escalation, NoticeItem, RunSteps, TypingIndicator } from './Messages'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AgentBubble, AgentRow, CustomerBubble, Escalation, NoticeItem, RunSteps, TypingIndicator, noticeContent } from './Messages'
 import { runView, type RunView } from './model'
 import { ScenarioList } from './Scenarios'
 
-const EMPTY_VIEW: RunView = { steps: [], sources: [], ticketId: null, handover: false }
+const EMPTY_VIEW: RunView = { steps: [], sources: [], ticketId: null, handover: false, endReason: null }
 
 export function ChatPanel() {
   const tx = useT()
@@ -83,6 +85,14 @@ export function ChatPanel() {
 
   const focusInput = () => requestAnimationFrame(() => inputRef.current?.focus())
 
+  // A scenario ends the current conversation: ask first when there is one (as the identity selector does).
+  const [confirmScenario, setConfirmScenario] = useState<Scenario | null>(null)
+  const requestScenario = (s: Scenario) => {
+    const st = getState()
+    if (st.conversation.length > 0 || st.currentRun) setConfirmScenario(s)
+    else void pickScenario(s)
+  }
+
   const pickScenario = async (s: Scenario) => {
     setError(null)
     const st = getState()
@@ -114,6 +124,9 @@ export function ChatPanel() {
     } else if (stick.current) toBottom()
     else setShowJump(true)
   }, [empty, conversation, activeEvents, currentRun, pending, toBottom])
+  const keepPinned = useCallback(() => {
+    if (stick.current) toBottom()
+  }, [toBottom])
   const onScroll = () => {
     const el = listRef.current
     if (!el) return
@@ -138,7 +151,7 @@ export function ChatPanel() {
   }
 
   // ---- screen reader announcements (polite): run started, approval asked, reply or notice
-  const announcement = useAnnouncements(conversation, currentRun)
+  const announcement = useAnnouncements(conversation, currentRun, (runId) => viewOf(runId).endReason)
 
   function renderItem(item: ChatItem) {
     switch (item.kind) {
@@ -146,7 +159,7 @@ export function ChatPanel() {
         return (
           <>
             <CustomerBubble item={item} />
-            <RunSteps runId={item.runId} steps={viewOf(item.runId).steps} active={currentRun === item.runId} />
+            <RunSteps runId={item.runId} steps={viewOf(item.runId).steps} active={currentRun === item.runId} onResize={keepPinned} />
           </>
         )
       case 'confirmation':
@@ -168,7 +181,7 @@ export function ChatPanel() {
         const view = viewOf(item.runId)
         return (
           <>
-            <NoticeItem item={item} />
+            <NoticeItem item={item} reason={view.endReason} />
             {!hasReply && (view.ticketId || view.handover) && (
               <AgentRow>
                 <Escalation view={view} standalone />
@@ -182,7 +195,7 @@ export function ChatPanel() {
 
   return (
     <section data-panel="chat" aria-label={tx.chat.widget.label} className="flex h-full min-h-0 flex-col bg-card">
-      <ChatHeader status={status} customers={customers} onPickScenario={(s) => void pickScenario(s)} />
+      <ChatHeader status={status} customers={customers} onPickScenario={requestScenario} />
       <div className="relative min-h-0 flex-1">
         <div ref={listRef} onScroll={onScroll} className="scroll-thin @container h-full overflow-y-auto px-3 py-4" data-testid="chat-messages">
           {empty ? (
@@ -194,7 +207,7 @@ export function ChatPanel() {
                   <p className="mt-1 text-[13.5px] leading-relaxed text-[var(--ink-2)]">{tx.chat.empty.body}</p>
                 </div>
               </div>
-              <ScenarioList customers={customers} onPick={(s) => void pickScenario(s)} />
+              <ScenarioList customers={customers} onPick={requestScenario} />
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -217,6 +230,29 @@ export function ChatPanel() {
         )}
       </div>
       <div aria-live="polite" aria-atomic="true" className="sr-only" data-testid="chat-announcer">{announcement}</div>
+      <Dialog open={confirmScenario !== null} onOpenChange={(o) => !o && setConfirmScenario(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmScenario ? tx.chat.scenarios.confirmTitle(confirmScenario.title[lang]) : ''}</DialogTitle>
+            <DialogDescription>
+              {confirmScenario ? tx.chat.scenarios.confirmBody(`${customers.find((c) => c.id === confirmScenario.customerId)?.name ?? confirmScenario.customerId}, ${confirmScenario.customerId}`) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap justify-end gap-2 border-t border-dashed px-5 py-3">
+            <Button variant="outline" onClick={() => setConfirmScenario(null)}>{tx.chat.scenarios.cancel}</Button>
+            <Button
+              onClick={() => {
+                const s = confirmScenario
+                setConfirmScenario(null)
+                if (s) void pickScenario(s)
+              }}
+              data-testid="confirm-scenario"
+            >
+              <ListChecks /> {tx.chat.scenarios.confirm}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Composer
         ref={inputRef}
         value={draft}
@@ -244,7 +280,7 @@ export function ChatPanel() {
  * approval" when a card appears, then the reply or the notice text. Items that
  * were already there when the panel mounted (a restored conversation) are not read.
  */
-function useAnnouncements(conversation: ChatItem[], currentRun: string | null): string {
+function useAnnouncements(conversation: ChatItem[], currentRun: string | null, reasonOf: (runId: string) => string | null): string {
   const tx = useT()
   const [text, setText] = useState('')
   const seen = useRef<Set<string> | null>(null)
@@ -260,7 +296,10 @@ function useAnnouncements(conversation: ChatItem[], currentRun: string | null): 
     const last = [...fresh].reverse().find((i) => i.kind !== 'customer')
     if (!last) return
     if (last.kind === 'agent') setText(tx.chat.announce.replied(last.text))
-    else if (last.kind === 'notice') setText(`${tx.chat.notices[last.outcome]}. ${tx.shell.runNotices[last.messageKey]}`)
+    else if (last.kind === 'notice') {
+      const c = noticeContent(last, reasonOf(last.runId), tx)
+      setText(`${c.title}. ${c.body}`)
+    }
     else if (last.kind === 'confirmation' && last.state === 'pending') setText(tx.chat.announce.waiting)
   }, [conversation, tx])
   useEffect(() => {

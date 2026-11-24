@@ -86,7 +86,8 @@ export const Composer = forwardRef<HTMLTextAreaElement, Props>(function Composer
           placeholder={tx.placeholder}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            // keyCode 229: Safari fires this keydown right after compositionend with isComposing=false.
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
               e.preventDefault()
               if (canSend) onSend()
             }

@@ -37,6 +37,8 @@ export interface RunView {
   sources: Source[]
   ticketId: string | null
   handover: boolean
+  /** `run_finished.detail`: why the run ended without a normal answer (`RunEndReason`, e.g. `rate_limited`), null otherwise. */
+  endReason: string | null
 }
 
 const NEUTRAL: readonly ToolErrorCode[] = ['not_executed', 'result_unknown']
@@ -156,23 +158,30 @@ export function ticketIdOf(events: readonly TraceEvent[]): string | null {
 }
 
 /**
- * The reply hands the customer over to human support without a ticket. Decided
- * from structured facts only: the run has ended, no ticket was created, and
- * either the run ended on a limit or an error, or at least one tool ran and every
- * tool that ran failed because its company system was unavailable (`failed`,
- * `index_not_ready`). A refusal such as `forbidden` is an honest answer, not a handover.
+ * The agent could not reach the company systems, so in a real deployment the
+ * conversation would go to a human agent (in this lab nobody takes over; the
+ * notice says so). Decided from structured facts only: the run has ended and was
+ * not cancelled, no ticket was created, at least one tool ran and every tool that
+ * ran failed because its company system was unavailable (`failed`,
+ * `index_not_ready`). A run that ended on an error (Worker, network, rate limit,
+ * quota) or a run limit shows only its own run notice; a refusal such as
+ * `forbidden` is an honest answer, not a handover.
  */
 export function handsOver(run: RunRecord): boolean {
   const finished = run.events.find((e): e is Extract<TraceEvent, { type: 'run_finished' }> => e.type === 'run_finished')
   const outcome = run.outcome ?? finished?.outcome
-  if (!outcome || ticketIdOf(run.events) !== null) return false
-  if (outcome === 'limit' || outcome === 'error') return true
-  if (outcome !== 'answered') return false
+  if (!outcome || outcome === 'cancelled' || ticketIdOf(run.events) !== null) return false
   const ran = runSteps(run.events).filter((s) => s.status === 'ok' || s.status === 'error')
   return ran.length > 0 && ran.every((s) => s.status === 'error' && s.code !== undefined && UNAVAILABLE.includes(s.code))
 }
 
+/** Why the run ended (the `run_finished.detail` code), or null while it runs or when it simply answered. */
+export function endReasonOf(events: readonly TraceEvent[]): string | null {
+  for (const e of events) if (e.type === 'run_finished') return e.detail ?? null
+  return null
+}
+
 export function runView(run: RunRecord | undefined): RunView {
-  if (!run) return { steps: [], sources: [], ticketId: null, handover: false }
-  return { steps: runSteps(run.events), sources: runSources(run.events), ticketId: ticketIdOf(run.events), handover: handsOver(run) }
+  if (!run) return { steps: [], sources: [], ticketId: null, handover: false, endReason: null }
+  return { steps: runSteps(run.events), sources: runSources(run.events), ticketId: ticketIdOf(run.events), handover: handsOver(run), endReason: endReasonOf(run.events) }
 }
