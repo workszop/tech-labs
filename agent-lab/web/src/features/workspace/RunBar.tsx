@@ -5,6 +5,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { cn, currentLocale } from '@/lib/utils'
 import { useT } from '@/i18n'
 import { REPLAY_SPEEDS, type RunView } from './useRunView'
+import { RunExperiments } from '../learn/RunExperiments'
 
 function timeOf(ms: number): string {
   return new Intl.DateTimeFormat(currentLocale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(ms)
@@ -21,7 +22,7 @@ export function RunBar({ view }: { view: RunView }) {
   const canReplay = !live && run.events.length > 0 && !replay
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-      <label className="flex min-w-0 flex-1 items-center gap-2">
+      <label className="flex min-w-[min(100%,15rem)] flex-1 items-center gap-2">
         <span className="shrink-0 font-mono text-[10.5px] font-medium uppercase tracking-[0.08em]">{tx.runs.label}</span>
         <select
           value={run.id}
@@ -53,6 +54,7 @@ export function RunBar({ view }: { view: RunView }) {
           </Button>
         </Tooltip>
       )}
+      {!replay && <RunExperiments run={run} live={live} />}
     </div>
   )
 }

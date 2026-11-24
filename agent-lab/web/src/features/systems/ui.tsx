@@ -91,7 +91,7 @@ export function RecordChip({ refTo, label, className }: { refTo: RecordRef; labe
     <button
       type="button"
       onClick={() => pushRecord(refTo)}
-      className={cn('inline-flex max-w-full cursor-pointer items-center gap-1 rounded-full bg-doc px-2 py-0.5 font-mono text-[11px] font-medium leading-5 text-[var(--blue-ink)] transition-colors hover:bg-[var(--doc-text)] [&_svg]:size-3 [&_svg]:shrink-0', className)}
+      className={cn('inline-flex max-w-full cursor-pointer items-center gap-1 rounded-full bg-doc px-2 py-0.5 font-mono text-[11px] font-medium leading-5 text-[var(--blue-ink)] transition-colors hover:bg-[var(--doc-press)] [&_svg]:size-3 [&_svg]:shrink-0', className)}
       aria-label={`${tx.kinds[refTo.kind]} ${refTo.id}${label ? ` (${label})` : ''}`}
       data-record-chip={refTo.id}
     >
@@ -117,7 +117,7 @@ export function ActiveMark({ className }: { className?: string }) {
   const tx = useT().systems.chatIdentity
   return (
     <Tooltip content={tx.marker}>
-      <span className={cn('inline-grid size-[18px] shrink-0 place-items-center rounded-[5px] bg-foreground text-[var(--yellow)]', className)} data-active-mark>
+      <span className={cn('relative inline-grid size-[18px] shrink-0 place-items-center rounded-[5px] bg-foreground text-[var(--yellow)]', className)} data-active-mark>
         <UserRoundCheck className="size-3" aria-hidden="true" />
         <span className="sr-only">{tx.marker}</span>
       </span>

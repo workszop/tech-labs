@@ -167,6 +167,8 @@
   --warn-tint:   color-mix(in srgb, var(--yellow) 28%, var(--paper));
 
   --danger-600-press: color-mix(in srgb, var(--red-600) 86%, var(--ink));
+  /* Hover / press fill of solid blue chips: blue-600 pressed towards ink, white text >= 4.8:1. */
+  --doc-press:        color-mix(in srgb, var(--blue-600) 86%, var(--ink));
 
   /* Names that feature code reads directly (inline SVG stroke="var(--doc)",
      getComputedStyle in the vector map, React Flow edge styles). */
@@ -376,8 +378,6 @@
 @layer components {
   @keyframes wl-pulse { 0%, 100% { box-shadow: 0 0 0 2px var(--yellow); } 50% { box-shadow: 0 0 0 5px var(--yellow); } }
   .wl-active { animation: wl-pulse 1.2s ease-in-out infinite; }
-  /* Hover fill of the blue record chips in the workspace: blue-600 pressed towards ink, white text >= 4.8:1. */
-  [data-panel='workspace'] { --doc-press: color-mix(in srgb, var(--blue-600) 86%, var(--ink)); }
   [data-panel='workspace'] .react-flow__node { cursor: default; }
   [data-panel='workspace'] .react-flow__edge-path { stroke-linecap: round; }
   /* React Flow asks free users to keep its attribution link visible: shown small in this graph. */

@@ -9,6 +9,8 @@ import { Timeline } from './Timeline'
 import { highlightedNode, itemsOfNode, type NodeId } from './trace'
 import { reveal } from './ui'
 import { useRunView } from './useRunView'
+import { InfoTip } from '../learn/InfoTip'
+import { ToolsPanel } from '../learn/ToolsPanel'
 
 /**
  * Centre panel: the agent's execution graph on top, the timeline under it, and
@@ -71,13 +73,14 @@ export function WorkspacePanel() {
         <RunBar view={view} />
       </div>
       <ReplayBar view={view} />
+      <ToolsPanel />
       <div className="sr-only" aria-live="polite" data-testid="live-announcer">{announcement}</div>
 
-      <div className="relative h-[clamp(300px,48vh,460px)] shrink-0 border-b border-hairline bg-card">
+      <div className="relative h-[clamp(300px,48vh,460px)] shrink-0 border-b border-hairline bg-card min-[1100px]:min-h-[240px] min-[1100px]:shrink">
         <FlowGraph trace={trace} model={run?.model ?? ''} highlighted={highlighted} onSelect={onNode} />
       </div>
 
-      <div className="scroll-thin shrink-0 space-y-3 px-3 py-3 min-[1100px]:min-h-0 min-[1100px]:flex-1 min-[1100px]:overflow-y-auto">
+      <div className="scroll-thin shrink-0 space-y-3 px-3 py-3 min-[1100px]:min-h-[120px] min-[1100px]:flex-1 min-[1100px]:overflow-y-auto">
         {selectedNode && selectedNode !== 'customer' && selectedNode !== 'final' && (
           <div ref={details}>
             <NodeDetails node={selectedNode} trace={trace} run={run} onSelectItem={(id) => select(id)} onClose={() => (run ? select(null) : setIdleNode(null))} />
@@ -90,6 +93,7 @@ export function WorkspacePanel() {
                 <ListOrdered aria-hidden="true" className="size-3.5" />
                 {tx.panel.timelineTitle}
               </h3>
+              <InfoTip tip="steps" className="self-center" />
               <span className="text-[11.5px] text-muted-foreground">{tx.panel.timelineHint}</span>
             </div>
             <Timeline trace={trace} selected={selected} marked={marked} onSelect={onRow} following={following} />

@@ -14,15 +14,17 @@ import { cn, formatMs, formatNumber } from '@/lib/utils'
 import { useT } from '@/i18n'
 import { openRecord, openRecordById } from '@/features/systems/recordNav'
 import { Alert } from '../common'
+import { InfoTip } from '../learn/InfoTip'
+import type { TipId } from '../learn/topics'
 import { SYSTEM_ICON } from './FlowGraph'
 import { CallDuration, CallStatusChip, Fields, JsonBlock, Label, RecordChips, fmtDuration, recordIds, sentToModel } from './ui'
 import type { CallView, ModelTurnView, NodeId, TimelineItem, TraceView } from './trace'
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Section({ title, hint, tip, children }: { title: string; hint?: string; tip?: TipId; children: React.ReactNode }) {
   return (
     <section className="space-y-1.5">
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <Label>{title}</Label>
+        <Label className={tip ? 'inline-flex items-center gap-1' : undefined}>{title}{tip && <InfoTip tip={tip} />}</Label>
         {hint && <span className="text-[11.5px] text-muted-foreground">{hint}</span>}
       </div>
       {children}
@@ -58,7 +60,7 @@ function ToolCallDetails({ call, trace }: { call: CallView; trace: TraceView }) 
     <div className="space-y-3" data-inspector="tool" data-call={call.callId}>
       <Fields
         rows={[
-          [t.tool, <span key="t" className="break-all font-mono text-[12px] font-semibold">{call.name || tx.timeline.unknownTool}</span>],
+          [t.tool, <span key="t" className="inline-flex items-center gap-1"><span className="break-all font-mono text-[12px] font-semibold">{call.name || tx.timeline.unknownTool}</span><InfoTip tip="toolCall" /></span>],
           [
             t.system,
             call.system && SysIcon ? (
@@ -68,12 +70,19 @@ function ToolCallDetails({ call, trace }: { call: CallView; trace: TraceView }) 
             ),
           ],
           [t.step, tx.timeline.stepCall(call.step, call.seq)],
-          [t.status, <span key="st" className="inline-flex flex-wrap items-center gap-1.5"><CallStatusChip call={call} /><Badge variant="outline">{call.readOnly ? tx.timeline.readOnly : tx.timeline.changesData}</Badge></span>],
+          [t.status, <span key="st" className="inline-flex flex-wrap items-center gap-1.5"><CallStatusChip call={call} /><Badge variant="outline">{call.readOnly ? tx.timeline.readOnly : tx.timeline.changesData}</Badge><InfoTip tip="markers" /></span>],
           [
             t.timing,
             <span key="tm" className="inline-flex flex-wrap items-center gap-x-2">
               <span>{t.startedAfter(since(trace, call.startedAt))}</span>
-              {r ? <span>· {t.duration}: <CallDuration call={call} /></span> : <span className="text-muted-foreground">· {t.pending}</span>}
+              {r ? (
+                <span>· {t.duration}: <CallDuration call={call} /></span>
+              ) : call.status === 'neutral' ? (
+                // A finished run without a result for this call: no duration, consistent with its "Result not recorded" chip.
+                <span className="text-muted-foreground" title={tx.timeline.noDurationHint}>· {tx.timeline.noDuration}</span>
+              ) : (
+                <span className="text-muted-foreground">· {t.pending}</span>
+              )}
             </span>,
           ],
         ]}
@@ -132,7 +141,7 @@ function KnowledgeChunks({ hits }: { hits: KnowledgeHit[] }) {
   const tx = useT()
   const t = tx.flow.inspector
   return (
-    <Section title={t.chunks(hits.length)} hint={t.chunksHint}>
+    <Section title={t.chunks(hits.length)} hint={t.chunksHint} tip="score">
       <ol className="space-y-2" data-testid="knowledge-chunks">
         {hits.map((h, i) => {
           const score = Math.max(0, Math.min(1, h.score))
@@ -345,7 +354,7 @@ export function NodeDetails({ node, trace, run, onSelectItem, onClose }: { node:
             <Fields
               rows={[
                 [t.modelName, <span key="m" className="break-all font-mono text-[12px]">{run?.model ?? '-'}</span>],
-                [t.steps, String(trace.turns.length)],
+                [t.steps, <span key="steps" className="inline-flex items-center gap-1">{trace.turns.length}<InfoTip tip="steps" /></span>],
                 [t.totalTokens, formatNumber(trace.totalTokens)],
               ]}
             />

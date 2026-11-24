@@ -8,6 +8,7 @@ import { ChatIdentity } from './ChatIdentity'
 import { ExplorerView, type ViewState } from './ExplorerView'
 import { GROUPS, type GroupId, type ViewId } from './model'
 import { useExplorerData } from './ui'
+import { useShowHandler } from '../learn/bus'
 
 export const GROUP_ICON: Record<GroupId, LucideIcon> = { sales: ShoppingBag, logistics: Truck, crm: Contact, knowledge: BookText }
 
@@ -18,6 +19,10 @@ export function SystemsPanel() {
   const [group, setGroup] = useState<GroupId>('sales')
   const [viewOf, setViewOf] = useState<Record<GroupId, ViewId>>({ sales: 'customers', logistics: 'shipments', crm: 'profiles', knowledge: 'documents' })
   const [states, setStates] = useState<Partial<Record<ViewId, ViewState>>>({})
+  // "Show me" from the Learn dialog: open the requested group (CRM, knowledge base).
+  useShowHandler((target) => {
+    if (target.kind === 'systems') setGroup(target.group)
+  })
   const view = viewOf[group]
   const views = GROUPS.find((g) => g.id === group)!.views
 

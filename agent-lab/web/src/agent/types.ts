@@ -132,6 +132,8 @@ export interface RunRecord {
   answer?: string
   model: string
   lang: Lang
+  /** Id of the run whose question this run repeats ("Repeat this question"); absent in older records. */
+  repeatOf?: string
 }
 
 /** Localized notice texts: `shell.runNotices[key]`. */

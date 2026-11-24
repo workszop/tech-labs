@@ -11,6 +11,7 @@ import { useSwitchCustomer } from '@/features/systems/ChatIdentity'
 import { useStore } from '@/state/store'
 import { IconBadge } from '../common'
 import { ScenarioList } from './Scenarios'
+import { InfoTip } from '../learn/InfoTip'
 
 export type AgentStatus = 'online' | 'working' | 'waiting' | 'offline'
 
@@ -100,6 +101,7 @@ function Identity({ customers }: { customers: Customer[] }) {
             <option key={c.id} value={c.id}>{c.name}, {c.id}</option>
           ))}
         </select>
+        <InfoTip tip="identity" />
       </div>
       <p id={hintId} className="mt-1 text-[12px] leading-snug text-[var(--ink-2)]">{tx.hint}</p>
       {dialog}

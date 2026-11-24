@@ -9,7 +9,7 @@ import { Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlo
 import {
   BookText, Bot, Check, Contact, MessageSquareText, Package, PauseCircle, Receipt, ShieldCheck, Ticket, Truck, User, X, type LucideIcon,
 } from 'lucide-react'
-import type { SystemId } from '@shared/tools'
+import { TOOLS, type SystemId } from '@shared/tools'
 import { cn } from '@/lib/utils'
 import { useT } from '@/i18n'
 import { SYSTEM_IDS, type NodeId, type NodeStatus, type TraceView } from './trace'
@@ -112,7 +112,7 @@ function Shell({ data, status, width, label, children }: { data: NodeData; statu
 const handle = '!size-1.5 !min-h-0 !min-w-0 !border-0 !bg-[var(--line-strong)] !opacity-0'
 
 function SystemNode({ data }: NodeProps<Node<NodeData>>) {
-  const tx = useT().flow
+  const { flow: tx, learn: learnTx } = useT()
   const sys = data.trace.systems[data.node as SystemId]
   const Icon = SYSTEM_ICON[sys.id]
   const status: NodeStatus | 'off' = sys.status === 'idle' && sys.off ? 'off' : sys.status
@@ -129,8 +129,11 @@ function SystemNode({ data }: NodeProps<Node<NodeData>>) {
           ? null
           : last?.result?.summary
   const stateWord = status === 'off' ? tx.state.off : tx.state[status]
+  // Some (not all) tools of this system were switched off for the run.
+  const someOff = TOOLS.filter((t) => t.system === sys.id && !data.trace.enabledTools.includes(t.name)).length
+  const someOffText = learnTx.tools.nodeSomeOff(someOff)
   return (
-    <Shell data={data} status={status} width={SYS_W} label={`${name}: ${stateWord}${n ? `, ${tx.calls(n)}` : ''}${summary ? `. ${summary}` : ''}`}>
+    <Shell data={data} status={status} width={SYS_W} label={`${name}: ${stateWord}${n ? `, ${tx.calls(n)}` : ''}${summary ? `. ${summary}` : ''}${status === 'idle' && someOff ? `. ${someOffText}` : ''}`}>
       <Handle type="target" position={Position.Left} className={handle} isConnectable={false} />
       <div className="flex h-[26px] items-center gap-1.5">
         <span aria-hidden="true" className={cn('inline-grid size-[22px] shrink-0 place-items-center rounded-md [&_svg]:size-3.5', status === 'off' ? 'bg-muted text-foreground' : 'bg-doc text-[var(--blue-ink)]')}>
@@ -140,7 +143,7 @@ function SystemNode({ data }: NodeProps<Node<NodeData>>) {
       </div>
       <div className="mt-1 flex h-[15px] min-w-0 items-center gap-1">
         {status === 'idle' ? (
-          <span className="truncate text-[10px] leading-[15px] text-muted-foreground">{tx.state.idle}</span>
+          <span className="truncate text-[10px] leading-[15px] text-muted-foreground">{someOff ? someOffText : tx.state.idle}</span>
         ) : (
           <>
             <Pill tone={status}>

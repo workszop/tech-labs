@@ -18,7 +18,8 @@ vi.mock('@/api/client', () => ({
   onAuthLost: () => () => undefined,
 }))
 
-const { initApp, sendMessage, resolveConfirmation, cancelRun, persistenceIdle, resetEverything } = await import('./actions')
+const { initApp, sendMessage, resolveConfirmation, cancelRun, persistenceIdle, resetEverything, resetScenario, repeatRun, setToolEnabled, setEnabledTools, setActiveCustomer } =
+  await import('./actions')
 const { getState, setState } = await import('./store')
 
 const QUOTA = { requestsUsed: 1, requestLimit: 100, tokensUsed: 1, tokenLimit: 1000, estimatedCostUsd: 0, codeExpiresAt: null }
@@ -147,5 +148,93 @@ describe('sendMessage with a ticket confirmation (Review Focus 3)', () => {
     await done
     expect(agentStep).not.toHaveBeenCalled()
     expect(getState().currentRun).toBeNull()
+  })
+})
+
+describe('experiments: repeat a question, tool presets, resets (Task 10)', () => {
+  function scriptAnswer() {
+    agentStep.mockImplementation(async (req) => finalTurn(req.runId, 'Answer.'))
+  }
+
+  it('repeatRun sends the same question as the same customer with the current switches, in a new conversation, and records repeatOf', async () => {
+    scriptAnswer()
+    await sendMessage('Is my vacuum still under warranty?', 'warranty-question')
+    const first = getState().runs.at(-1)!
+    const firstConversation = getState().conversationId
+    expect(first.customerId).toBe('CUST-1008')
+    setToolEnabled('check_warranty', false)
+    await setActiveCustomer('CUST-1042') // the learner moved on meanwhile
+    await repeatRun(first.id)
+    await persistenceIdle()
+    const s = getState()
+    const again = s.runs.at(-1)!
+    expect(again.id).not.toBe(first.id)
+    expect(again).toMatchObject({ repeatOf: first.id, customerId: 'CUST-1008', message: first.message, scenarioId: 'warranty-question', outcome: 'answered' })
+    expect(again.enabledTools).not.toContain('check_warranty')
+    expect(first.enabledTools).toContain('check_warranty')
+    expect(s.activeCustomerId).toBe('CUST-1008')
+    expect(s.conversationId).not.toBe(firstConversation)
+    expect(s.conversation.every((i) => i.runId === again.id)).toBe(true)
+    expect(agentStep.mock.calls.at(-1)![0].enabledTools).not.toContain('check_warranty')
+    expect((await simDb.runs.get(again.id))!.repeatOf).toBe(first.id)
+    expect(s.runs.some((r) => r.id === first.id)).toBe(true)
+  })
+
+  it('repeatRun is refused while a run is in progress and changes nothing', async () => {
+    scriptAnswer()
+    await sendMessage('First question')
+    const first = getState().runs.at(-1)!
+    scriptTicketRun()
+    const done = sendMessage('Please open a repair ticket.')
+    await waitForConfirmation()
+    const before = getState().conversationId
+    await expect(repeatRun(first.id)).rejects.toThrow()
+    expect(getState().conversationId).toBe(before)
+    cancelRun()
+    await done
+  })
+
+  it('setEnabledTools keeps the registry order, ignores unknown names and is persisted', async () => {
+    setEnabledTools(['search_service_knowledge', 'get_customer_orders', 'nope' as never])
+    expect(getState().enabledTools).toEqual(['get_customer_orders', 'search_service_knowledge'])
+    await persistenceIdle()
+    expect((await simDb.prefs.get('prefs'))!.enabledTools).toEqual(['get_customer_orders', 'search_service_knowledge'])
+  })
+
+  it('resetScenario restores the company data and starts a new conversation as the same customer; runs and tool switches stay', async () => {
+    scriptTicketRun()
+    const done = sendMessage('Please open a repair ticket.')
+    await waitForConfirmation()
+    resolveConfirmation(true)
+    await done
+    expect(await simDb.tickets.count()).toBe(1)
+    setToolEnabled('get_crm_history', false)
+    const before = getState()
+    await resetScenario()
+    await persistenceIdle()
+    const s = getState()
+    expect(await simDb.tickets.count()).toBe(0)
+    expect(s.conversation).toEqual([])
+    expect(s.history).toEqual([])
+    expect(s.conversationId).not.toBe(before.conversationId)
+    expect(s.activeCustomerId).toBe(before.activeCustomerId)
+    expect(s.enabledTools).not.toContain('get_crm_history')
+    expect(s.runs.map((r) => r.id)).toEqual(before.runs.map((r) => r.id))
+    expect(await simDb.runs.count()).toBe(before.runs.length)
+  })
+
+  it('resetEverything restores the data, removes the runs and turns every tool back on', async () => {
+    scriptAnswer()
+    await sendMessage('Hello')
+    setToolEnabled('check_warranty', false)
+    await setActiveCustomer('CUST-1008')
+    await resetEverything()
+    await persistenceIdle()
+    const s = getState()
+    expect(s.runs).toEqual([])
+    expect(await simDb.runs.count()).toBe(0)
+    expect(s.enabledTools).toContain('check_warranty')
+    expect(s.activeCustomerId).toBe('CUST-1042')
+    expect(s.conversation).toEqual([])
   })
 })

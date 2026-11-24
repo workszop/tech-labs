@@ -98,3 +98,16 @@ describe('restoring after a reload', () => {
     ])
   })
 })
+
+describe('repeatOf (Task 10)', () => {
+  it('a run that repeats another keeps repeatOf; an older record without the field loads unchanged', async () => {
+    const old = { ...run('r-old', 100), outcome: 'answered' as const, answer: 'A' }
+    await saveRun(old)
+    await saveRun({ ...run('r-new', 200), outcome: 'answered', answer: 'B', repeatOf: 'r-old' })
+    const { runs } = await loadRuns()
+    expect(runs.map((r) => r.id)).toEqual(['r-old', 'r-new'])
+    expect(runs[0]).toEqual(old)
+    expect(runs[0]!.repeatOf).toBeUndefined()
+    expect(runs[1]!.repeatOf).toBe('r-old')
+  })
+})

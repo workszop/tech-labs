@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AgentBubble, AgentRow, CustomerBubble, Escalation, NoticeItem, RunSteps, TypingIndicator, noticeContent } from './Messages'
 import { runView, type RunView } from './model'
 import { ScenarioList } from './Scenarios'
+import { useShowHandler } from '../learn/bus'
 
 const EMPTY_VIEW: RunView = { steps: [], sources: [], ticketId: null, handover: false, endReason: null }
 
@@ -102,6 +103,13 @@ export function ChatPanel() {
     setScenarioId(s.id)
     focusInput()
   }
+
+  // "Show me" from the Learn dialog: open a scenario the same way as its card does (asks first when a conversation exists).
+  useShowHandler((target) => {
+    if (target.kind !== 'scenario') return
+    const s = SCENARIOS.find((x) => x.id === target.id)
+    if (s) requestScenario(s)
+  })
 
   // ---- scrolling: follow the newest item unless the user scrolled up
   const listRef = useRef<HTMLDivElement>(null)

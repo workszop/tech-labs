@@ -119,7 +119,7 @@ function SourceChip({ source }: { source: Source }) {
     <button
       type="button"
       onClick={() => openRecord({ kind: source.kind, id: source.id })}
-      className="inline-flex max-w-full cursor-pointer items-center gap-1 rounded-full bg-doc px-2 py-0.5 text-[11.5px] leading-5 text-[var(--blue-ink)] transition-colors hover:bg-[var(--doc-text)] [&_svg]:size-3 [&_svg]:shrink-0"
+      className="inline-flex max-w-full cursor-pointer items-center gap-1 rounded-full bg-doc px-2 py-0.5 text-[11.5px] leading-5 text-[var(--blue-ink)] transition-colors hover:bg-[var(--doc-press)] [&_svg]:size-3 [&_svg]:shrink-0"
       aria-label={`${tx.systems.record.kinds[source.kind]} ${doc && source.label ? source.label : source.id}. ${tx.chat.sources.open(source.id)}`}
       data-source={source.id}
     >

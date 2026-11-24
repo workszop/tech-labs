@@ -114,7 +114,7 @@ export function initApp(): Promise<void> {
   })
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     // Dev-only hook for headless checks; Vite drops this branch from production builds.
-    Object.assign(window, { __agentLab: { getState, sendMessage, cancelRun, resolveConfirmation, setActiveCustomer, ensureKbIndex, persistenceIdle } })
+    Object.assign(window, { __agentLab: { getState, sendMessage, cancelRun, resolveConfirmation, setActiveCustomer, ensureKbIndex, persistenceIdle, repeatRun, setToolEnabled, setEnabledTools, startNewConversation, resetScenario, resetEverything } })
   }
   return restoreState()
 }
@@ -267,41 +267,55 @@ export function cancelRun() {
   runCtl?.abort()
 }
 
+/** Options of `sendMessage` used by the experiments ("Repeat this question"). */
+export interface SendOptions {
+  /** Id of the run whose question is sent again; stored on the new run as `repeatOf`. */
+  repeatOf?: string
+}
+
+/** Why a message cannot be sent now (localized), or null when it can. */
+function sendBlocker(): Error | null {
+  const tx = t().shell
+  if (!getState().ready) return new Error(tx.runErrors.notReady)
+  if (runDone || getState().currentRun) return new Error(tx.runErrors.busy)
+  if (getState().auth.status !== 'active' || !getState().auth.session) return new ApiError('unauthorized', tx.errors.activateFirst, 401)
+  return null
+}
+
 /**
  * Sends a customer message: starts a run of the agent loop for the active
  * customer. With a scenario id, the scenario's customer becomes active first.
  * Resolves when the run has ended.
  */
-export function sendMessage(text: string, scenarioId?: string): Promise<void> {
+export function sendMessage(text: string, scenarioId?: string, opts: SendOptions = {}): Promise<void> {
   const tx = t().shell
-  if (!getState().ready) return Promise.reject(new Error(tx.runErrors.notReady))
-  if (runDone || getState().currentRun) return Promise.reject(new Error(tx.runErrors.busy))
-  const session = getState().auth.session
-  if (getState().auth.status !== 'active' || !session) return Promise.reject(new ApiError('unauthorized', tx.errors.activateFirst, 401))
+  const blocked = sendBlocker()
+  if (blocked) return Promise.reject(blocked)
+  const session = getState().auth.session!
   const message = text.trim()
   if (!message) return Promise.resolve()
   const max = session.capabilities.agent.maxMessageChars
   if (message.length > max) return Promise.reject(new Error(tx.runErrors.tooLong(max)))
-  const done = runMessage(session, message, scenarioId).finally(() => {
+  const done = runMessage(session, message, scenarioId, opts).finally(() => {
     if (runDone === done) runDone = null
   })
   runDone = done
   return done
 }
 
-async function runMessage(session: SessionInfo, message: string, scenarioId?: string): Promise<void> {
+async function runMessage(session: SessionInfo, message: string, scenarioId: string | undefined, opts: SendOptions): Promise<void> {
   // Registered before the first await, so `cancelRun` (also through a customer or
   // language switch) stops this message even while the run is being set up.
   const ctl = new AbortController()
   runCtl = ctl
   try {
-    await startRun(ctl, session, message, scenarioId)
+    await startRun(ctl, session, message, scenarioId, opts)
   } finally {
     if (runCtl === ctl) runCtl = null
   }
 }
 
-async function startRun(ctl: AbortController, session: SessionInfo, message: string, scenarioId?: string): Promise<void> {
+async function startRun(ctl: AbortController, session: SessionInfo, message: string, scenarioId: string | undefined, opts: SendOptions): Promise<void> {
   const scenario = scenarioId ? SCENARIOS.find((x) => x.id === scenarioId) : undefined
   // Scenario customers are seed customers; the switch must not cancel this run.
   if (scenario && scenario.customerId !== getState().activeCustomerId) switchCustomer(scenario.customerId)
@@ -319,6 +333,7 @@ async function startRun(ctl: AbortController, session: SessionInfo, message: str
   const startedAt = Date.now()
   const record: RunRecord = {
     id: runId, scenarioId: scenario?.id ?? null, customerId, message, enabledTools, startedAt, events: [], model: session.capabilities.chatModel, lang,
+    ...(opts.repeatOf ? { repeatOf: opts.repeatOf } : {}),
   }
   setState((st) => ({ currentRun: runId, runs: [...st.runs, record].slice(-MAX_STORED_RUNS), selectedTraceItem: null }))
   addItems({ kind: 'customer', id: `msg-${runId}`, runId, text: message, at: startedAt })
@@ -406,6 +421,25 @@ export async function setActiveCustomer(id: string): Promise<void> {
   switchCustomer(id)
 }
 
+/**
+ * Sends the question of a finished run again, as the same customer, with the
+ * current tool switches, in a new conversation. The new run records `repeatOf`,
+ * so the two runs can be compared. Rejects (and changes nothing) while a run is
+ * in progress or when the agent cannot be used.
+ */
+export async function repeatRun(runId: string): Promise<void> {
+  const blocked = sendBlocker()
+  if (blocked) throw blocked
+  const src = getState().runs.find((r) => r.id === runId)
+  if (!src || !src.outcome) throw new Error(t().shell.runErrors.busy)
+  if (!(await simDb.customers.get(src.customerId))) throw new Error(t().shell.runErrors.notReady)
+  const again = sendBlocker()
+  if (again) throw again
+  if (getState().activeCustomerId !== src.customerId) switchCustomer(src.customerId)
+  else resetConversation()
+  return sendMessage(src.message, src.scenarioId ?? undefined, { repeatOf: src.id })
+}
+
 /** Turns one tool on or off for the next runs (registry order is kept). */
 export function setToolEnabled(name: ToolName, on: boolean) {
   if (!isToolName(name)) return
@@ -415,6 +449,12 @@ export function setToolEnabled(name: ToolName, on: boolean) {
     else set.delete(name)
     return { enabledTools: TOOL_NAMES.filter((n) => set.has(n)) }
   })
+  persistPrefs()
+}
+
+/** Sets the whole tool choice at once (a preset of the tools panel); unknown names are ignored. */
+export function setEnabledTools(names: readonly ToolName[]) {
+  setState({ enabledTools: TOOL_NAMES.filter((n) => names.includes(n)) })
   persistPrefs()
 }
 
@@ -435,4 +475,18 @@ export async function resetEverything(): Promise<void> {
   setState({ runs: [], currentRun: null, activeCustomerId: DEFAULT_CUSTOMER_ID, enabledTools: [...DEFAULT_TOOLS] })
   startNewConversation()
   persistPrefs()
+}
+
+/**
+ * "Reset this scenario": starts a new conversation as the same customer and
+ * restores the company data to the seed (tickets created by the agent are
+ * removed). The runs, the tool switches, the language and the knowledge base
+ * index are kept.
+ */
+export async function resetScenario(): Promise<void> {
+  cancelRun()
+  await runDone?.catch(() => undefined)
+  await writeChain
+  await resetSimulation()
+  startNewConversation()
 }
