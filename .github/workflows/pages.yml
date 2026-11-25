@@ -4,6 +4,7 @@
 #   /             labs index (index.html)
 #   /rag-lab/     RAG Lab (rag-lab/web)
 #   /agent-lab/   Service Agent Lab (agent-lab/web)
+#   /vision-lab/  RYBEX Vision Lab (vision-lab/web; static, no Worker and no variable)
 #
 # One-time setup (repository Settings):
 #   - Pages -> Build and deployment -> Source: "GitHub Actions"
@@ -21,9 +22,9 @@ name: Tech Labs -> GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['rag-lab/**', 'agent-lab/**', 'index.html', '.github/workflows/pages.yml']
+    paths: ['rag-lab/**', 'agent-lab/**', 'vision-lab/**', 'index.html', '.github/workflows/pages.yml']
   pull_request:
-    paths: ['rag-lab/**', 'agent-lab/**', 'index.html', '.github/workflows/pages.yml']
+    paths: ['rag-lab/**', 'agent-lab/**', 'vision-lab/**', 'index.html', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -127,9 +128,33 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  vision-lab-web:
+    name: RYBEX Vision Lab web - typecheck, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vision-lab/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vision-lab/web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vision-lab-dist
+          path: vision-lab/web/dist
+          retention-days: 1
+          if-no-files-found: error
+
   site:
     name: Assemble the site
-    needs: [rag-lab-web, rag-lab-worker, agent-lab-web, agent-lab-worker]
+    needs: [rag-lab-web, rag-lab-worker, agent-lab-web, agent-lab-worker, vision-lab-web]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -141,14 +166,20 @@ jobs:
         with:
           name: agent-lab-dist
           path: build/agent-lab
-      - name: Labs index at the root, RAG Lab at /rag-lab/, Service Agent Lab at /agent-lab/
+      - uses: actions/download-artifact@v4
+        with:
+          name: vision-lab-dist
+          path: build/vision-lab
+      - name: Labs index at the root, one folder per lab
         run: |
-          mkdir -p _site/rag-lab _site/agent-lab
+          mkdir -p _site/rag-lab _site/agent-lab _site/vision-lab
           cp index.html .nojekyll _site/
           cp -r build/rag-lab/. _site/rag-lab/
           cp -r build/agent-lab/. _site/agent-lab/
+          cp -r build/vision-lab/. _site/vision-lab/
           test -f _site/rag-lab/index.html
           test -f _site/agent-lab/index.html
+          test -f _site/vision-lab/index.html
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:
