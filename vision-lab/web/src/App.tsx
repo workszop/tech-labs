@@ -13,14 +13,8 @@ import Stage8 from './stages/Stage8'
 
 const STAGES = [Stage1, Stage2, Stage3, Stage4, Stage5, Stage6, Stage7, Stage8]
 
-function Logo() {
-  return (
-    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
-      <rect x="1" y="1" width="30" height="30" rx="6" fill="#0f5b5e" />
-      <ellipse cx="14" cy="16" rx="9" ry="4.6" fill="#fff" /><path d="M21 16l7-5v10z" fill="#fff" /><circle cx="9.5" cy="14.8" r="1.3" fill="#0f5b5e" />
-    </svg>
-  )
-}
+// edulab ink mark (black horse) from web/public; BASE_URL keeps it working under the /vision-lab/ sub-path.
+const MARK_SRC = `${import.meta.env.BASE_URL}edulab-mark-ink.png`
 
 export default function App() {
   const t = useT()
@@ -41,7 +35,12 @@ export default function App() {
   return (
     <div className="app">
       <header className="top">
-        <div className="brand"><Logo /><span><b>RYBEX</b> Vision Lab</span></div>
+        <div className="brand">
+          <img className="edu-mark" src={MARK_SRC} alt="edulab" width={60} height={60} draggable={false} />
+          <span className="edu-word">edulab</span>
+          <span className="brand-rule" aria-hidden="true" />
+          <span className="brand-app">RYBEX Vision Lab</span>
+        </div>
         <div className="status">
           <span className="chip-status" title={t.app.statusData}>{t.app.images(usable.length)}</span>
           <span className={`chip-status ${run ? 'ok' : ''}`} title={t.app.statusModel}>{run ? t.app.model(run.name, run.mode === 'basic' ? t.s3.basic : t.s3.advanced) : t.app.noModel}</span>
@@ -66,7 +65,6 @@ export default function App() {
         </nav>
         <main className="main">
           <div className="stage-head">
-            <span className="eyebrow">{s.stage <= 7 ? t.app.stageOf(s.stage, 7) : t.app.extra}</span>
             <h1>{t.nav.stages[s.stage - 1]}</h1>
             <p>{t.nav.leads[s.stage - 1]}</p>
           </div>

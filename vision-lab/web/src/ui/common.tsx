@@ -4,15 +4,34 @@ import { sampleUrl } from '../data/images'
 import { useT } from '../i18n'
 import { setState, useStore, type StageId } from '../store'
 
-/** The four questions every stage answers. */
+// Lucide icon paths (ISC licence), inlined so the lab needs no icon package or CDN.
+const ICONS = {
+  target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
+  lightbulb: <><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></>,
+  sliders: <><path d="M20 7h-9" /><path d="M14 17H5" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" /></>,
+  alert: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></>,
+}
+export function Icon({ name }: { name: keyof typeof ICONS }) {
+  return <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">{ICONS[name]}</svg>
+}
+
+/** The four questions every stage answers: edulab icon tiles, one tone each (red only for the risk). */
 export function Explain({ what, why, how, wrong }: { what: string; why: string; how: string; wrong: string }) {
   const t = useT()
+  const tiles = [
+    { tone: 'blue', icon: 'target', title: t.explain.what, text: what },
+    { tone: 'green', icon: 'lightbulb', title: t.explain.why, text: why },
+    { tone: 'grape', icon: 'sliders', title: t.explain.how, text: how },
+    { tone: 'red', icon: 'alert', title: t.explain.wrong, text: wrong },
+  ] as const
   return (
     <div className="explain">
-      <div><h4>{t.explain.what}</h4><p>{what}</p></div>
-      <div><h4>{t.explain.why}</h4><p>{why}</p></div>
-      <div><h4>{t.explain.how}</h4><p>{how}</p></div>
-      <div className="wrong"><h4>{t.explain.wrong}</h4><p>{wrong}</p></div>
+      {tiles.map((x) => (
+        <div className="tile" key={x.tone}>
+          <div className="tile-head"><span className={`ibadge tone-${x.tone}`}><Icon name={x.icon} /></span><h4>{x.title}</h4></div>
+          <p>{x.text}</p>
+        </div>
+      ))}
     </div>
   )
 }

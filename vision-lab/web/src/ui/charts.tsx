@@ -2,7 +2,8 @@
 // crosshair with tooltip, values in text ink (colour only on the marks).
 import { useRef, useState, type ReactNode } from 'react'
 
-export const SERIES = ['#4c9aff', '#d98628'] as const
+// edulab chart series: ink, then blue-600 (literal hex: SVG attributes do not resolve var()).
+export const SERIES = ['#1C1917', '#177AA8'] as const
 export interface Series { name: string; values: number[] }
 
 const W = 560, PAD = { l: 44, r: 16, t: 10, b: 34 }
@@ -145,7 +146,7 @@ export function ConfusionMatrix({ matrix, labels, actual, predicted }: { matrix:
         <thead><tr><th className="cm-corner">{actual} ↓ / {predicted} →</th>{labels.map((l) => <th key={l}>{l}</th>)}</tr></thead>
         <tbody>{matrix.map((row, i) => (
           <tr key={i}><th>{labels[i]}</th>{row.map((v, j) => (
-            <td key={j} className={i === j ? 'ok' : v ? 'err' : ''} style={{ background: `rgba(76,154,255,${v ? 0.12 + (v / max) * 0.6 : 0})` }} title={`${labels[i]} → ${labels[j]}: ${v}`}>{v}</td>
+            <td key={j} className={i === j ? 'ok' : v ? 'err' : ''} style={{ background: `rgba(255,213,0,${v ? 0.15 + (v / max) * 0.85 : 0})` }} title={`${labels[i]} → ${labels[j]}: ${v}`}>{v}</td>
           ))}</tr>
         ))}</tbody>
       </table>

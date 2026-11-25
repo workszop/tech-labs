@@ -23,7 +23,7 @@ function Pipeline({ sample, version }: { sample: Sample | undefined; version: nu
       const f = m.get(sample.id)!; if (!alive) return
       const cv = strip.current; if (cv) {
         const x = cv.getContext('2d')!, cols = 64, rows = 4, max = Math.max(...f.slice(0, cols * rows))
-        for (let i = 0; i < cols * rows; i++) { const v = Math.sqrt(f[i] / max); x.fillStyle = `rgba(76,154,255,${(0.06 + v * 0.94).toFixed(3)})`; x.fillRect((i % cols) * 5, Math.floor(i / cols) * 9, 4, 8) }
+        for (let i = 0; i < cols * rows; i++) { const v = Math.sqrt(f[i] / max); x.fillStyle = `rgba(23,122,168,${(0.06 + v * 0.94).toFixed(3)})`; x.fillRect((i % cols) * 5, Math.floor(i / cols) * 9, 4, 8) }
       }
       const cl = getClassifier()
       if (cl) { const p = await predict(cl, [f]); if (alive) setProbs(p[0]) } else setProbs(null)

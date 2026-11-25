@@ -3,17 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=202611250919" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=202611250919" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png?v=202611250919" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=202611250919" />
+    <meta name="theme-color" content="#FFD500" />
     <title>RYBEX Vision Lab - kontrola jakości puszek z wizją komputerową</title>
     <meta name="description" content="RYBEX Vision Lab: interaktywne laboratorium, w którym zbierasz i opisujesz zdjęcia puszek, trenujesz prawdziwy model w przeglądarce, testujesz go i wdrażasz na linii produkcyjnej." />
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
-    <meta name="theme-color" content="#12161a" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" />
+    <!-- Boot gate: the UI is built by script, so the page stays hidden until the brand fonts are in (main.tsx adds .app-ready). -->
+    <style>
+      @keyframes boot-reveal { to { visibility: visible; } }
+      html:not(.app-ready) body { visibility: hidden; animation: boot-reveal 0s 4s forwards; }
+      @media print { html:not(.app-ready) body { visibility: visible; animation: none; } }
+    </style>
+    <noscript><style>html:not(.app-ready) body { visibility: visible; animation: none; }</style></noscript>
   </head>
-  <body>
+  <body class="edu">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
