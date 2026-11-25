@@ -20,6 +20,8 @@ export interface OpenAICompatibleOptions {
   embeddingDimensions: number
   embedTimeoutMs: number
   chatTimeoutMs: number
+  /** Sent as `reasoning: { effort }` so a thinking model does not spend the whole output budget on thinking. */
+  reasoningEffort?: string
   fetch?: FetchLike
 }
 
@@ -188,6 +190,7 @@ export class OpenAICompatibleProvider implements Provider {
       temperature: opts.temperature,
       max_tokens: opts.maxTokens,
     }
+    if (this.opts.reasoningEffort) body.reasoning = { effort: this.opts.reasoningEffort }
     if (stream) {
       body.stream = true
       body.stream_options = { include_usage: true }

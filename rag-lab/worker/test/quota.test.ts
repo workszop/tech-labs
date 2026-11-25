@@ -49,7 +49,7 @@ describe('quotas', () => {
     // Reservation was input + 1024; after reconciliation only actual usage remains.
     expect(body.quota.tokensUsed).toBe(body.usage.inputTokens + body.usage.outputTokens)
     expect(body.quota.tokensUsed).toBeLessThan(1024)
-    const expectedCost = (body.usage.inputTokens * 0.15 + body.usage.outputTokens * 0.6) / 1e6
+    const expectedCost = (body.usage.inputTokens * 0.1 + body.usage.outputTokens * 0.5) / 1e6
     expect(body.quota.estimatedCostUsd).toBeCloseTo(expectedCost, 10)
 
     const e = (await (await embed(token, ['hello world'])).json()) as EmbeddingsResponse

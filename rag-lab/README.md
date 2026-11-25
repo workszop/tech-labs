@@ -66,7 +66,7 @@ The **mock provider** (`PROVIDER=mock`) is for development, tests and workshops 
 
 The UI shows an **"Offline demo models"** badge while the mock provider is active, so mock results are never presented as a real AI model.
 
-To use real models locally, set `PROVIDER=openai-compatible` and `PROVIDER_API_KEY=sk-...` in `worker/.dev.vars`.
+To use real models locally, set `PROVIDER=openai-compatible` and `PROVIDER_API_KEY=sk-or-...` (an OpenRouter key) in `worker/.dev.vars`. Production runs on real models through OpenRouter: `openai/text-embedding-3-small` for vectors and `openai/gpt-6-luna` for answers (see `worker/wrangler.jsonc`).
 
 **Checks:**
 

@@ -126,7 +126,7 @@ export interface Settings {
   streaming: boolean
   ragEnabled: boolean
   compareMode: boolean
-  vizMode: '2d' | '3d'
+  vizMode: 'question' | '2d' | '3d'
   colorBy: 'folder' | 'document'
   showConnections: boolean
   showLabels: boolean
@@ -170,7 +170,7 @@ export const DEFAULT_SETTINGS: Settings = {
   streaming: true,
   ragEnabled: true,
   compareMode: false,
-  vizMode: '2d',
+  vizMode: 'question',
   colorBy: 'folder',
   showConnections: true,
   showLabels: false,
@@ -183,7 +183,8 @@ function loadPrefs(): { settings: Settings; selection: string[] } {
     const raw = localStorage.getItem(PREFS_KEY)
     if (raw) {
       const p = JSON.parse(raw)
-      return { settings: { ...DEFAULT_SETTINGS, ...p.settings }, selection: Array.isArray(p.selection) ? p.selection : [] }
+      // The map always opens on the question-centred view; an older stored '2d' would hide it.
+      return { settings: { ...DEFAULT_SETTINGS, ...p.settings, vizMode: DEFAULT_SETTINGS.vizMode }, selection: Array.isArray(p.selection) ? p.selection : [] }
     }
   } catch {
     /* storage blocked: use defaults */

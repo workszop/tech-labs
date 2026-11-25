@@ -26,6 +26,7 @@ export function createProvider(cfg: Config, fetchImpl?: FetchLike): Provider {
     embeddingDimensions: cfg.embeddingDimensions,
     embedTimeoutMs: cfg.embedTimeoutMs,
     chatTimeoutMs: cfg.chatTimeoutMs,
+    reasoningEffort: cfg.chatReasoningEffort,
     fetch: fetchImpl,
   })
 }

@@ -46,6 +46,7 @@ export function SettingsDialog() {
   const usage = useStore((st) => st.usage)
   const meta = useStore((st) => st.index.meta)
   const tx = useT().shell.settings
+  const mapTx = useT().lab.map
   const caps = session?.capabilities
   const temp = caps?.temperature ?? { min: 0, max: 1, default: 0.2 }
   const out = caps?.maxOutputTokens ?? { min: 64, max: 1024, default: 500 }
@@ -89,11 +90,11 @@ export function SettingsDialog() {
           </div>
           <div>
             <Group title={tx.visualization}>
-              <Row label={tx.mapMode}><div className={SEG}>{(['2d', '3d'] as const).map((m) => <button key={m} type="button" aria-pressed={s.vizMode === m} className={segItem(s.vizMode === m)} onClick={() => setSettings({ vizMode: m })}>{m.toUpperCase()}</button>)}</div></Row>
+              <Row label={tx.mapMode}><div className={SEG}>{(['question', '2d', '3d'] as const).map((m) => <button key={m} type="button" aria-pressed={s.vizMode === m} className={segItem(s.vizMode === m)} onClick={() => setSettings({ vizMode: m })}>{m === 'question' ? mapTx.viewQuestion : m.toUpperCase()}</button>)}</div></Row>
               <Row label={tx.colorBy}><div className={SEG}>{(['folder', 'document'] as const).map((m) => <button key={m} type="button" aria-pressed={s.colorBy === m} className={segItem(s.colorBy === m)} onClick={() => setSettings({ colorBy: m })}>{m === 'folder' ? tx.colorByFolder : tx.colorByDocument}</button>)}</div></Row>
               <Row label={tx.connections}><Switch checked={s.showConnections} onCheckedChange={(v) => setSettings({ showConnections: v })} /></Row>
               <Row label={tx.labels}><Switch checked={s.showLabels} onCheckedChange={(v) => setSettings({ showLabels: v })} /></Row>
-              <Row label={tx.resetViz}><Button size="xs" variant="outline" onClick={() => { setSettings({ vizMode: '2d', colorBy: 'folder', showConnections: true, showLabels: false }); setUi({ mapFocusDoc: null, mapFolders: null }) }}><RotateCcw /> {tx.resetVizButton}</Button></Row>
+              <Row label={tx.resetViz}><Button size="xs" variant="outline" onClick={() => { setSettings({ vizMode: 'question', colorBy: 'folder', showConnections: true, showLabels: false }); setUi({ mapFocusDoc: null, mapFolders: null }) }}><RotateCcw /> {tx.resetVizButton}</Button></Row>
             </Group>
             <Group title={tx.account}>
               <Row label={tx.access}><Badge variant={session ? 'ok' : 'warn'}>{session ? tx.accessActive(session.label) : tx.accessNone}</Badge></Row>

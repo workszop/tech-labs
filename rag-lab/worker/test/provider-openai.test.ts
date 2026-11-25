@@ -8,7 +8,7 @@ import { PROVIDER_KEY, auth, callWith, expectError, jsonInit, newSession, parseS
 
 const KEY = 'sk-unit-test-key'
 
-function provider(fetchImpl: (url: string, init?: RequestInit) => Promise<Response>, opts: Partial<{ embedTimeoutMs: number; chatTimeoutMs: number; dims: number }> = {}) {
+function provider(fetchImpl: (url: string, init?: RequestInit) => Promise<Response>, opts: Partial<{ embedTimeoutMs: number; chatTimeoutMs: number; dims: number; reasoningEffort: string }> = {}) {
   return new OpenAICompatibleProvider({
     baseUrl: 'https://upstream.test/v1',
     apiKey: KEY,
@@ -17,6 +17,7 @@ function provider(fetchImpl: (url: string, init?: RequestInit) => Promise<Respon
     embeddingDimensions: opts.dims ?? 3,
     embedTimeoutMs: opts.embedTimeoutMs ?? 2000,
     chatTimeoutMs: opts.chatTimeoutMs ?? 2000,
+    reasoningEffort: opts.reasoningEffort,
     fetch: fetchImpl,
   })
 }
@@ -117,6 +118,18 @@ describe('openai-compatible provider (mocked fetch)', () => {
       return new Response(body)
     }
     await rejectsWith(collect(provider(stalled, { chatTimeoutMs: 150 }).chatStream(messages, chatOpts)), 'upstream_timeout')
+  })
+
+  it('sends reasoning effort only when configured (OpenRouter thinking models)', async () => {
+    const bodies: Record<string, unknown>[] = []
+    const fetchImpl = async (_u: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(init!.body as string))
+      return Response.json({ choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }] })
+    }
+    await provider(fetchImpl, { reasoningEffort: 'low' }).chat(messages, chatOpts)
+    await provider(fetchImpl).chat(messages, chatOpts)
+    expect(bodies[0].reasoning).toEqual({ effort: 'low' })
+    expect(bodies[1].reasoning).toBeUndefined()
   })
 
   it('non-streaming chat parses content, finish_reason and usage', async () => {

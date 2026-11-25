@@ -20,6 +20,8 @@ export interface Env {
   EMBEDDING_DIMENSIONS?: string
   EMBED_TIMEOUT_MS?: string
   CHAT_TIMEOUT_MS?: string
+  /** Optional `reasoning.effort` sent with chat requests (OpenRouter), e.g. "low". Empty = not sent. */
+  CHAT_REASONING_EFFORT?: string
   MOCK_STREAM_DELAY_MS?: string
 
   // --- prices (USD per 1M tokens)
@@ -68,6 +70,7 @@ export interface Config {
   allowedModels: Set<string>
   embedTimeoutMs: number
   chatTimeoutMs: number
+  chatReasoningEffort: string
   mockStreamDelayMs: number
 
   embeddingPricePerMTok: number
@@ -129,6 +132,7 @@ export function loadConfig(env: Env): Config {
     allowedModels: allowed,
     embedTimeoutMs: num(env.EMBED_TIMEOUT_MS, 20_000, 100, 300_000),
     chatTimeoutMs: num(env.CHAT_TIMEOUT_MS, 60_000, 100, 300_000),
+    chatReasoningEffort: /^(none|minimal|low|medium|high)$/.test(env.CHAT_REASONING_EFFORT?.trim() ?? '') ? env.CHAT_REASONING_EFFORT!.trim() : '',
     mockStreamDelayMs: num(env.MOCK_STREAM_DELAY_MS, 25, 0, 2000),
 
     embeddingPricePerMTok: num(env.EMBEDDING_PRICE_PER_MTOK, 0.02, 0, 1000),

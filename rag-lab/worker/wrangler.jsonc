@@ -26,21 +26,23 @@
   //   { "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } }
   // ],
 
-  // PROVIDER=mock runs the offline demo models (no API key, no cost). For real models set
-  // PROVIDER to "openai-compatible" and run `wrangler secret put PROVIDER_API_KEY`.
+  // Real models through OpenRouter (OpenAI-compatible API). The key is a Worker secret:
+  //   npx wrangler secret put PROVIDER_API_KEY   (an OpenRouter key, sk-or-...)
+  // PROVIDER=mock switches back to the offline demo models (no key, no cost).
   "vars": {
-    "PROVIDER": "mock",
-    "PROVIDER_BASE_URL": "https://api.openai.com/v1",
-    "EMBEDDING_MODEL": "text-embedding-3-small",
+    "PROVIDER": "openai-compatible",
+    "PROVIDER_BASE_URL": "https://openrouter.ai/api/v1",
+    "EMBEDDING_MODEL": "openai/text-embedding-3-small",
     "EMBEDDING_DIMENSIONS": "1536",
-    "CHAT_MODEL": "gpt-4o-mini",
-    "ALLOWED_MODELS": "text-embedding-3-small,gpt-4o-mini",
+    "CHAT_MODEL": "openai/gpt-6-luna",
+    "CHAT_REASONING_EFFORT": "low",
+    "ALLOWED_MODELS": "openai/text-embedding-3-small,openai/gpt-6-luna",
     "EMBED_TIMEOUT_MS": "20000",
     "CHAT_TIMEOUT_MS": "60000",
 
     "EMBEDDING_PRICE_PER_MTOK": "0.02",
-    "CHAT_INPUT_PRICE_PER_MTOK": "0.15",
-    "CHAT_OUTPUT_PRICE_PER_MTOK": "0.60",
+    "CHAT_INPUT_PRICE_PER_MTOK": "0.10",
+    "CHAT_OUTPUT_PRICE_PER_MTOK": "0.50",
 
     "ALLOWED_ORIGINS": "https://tech-labs.warsztaty-ai.com,https://workszop.github.io",
     // Cloudflare Access for /api/admin/* (leave empty to use only ADMIN_TOKEN).
