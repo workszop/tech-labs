@@ -34,8 +34,17 @@ export default function Stage7() {
     ...(c && rHuman.n && (source === 'test' || reviewed > 0) ? [{ key: 'hybrid', name: t.s7.scHybrid, s: scenario(cfg, rHuman, human) }] : []),
   ]
   const money = (v: number) => `${Math.round(v).toLocaleString(t.locale)} zł`
+  // unit prices keep their grosze (0,40 zł), daily totals are whole złoty
+  const unit = (v: number) => `${v.toLocaleString(t.locale, { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 })} zł`
   const n0 = (v: number) => Math.round(v).toLocaleString(t.locale)
-  const manualRow = rows.find((r) => r.key === 'manual')!, ai = rows.find((r) => r.key === 'ai')
+  const manualRow = rows.find((r) => r.key === 'manual')!, ai = rows.find((r) => r.key === 'ai'), hybrid = rows.find((r) => r.key === 'hybrid')
+  const defects = cfg.dailyVolume * (cfg.defectPct / 100)
+  const hybridShare = hybrid ? pct(hybrid.s.manual / Math.max(1, cfg.dailyVolume)) : ''
+  // One line under each column name: who decides about a tin.
+  const colNote: Record<string, string> = { none: t.s7.colNone, manual: t.s7.colManual, ai: t.s7.colAi, hybrid: t.s7.colHybrid(hybridShare) }
+  // In the AI + person column both make mistakes, so the count is split between them.
+  const split = (key: string, model: number, person: number) => key === 'hybrid' && model + person >= 0.5
+    ? <small>{t.s7.byModel} {n0(model)} + {t.s7.byHuman} {n0(person)}</small> : null
   const best = rows.reduce((a, b) => (b.s.total < a.s.total ? b : a))
   const inspectors = manual ? (cfg.dailyVolume * (manual.avgMs / 1000)) / (7 * 3600) : null
   const escaped = stats.fn + stats.uninspectedDefective
@@ -78,18 +87,29 @@ export default function Stage7() {
         </Panel>
         <div className="stack">
           <Panel title={t.s7.estimateTitle} meta={<span className="tag">{t.s7.tagEstimate}</span>}>
-            <div className="table-wrap"><table className="table num">
-              <thead><tr><th>{t.s7.perDay}</th>{rows.map((r) => <th key={r.key} className={r === best ? 'best' : ''}>{r.name}</th>)}</tr></thead>
+            <div className="table-wrap"><table className="table num biz">
+              <thead><tr><th>{t.s7.perDay}</th>{rows.map((r) => <th key={r.key} className={r === best ? 'best' : ''}>{r.name}<small>{colNote[r.key]}</small></th>)}</tr></thead>
               <tbody>
-                <tr><th>{t.s7.rowEscaped}</th>{rows.map((r) => <td key={r.key}>{n0(r.s.escaped)}</td>)}</tr>
-                <tr><th>{t.s7.rowFalseRejects}</th>{rows.map((r) => <td key={r.key}>{n0(r.s.falseRejects)}</td>)}</tr>
+                <tr className="section"><th colSpan={rows.length + 1}>{t.s7.secTins}</th></tr>
+                <tr><th>{t.s7.rowEscaped}</th>{rows.map((r) => <td key={r.key}>{n0(r.s.escaped)}{split(r.key, r.s.escapedModel, r.s.escapedHuman)}</td>)}</tr>
+                <tr><th>{t.s7.rowFalseRejects}</th>{rows.map((r) => <td key={r.key}>{n0(r.s.falseRejects)}{split(r.key, r.s.falseRejectsModel, r.s.falseRejectsHuman)}</td>)}</tr>
                 <tr><th>{t.s7.rowManual}</th>{rows.map((r) => <td key={r.key}>{n0(r.s.manual)}</td>)}</tr>
-                <tr><th>{t.s7.rowComplaints}</th>{rows.map((r) => <td key={r.key}>{money(r.s.complaints)}</td>)}</tr>
-                <tr><th>{t.s7.rowRejectCost}</th>{rows.map((r) => <td key={r.key}>{money(r.s.rejectCost)}</td>)}</tr>
-                <tr><th>{t.s7.rowManualCost}</th>{rows.map((r) => <td key={r.key}>{money(r.s.manualCost)}</td>)}</tr>
+                <tr className="section"><th colSpan={rows.length + 1}>{t.s7.secCost}</th></tr>
+                <tr><th>{t.s7.rowComplaints}<small>{t.s7.subComplaints(unit(cfg.complaintCost + cfg.productValue))}</small></th>{rows.map((r) => <td key={r.key}>{money(r.s.complaints)}</td>)}</tr>
+                <tr><th>{t.s7.rowRejectCost}<small>{t.s7.subRejectCost(unit(cfg.falseRejectCost))}</small></th>{rows.map((r) => <td key={r.key}>{money(r.s.rejectCost)}</td>)}</tr>
+                <tr><th>{t.s7.rowManualCost}<small>{t.s7.subManualCost(unit(cfg.manualCost))}</small></th>{rows.map((r) => <td key={r.key}>{money(r.s.manualCost)}</td>)}</tr>
                 <tr className="total"><th>{t.s7.rowTotal}</th>{rows.map((r) => <td key={r.key} className={r === best ? 'best' : ''}>{money(r.s.total)}</td>)}</tr>
               </tbody>
             </table></div>
+            <div className="how">
+              <h4>{t.s7.howTitle}</h4>
+              <ul className="list">
+                <li>{t.s7.howVolume(n0(cfg.dailyVolume), n0(defects), `${cfg.defectPct}%`, n0(cfg.dailyVolume - defects))}</li>
+                <li>{t.s7.howHuman(pct(human.far, 0), pct(human.frr, 0), !!manual)}</li>
+                {ai && <li>{t.s7.howModel(pct(rAi.def.accept), pct(rAi.good.reject), source === 'line' ? t.s7.srcLine : t.s7.srcTest(threshold.toFixed(2)))}</li>}
+                {hybrid && <li>{source === 'line' ? t.s7.howHybridLine(hybridShare) : t.s7.howHybrid(Math.max(0, threshold - line.band).toFixed(2), Math.min(1, threshold + line.band).toFixed(2), hybridShare)}</li>}
+              </ul>
+            </div>
             <h4>{t.s7.chartTitle}</h4>
             <Bars rows={rows.map((r) => ({ label: r.name, value: r.s.total, note: money(r.s.total), tone: r === best ? 'good' as const : 'b' as const }))} />
             {ai && <div className="stats">
@@ -97,7 +117,7 @@ export default function Stage7() {
               <Stat label={t.s7.escapedYear} value={n0(ai.s.escaped * 250)} hint={t.s7.perYear} />
               {inspectors !== null && <Stat label={t.s7.inspectors} value={inspectors.toFixed(1)} hint={t.s7.inspectorsHint} />}
             </div>}
-            <Notice>{t.s7.disclaimer(manual ? t.s7.humanMeasured(pct(human.far, 0), pct(human.frr, 0)) : t.s7.humanAssumed)}</Notice>
+            <Notice>{t.s7.disclaimer}</Notice>
           </Panel>
         </div>
       </div>

@@ -14,6 +14,14 @@ describe('scenario', () => {
     const s = scenario(cfg, RATES_MANUAL, { far: 0.1, frr: 0.05 })
     expect(s.manual).toBe(10000); expect(s.manualCost).toBe(5000)
     expect(s.escaped).toBeCloseTo(20); expect(s.falseRejects).toBeCloseTo(490)
+    expect(s.escapedModel).toBe(0); expect(s.falseRejectsHuman).toBeCloseTo(490)
+  })
+  it('AI + person splits the errors between the model and the person', () => {
+    const rates = { def: { reject: 0.7, accept: 0.1, review: 0.2 }, good: { reject: 0.05, accept: 0.85, review: 0.1 }, n: 100 }
+    const s = scenario(cfg, rates, { far: 0.1, frr: 0.05 })
+    expect(s.escapedModel).toBeCloseTo(20); expect(s.escapedHuman).toBeCloseTo(4); expect(s.escaped).toBeCloseTo(24)
+    expect(s.falseRejectsModel).toBeCloseTo(490); expect(s.falseRejectsHuman).toBeCloseTo(49); expect(s.falseRejects).toBeCloseTo(539)
+    expect(s.manual).toBeCloseTo(200 * 0.2 + 9800 * 0.1)
   })
 })
 describe('rates', () => {

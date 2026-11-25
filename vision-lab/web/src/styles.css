@@ -126,6 +126,11 @@ nav.side { border-right: 1px solid var(--line-2); background: var(--paper-2); pa
 input[type=range] { width: 100%; accent-color: var(--ink); margin: 2px 0; }
 select, input[type=number], input.name { background: var(--paper); border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 6px 10px; width: 100%; }
 input.name { width: 120px; font-weight: 600; }
+.splitbar { display: flex; height: 10px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; }
+.splitbar .train { background: var(--ink); } .splitbar .val { flex: 1; background: var(--blue-600); }
+.splitlegend { display: flex; justify-content: space-between; gap: 10px; font: 500 12px var(--font-mono); color: var(--ink-2); }
+.splitlegend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.splitlegend i.train { background: var(--ink); } .splitlegend i.val { background: var(--blue-600); }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .unit { display: flex; align-items: center; gap: 8px; } .unit span { color: var(--ink-3); font-size: 13px; min-width: 42px; }
 .check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; cursor: pointer; }
@@ -267,6 +272,15 @@ pre.mono { background: var(--paper-2); border: 1px solid var(--line); border-rad
 .table .right { text-align: right; }
 .table tr.total td, .table tr.total th { border-top: 2px solid var(--line-2); font-weight: 700; color: var(--ink); background: var(--paper); }
 .table .best { color: var(--green-600); font-weight: 600; }
+/* Stage 7 business table: who decides under each column name, how each cost is computed under each row name */
+.table.biz thead th { vertical-align: bottom; min-width: 128px; }
+.table.biz thead th:first-child, .table.biz tbody th { min-width: 220px; }
+.table.biz th small, .table.biz td small { display: block; margin-top: 2px; font: 400 12px/1.35 var(--font-sans); letter-spacing: 0; text-transform: none; color: var(--ink-3); white-space: normal; }
+.table.biz td small { font: 400 11.5px var(--font-mono); white-space: nowrap; }
+.table.biz tbody th { font-weight: 600; }
+.table.biz tr.section th { background: var(--paper-3); font: 500 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); padding-top: 6px; padding-bottom: 6px; }
+.how { display: flex; flex-direction: column; gap: 4px; }
+.how h4 { margin-top: 4px; }
 .table thead th.best { color: var(--ink); font-weight: 700; } /* green on the --paper-3 head is below 4.5:1 */
 .table tr.current, .table tbody tr.current:nth-child(even) { background: var(--yellow); color: var(--yellow-ink); }
 

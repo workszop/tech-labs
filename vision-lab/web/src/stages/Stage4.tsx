@@ -104,6 +104,7 @@ export default function Stage4() {
   const overfit = !training && hist && bestVal >= 0 && hist.valLoss.length - bestVal > 8 && hist.valLoss.at(-1)! > hist.valLoss[bestVal] * 1.15
   const start = async () => { setError(null); const e = await runTraining(); if (e) setError(e === 'needTwoClasses' ? t.s4.needTwo : e) }
   const example = samples.find((s) => s.id === 'red-train_010') ?? usable[0]
+  const trainPct = Math.round((1 - cfg.valSplit) * 100)
   return (
     <>
       <Explain {...t.s4.explain} />
@@ -114,7 +115,12 @@ export default function Stage4() {
             <Field label={t.s4.epochs} value={cfg.epochs} hint={t.s4.epochsHint}><Range value={cfg.epochs} min={5} max={300} step={5} onChange={(epochs) => set({ epochs })} disabled={!!training} /></Field>
             <Field label={t.s4.lr} hint={t.s4.lrHint}><select value={cfg.learningRate} disabled={!!training} onChange={(e) => set({ learningRate: Number(e.target.value) })}>{[0.0001, 0.0003, 0.001, 0.003, 0.01, 0.05].map((v) => <option key={v} value={v}>{v}</option>)}</select></Field>
             <Field label={t.s4.batch} hint={t.s4.batchHint}><select value={cfg.batchSize} disabled={!!training} onChange={(e) => set({ batchSize: Number(e.target.value) })}>{[4, 8, 16, 32, 64].map((v) => <option key={v} value={v}>{v}</option>)}</select></Field>
-            <Field label={t.s4.split} value={`${Math.round((1 - cfg.valSplit) * 100)} / ${Math.round(cfg.valSplit * 100)}`} hint={t.s4.splitHint}><Range value={cfg.valSplit} min={0.1} max={0.4} step={0.05} onChange={(valSplit) => set({ valSplit })} disabled={!!training} /></Field>
+            <Field label={t.s4.split} value={`${trainPct} / ${100 - trainPct}`} hint={t.s4.splitHint}>
+              {/* The whole track is the full data set; the handle marks the training share (kept between 60 and 90%). */}
+              <Range value={trainPct / 100} min={0} max={1} step={0.05} onChange={(v) => set({ valSplit: Math.round((1 - Math.min(0.9, Math.max(0.6, v))) * 100) / 100 })} disabled={!!training} />
+              <span className="splitbar" aria-hidden="true"><span className="train" style={{ width: `${trainPct}%` }} /><span className="val" /></span>
+              <span className="splitlegend" aria-hidden="true"><span><i className="train" />{t.s4.splitTrain} {trainPct}%</span><span><i className="val" />{t.s4.splitVal} {100 - trainPct}%</span></span>
+            </Field>
             <Field label={t.s4.maxImages} value={cfg.maxImages === 0 || cfg.maxImages >= usable.length ? t.s4.allImages(usable.length) : cfg.maxImages} hint={t.s4.maxImagesHint}>
               <Range value={cfg.maxImages === 0 ? usable.length : Math.min(cfg.maxImages, usable.length)} min={Math.min(10, usable.length)} max={Math.max(10, usable.length)} step={1} onChange={(v) => set({ maxImages: v >= usable.length ? 0 : v })} disabled={!!training || usable.length < 11} />
             </Field>

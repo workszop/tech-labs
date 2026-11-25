@@ -6,7 +6,11 @@ import { decide } from './ml/metrics'
 /** Share of defective / good products that are rejected, accepted or sent to a person. */
 export interface Rates { def: { reject: number; accept: number; review: number }; good: { reject: number; accept: number; review: number }; n: number }
 export interface Human { far: number; frr: number }
-export interface Scenario { escaped: number; falseRejects: number; caught: number; manual: number; complaints: number; rejectCost: number; manualCost: number; total: number }
+export interface Scenario {
+  escaped: number; falseRejects: number; caught: number; manual: number; complaints: number; rejectCost: number; manualCost: number; total: number
+  /** Who made the mistakes: the model on the tins it decided, the person on the tins sent to them. */
+  escapedModel: number; escapedHuman: number; falseRejectsModel: number; falseRejectsHuman: number
+}
 
 const share = (a: number, b: number) => (b > 0 ? a / b : 0)
 
@@ -33,10 +37,11 @@ export const RATES_MANUAL: Rates = { def: { reject: 0, accept: 0, review: 1 }, g
 /** Expected products and costs per day. A person at the manual station misses `far` of the defects and wrongly rejects `frr` of the good tins. */
 export function scenario(cfg: BusinessConfig, rates: Rates, human: Human): Scenario {
   const D = cfg.dailyVolume * (cfg.defectPct / 100), G = cfg.dailyVolume - D
-  const escaped = D * (rates.def.accept + rates.def.review * human.far)
-  const falseRejects = G * (rates.good.reject + rates.good.review * human.frr)
+  const escapedModel = D * rates.def.accept, escapedHuman = D * rates.def.review * human.far
+  const falseRejectsModel = G * rates.good.reject, falseRejectsHuman = G * rates.good.review * human.frr
+  const escaped = escapedModel + escapedHuman, falseRejects = falseRejectsModel + falseRejectsHuman
   const manual = D * rates.def.review + G * rates.good.review
   const complaints = escaped * (cfg.complaintCost + cfg.productValue)
   const rejectCost = falseRejects * cfg.falseRejectCost, manualCost = manual * cfg.manualCost
-  return { escaped, falseRejects, caught: D - escaped, manual, complaints, rejectCost, manualCost, total: complaints + rejectCost + manualCost }
+  return { escaped, falseRejects, caught: D - escaped, manual, complaints, rejectCost, manualCost, total: complaints + rejectCost + manualCost, escapedModel, escapedHuman, falseRejectsModel, falseRejectsHuman }
 }
