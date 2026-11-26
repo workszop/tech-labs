@@ -307,15 +307,29 @@ export function EmptyState({ icon, title, children, action }: { icon: React.Reac
 }
 
 /** Render chunk text with the overlapping prefix/suffix highlighted. */
-export function ChunkText({ text, overlapPrevChars = 0, overlapNextChars = 0, className }: { text: string; overlapPrevChars?: number; overlapNextChars?: number; className?: string }) {
-  const a = Math.min(overlapPrevChars, text.length)
-  const b = Math.max(a, text.length - overlapNextChars)
+/** The label line in front of a chunk (see rag/chunkHeader.ts), shown apart from the chunk's own text. */
+export function ChunkLabelLine({ label }: { label: string }) {
+  if (!label) return null
+  return <span data-testid="chunk-label" className="mb-0.5 block font-mono text-[11px] leading-snug text-doc">{label}</span>
+}
+
+export function ChunkText({ text, labelChars = 0, overlapPrevChars = 0, overlapNextChars = 0, className }: { text: string; labelChars?: number; overlapPrevChars?: number; overlapNextChars?: number; className?: string }) {
+  const label = labelChars > 0 ? text.slice(0, labelChars).trimEnd() : ''
+  const body = labelChars > 0 ? text.slice(labelChars) : text
+  const a = Math.min(overlapPrevChars, body.length)
+  const b = Math.max(a, body.length - overlapNextChars)
   const tx = useT().shell.common
   return (
     <p className={cn('whitespace-pre-wrap text-[13px] leading-relaxed', className)}>
-      {a > 0 && <mark className="mark-overlap text-inherit" title={tx.overlapPrev}>{text.slice(0, a)}</mark>}
-      {text.slice(a, b)}
-      {b < text.length && <mark className="mark-overlap text-inherit" title={tx.overlapNext}>{text.slice(b)}</mark>}
+      <ChunkLabelLine label={label} />
+      {a > 0 && <mark className="mark-overlap text-inherit" title={tx.overlapPrev}>{body.slice(0, a)}</mark>}
+      {body.slice(a, b)}
+      {b < body.length && <mark className="mark-overlap text-inherit" title={tx.overlapNext}>{body.slice(b)}</mark>}
     </p>
   )
+}
+
+/** Is this document marked as outdated in the corpus? */
+export function isOutdatedDoc(docId: string): boolean {
+  return getCorpus().docById[docId]?.status === 'outdated'
 }

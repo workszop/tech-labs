@@ -3,10 +3,12 @@ import { Boxes, Check, ChevronDown, Database, FileStack, Hammer, Loader2, Map, R
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
+import { Switch } from '@/components/ui/switch'
 import { cn, formatBytes, formatMs, formatNumber } from '@/lib/utils'
-import { buildIndex, cancelIndexing, indexCompatibility, previewChunking, retryFailedBatches } from '@/state/actions'
+import { buildIndex, cancelIndexing, indexCompatibility, pendingRebuild, previewChunking, retryFailedBatches } from '@/state/actions'
 import { setSettings, setUi, useStore, type IndexJob, type IndexStep, type StageStatus } from '@/state/store'
 import { CHUNK_LIMITS } from '@/rag/chunker'
+import { labelKey } from '@/rag/chunkHeader'
 import { useT } from '@/i18n'
 import { approximateIndexBytes } from '@/rag/db'
 import { Alert, ChunkText, EmptyState, Explain, FolderDot, IconBadge, LearnCard, SectionCard, Stat, StatusBadge, VectorPreview, folderLabel } from './common'
@@ -37,6 +39,7 @@ export function ChunkSettings({ compact }: { compact?: boolean }) {
   const meta = useStore((s) => s.index.meta)
   const maxOverlap = Math.floor(settings.chunkSize * CHUNK_LIMITS.maxOverlapRatio)
   const differs = meta && (meta.chunkSize !== settings.chunkSize || meta.overlap !== settings.overlap)
+  const labelsDiffer = meta && !differs && (meta.labels ?? 'none') !== labelKey({ section: settings.labelSection, meta: settings.labelMeta })
   const tx = useT().lab.indexBuilder
   return (
     <div className={cn('grid gap-4', !compact && 'sm:grid-cols-2')}>
@@ -56,9 +59,27 @@ export function ChunkSettings({ compact }: { compact?: boolean }) {
         <Slider min={0} max={maxOverlap} step={10} value={[settings.overlap]} onValueChange={([v]) => setSettings({ overlap: v })} aria-label={tx.overlapAria} />
         <div className="mt-1 text-[11.5px] text-muted-foreground">{tx.overlapHint}</div>
       </div>
+      <div className={cn('space-y-2 border-t border-dashed pt-3', !compact && 'sm:col-span-2')} data-testid="chunk-label-settings">
+        <span className="flex items-center gap-1.5 font-mono text-[11.5px] font-medium uppercase tracking-[0.08em]">{tx.labelsTitle} <Explain topic="chunking" /></span>
+        <div className={cn('grid gap-2', !compact && 'sm:grid-cols-2')}>
+          <label className="flex items-start gap-2.5 text-[12.5px] leading-snug">
+            <Switch checked={settings.labelSection} onCheckedChange={(v) => setSettings({ labelSection: v })} aria-label={tx.labelSection} className="mt-0.5 shrink-0" />
+            <span><span className="font-medium">{tx.labelSection}</span><br /><span className="text-muted-foreground">{tx.labelSectionHint}</span></span>
+          </label>
+          <label className="flex items-start gap-2.5 text-[12.5px] leading-snug">
+            <Switch checked={settings.labelMeta} onCheckedChange={(v) => setSettings({ labelMeta: v })} aria-label={tx.labelMeta} className="mt-0.5 shrink-0" />
+            <span><span className="font-medium">{tx.labelMeta}</span><br /><span className="text-muted-foreground">{tx.labelMetaHint}</span></span>
+          </label>
+        </div>
+      </div>
       {differs && (
         <p className={cn('edu-block rounded-md bg-primary px-2.5 py-1.5 text-[12px] leading-snug text-primary-foreground', !compact && 'sm:col-span-2')}>
           {tx.settingsDiffer(meta!.chunkSize, meta!.overlap)}
+        </p>
+      )}
+      {labelsDiffer && (
+        <p className={cn('edu-block rounded-md bg-primary px-2.5 py-1.5 text-[12px] leading-snug text-primary-foreground', !compact && 'sm:col-span-2')}>
+          {tx.labelsDiffer}
         </p>
       )}
     </div>
@@ -69,6 +90,7 @@ export function IndexBuilder() {
   const job = useStore((s) => s.job)
   const selection = useStore((s) => s.selection)
   const authed = useStore((s) => s.auth.status === 'active')
+  const rebuild = useStore(pendingRebuild)
   const [open, setOpen] = useState<IndexStep | 'none' | null>(null)
   const tx = useT().lab.indexBuilder
 
@@ -81,13 +103,13 @@ export function IndexBuilder() {
         explain="rag"
         foot={
           <>
-            {selection.length === 0 && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground">{tx.selectHint}</p>}
+            {selection.length === 0 && !rebuild && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground">{tx.selectHint}</p>}
             <div className="ml-auto flex flex-wrap gap-2">
               <Button variant="outline" size="sm" disabled={selection.length === 0 || job?.status === 'running'} onClick={() => previewChunking()}>
                 <Scissors /> {tx.previewOnly}
               </Button>
-              <Button variant="accent" size="sm" disabled={selection.length === 0 || job?.status === 'running' || !authed} onClick={() => buildIndex()}>
-                <Hammer /> {tx.build(selection.length)}
+              <Button variant="accent" size="sm" disabled={(selection.length === 0 && !rebuild) || job?.status === 'running' || !authed} onClick={() => buildIndex()} data-testid="rebuild-index">
+                <Hammer /> {selection.length === 0 && rebuild ? tx.rebuild(rebuild) : tx.build(selection.length)}
               </Button>
             </div>
           </>
@@ -223,13 +245,12 @@ function ChunkingStep({ job }: { job: IndexJob }) {
         {chunks.slice(0, limit).map((c) => (
           <div key={c.id} className="rounded-lg border border-hairline bg-subtle p-3">
             <div className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px]">
-              <Badge variant="outline" className="font-mono">{c.id}</Badge>
+              <Badge variant="outline" className="font-mono" title={c.id}>{tx.chunkNo(c.index + 1)}</Badge>
               <FolderDot folder={c.folder} />
               <span className="font-medium">{c.docTitle}</span>
-              <span className="text-muted-foreground">{tx.chunkNo(c.index + 1)}</span>
               <span className="ml-auto font-mono text-muted-foreground">{tx.chunkSize(c.tokens, c.overlapPrevTokens ?? 0)}</span>
             </div>
-            <ChunkText text={c.text} overlapPrevChars={c.overlapPrevChars} overlapNextChars={c.overlapNextChars} className="text-[var(--ink-2)]" />
+            <ChunkText text={c.text} labelChars={c.labelChars} overlapPrevChars={c.overlapPrevChars} overlapNextChars={c.overlapNextChars} className="text-[var(--ink-2)]" />
           </div>
         ))}
       </div>

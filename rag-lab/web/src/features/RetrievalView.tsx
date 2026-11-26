@@ -9,7 +9,7 @@ import { setSettings, setUi, useStore, type QueryRun } from '@/state/store'
 import type { ChunkRecord } from '@/rag/db'
 import type { ChatMessage } from '@shared/api-types'
 import { useT } from '@/i18n'
-import { Alert, EmptyState, Explain, FolderDot, LearnCard, QuestionQuote, ScoreBar, SectionCard, StatusBadge, VectorPreview, type Tone } from './common'
+import { Alert, ChunkLabelLine, EmptyState, Explain, FolderDot, isOutdatedDoc, LearnCard, QuestionQuote, ScoreBar, SectionCard, StatusBadge, VectorPreview, type Tone } from './common'
 
 export function RetrievalView() {
   const run = useStore((s) => (s.activeRunId ? s.runs[s.activeRunId] : null))
@@ -127,11 +127,12 @@ export function SearchSection({ run }: { run: QueryRun }) {
                     <div className="flex flex-wrap items-center gap-1.5 text-[12.5px]">
                       <FolderDot folder={c.folder} />
                       <button className="truncate font-semibold hover:underline cursor-pointer" onClick={() => setUi({ inspectChunkId: c.id })}>{c.docTitle}</button>
-                      <span className="font-mono text-[11px] text-muted-foreground">{c.id}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground" title={c.id}>{tx.chunkNo(c.chunkIndex + 1)}</span>
+                      {isOutdatedDoc(c.docId) && <Badge variant="warn">{tx.outdated}</Badge>}
                       {hit && <Badge variant="ok">{tx.inContext}</Badge>}
                     </div>
                     <ScoreBar score={r.score} highlight={hit} className="my-1" />
-                    <p className="line-clamp-2 text-[12px] text-muted-foreground">{c.text}</p>
+                    <p className="line-clamp-3 text-[12px] text-muted-foreground"><ChunkLabelLine label={c.labelChars ? c.text.slice(0, c.labelChars).trimEnd() : ''} />{c.labelChars ? c.text.slice(c.labelChars) : c.text}</p>
                   </div>
                 </li>
               )
@@ -155,13 +156,15 @@ export function ContextSection({ run }: { run: QueryRun }) {
       {inc.length > 0 ? (
         <div className="space-y-2">
           <p className="text-[12.5px] leading-relaxed text-[var(--ink-2)]">
-            {tx.included(inc.map((c, i) => `[${i + 1}] ${c.id}`).join(', '), Math.max(0, (run.search.ranked?.length ?? 0) - inc.length))}
+            {tx.included(inc.map((c, i) => `[${i + 1}] ${c.docTitle}, ${tx.chunkNo(c.chunkIndex + 1)}`).join('; '), Math.max(0, (run.search.ranked?.length ?? 0) - inc.length))}
           </p>
           {inc.map((c, i) => (
             <div key={c.id} className="rounded-lg border border-hairline bg-subtle p-2.5">
               <div className="mb-1 flex items-center gap-1.5 text-[11.5px]">
                 <Badge variant="ok">[{i + 1}]</Badge>
                 <span className="min-w-0 truncate font-semibold">{c.docTitle}</span>
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground" title={c.id}>{tx.chunkNo(c.chunkIndex + 1)}</span>
+                {isOutdatedDoc(c.docId) && <Badge variant="warn">{tx.outdated}</Badge>}
                 <button className="ml-auto shrink-0 font-medium text-doc underline underline-offset-2 cursor-pointer" onClick={() => openChunkInDocument(c.id)}>{tx.openInDocument}</button>
               </div>
               <p className="line-clamp-4 whitespace-pre-wrap text-[12px] leading-relaxed text-[var(--ink-2)]">{c.text}</p>

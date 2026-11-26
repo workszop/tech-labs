@@ -22,6 +22,8 @@ export interface ChunkRecord {
   docTitle: string
   folder: string
   chunkIndex: number
+  /** `text` = label line + chunk body; this many leading characters are the label (absent in older indexes). */
+  labelChars?: number
   text: string
   start: number
   end: number
@@ -51,6 +53,8 @@ export interface IndexSpace {
   chunkSize: number
   overlap: number
   tokenizer: string
+  /** Chunk label options (`labelKey`); absent in indexes built before labels existed = 'none'. */
+  labels?: string
 }
 
 export interface IndexMeta extends IndexSpace {

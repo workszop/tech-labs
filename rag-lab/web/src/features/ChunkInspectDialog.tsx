@@ -30,7 +30,7 @@ export function ChunkInspectDialog() {
               <ScoreBar score={r.score} highlight={run.context.included.includes(id)} />
             </div>
           )}
-          <ChunkText text={chunk.text} overlapPrevChars={chunk.overlapPrevChars} overlapNextChars={chunk.overlapNextChars} />
+          <ChunkText text={chunk.text} labelChars={chunk.labelChars} overlapPrevChars={chunk.overlapPrevChars} overlapNextChars={chunk.overlapNextChars} />
           <VectorPreview values={Array.from(chunk.vector.slice(0, 16))} dims={chunk.dimensions} label={tx.storedEmbedding} />
           <Button size="sm" variant="outline" onClick={() => { setUi({ inspectChunkId: null }); openChunkInDocument(id) }}>{tx.openInDocument}</Button>
         </DialogBody>

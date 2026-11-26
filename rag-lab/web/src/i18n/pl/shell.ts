@@ -192,47 +192,76 @@ export const shell = {
   },
 
   guide: {
-    title: 'Zbuduj mały system RAG w przeglądarce',
+    title: 'Asystent kadrowy Northstar: od dokumentów do decyzji o pilotażu',
     // Układ: {introBefore}<b>{introCompany}</b>{introAfter}
-    introBefore: 'Zaczynasz pracę jako inżynier wiedzy w firmie ',
+    introBefore: 'Projektujecie asystenta, który odpowiada pracownikom firmy ',
     introCompany: 'Northstar Technologies',
-    introAfter: '. Zamień dokumenty firmy w bazę wiedzy, którą da się przeszukiwać, a potem zobacz, jak AI odpowiada na pytania na jej podstawie. Każdy krok masz na widoku.',
+    introAfter: ' z zasad kadrowych. Kroki poniżej idą w kolejności warsztatu: najpierw źródła, potem podział dokumentów, testy i dowody. Każdy krok sam się odhacza, gdy naprawdę go zrobicie.',
+    introQuestion: 'Pytanie przewodnie:',
+    homeOffice: 'Ile wynosi dodatek na biuro domowe?',
+    quote: (s: string) => `„${s}”`,
+    ask: 'Zapytaj',
+    needCode: 'Pytania wymagają kodu dostępu.',
     progress: (done: number, total: number) => `ukończono ${done}/${total}`,
     concepts: 'Pojęcia',
+    extrasTitle: 'Dla chętnych',
+    tests: [
+      { kind: 'Zwykłe', question: 'Ile dni urlopu przysługuje pracownikowi ze stażem krótszym niż 3 lata?' },
+      { kind: 'Z wyjątkiem', question: 'Do kiedy muszę wykorzystać dodatek na biuro, jeśli przechodzę na pracę w pełni zdalną?' },
+      { kind: 'Bez odpowiedzi w dokumentach', question: 'Czy mój wniosek o pracę w pełni zdalną został już zatwierdzony?' },
+      { kind: 'Zastrzeżone', question: 'Kto z mojego zespołu pracuje w pełni zdalnie?' },
+    ],
     steps: {
-      pick: {
-        title: 'Wybierz kilka dokumentów firmy',
-        body: 'W eksploratorze plików otwórz jeden lub dwa foldery i zaznacz 3–5 dokumentów, np. „Zasady zwrotów” oraz obie wersje zasad pracy zdalnej: „Zasady pracy zdalnej” i „Zasady pracy zdalnej (2022, nieaktualne)”. Każdy plik podejrzysz po kliknięciu ikony oka.',
-        action: 'Pokaż eksplorator plików',
+      sources: {
+        module: 'Moduł 3 · Źródła',
+        title: 'Która wersja zasad obowiązuje?',
+        body: 'Zaznaczcie cały folder Kadry, także „Zasady pracy zdalnej (2022, nieaktualne)”, zbudujcie indeks wektorowy i zadajcie pytanie przewodnie. Zapiszcie, jakie kwoty podał asystent i z których dokumentów.',
+        action: 'Zaznacz folder Kadry',
       },
-      build: {
-        title: 'Zbuduj indeks wektorowy',
-        body: 'Kliknij „Zbuduj indeks wektorowy”. Zobaczysz, jak dokumenty są dzielone na fragmenty, wysyłane do modelu tworzącego wektory (embeddingi) i zapisywane jako wektory w tej przeglądarce.',
-        action: 'Otwórz budowę indeksu',
+      outdated: {
+        module: 'Moduł 3 · Jedna zmiana',
+        title: 'Usuńcie nieaktualną wersję i zapytajcie jeszcze raz',
+        body: 'Zmieńcie tylko jedną rzecz: usuńcie z indeksu wersję z 2022 r. (ikona kosza przy dokumencie albo przycisk poniżej) i zadajcie to samo pytanie. Co się zmieniło w odpowiedzi i w źródłach?',
+        action: 'Usuń wersję z 2022 r. z indeksu',
+      },
+      split: {
+        module: 'Moduł 4 · Przygotowanie dokumentów',
+        title: 'Gdzie aplikacja tnie dokument?',
+        body: 'Ustawcie rozmiar fragmentu 120 tokenów i obejrzyjcie sam podział „Zasad pracy zdalnej” (działa bez kodu). Znajdźcie sekcję „Dodatek na biuro domowe”: w którym fragmencie jest nagłówek, a w którym kwota 750 USD? Potem sprawdźcie rozmiar 400.',
+        action: 'Pokaż podział przy 120 tokenach',
+      },
+      size: {
+        module: 'Moduł 5 · Podział i diagnoza',
+        title: 'Czy dzielimy na mniejsze kawałki?',
+        body: 'Zbudujcie indeks przy dwóch rozmiarach fragmentu (np. 120 i 400) i przy każdym zadajcie pytanie przewodnie. W karcie „Wyszukiwanie” sprawdźcie, które fragmenty weszły do kontekstu.\nZły fragment czy zła odpowiedź? Jeśli w kontekście nie ma słów z odpowiedzią, zawiodło wyszukiwanie. Jeśli są, a odpowiedź ich nie podaje, zawiodło generowanie.',
+        action: 'Otwórz wyszukiwanie',
+      },
+      label: {
+        module: 'Moduł 5 · Poprawka',
+        title: 'Dołóżcie etykietę fragmentu',
+        body: 'Włączcie etykietę fragmentu (nagłówek sekcji oraz wersja, data i status), zbudujcie indeks jeszcze raz i zadajcie pytanie przewodnie. Każdy fragment niesie teraz informację, skąd pochodzi i czy obowiązuje.',
+        action: 'Włącz etykietę fragmentu',
+      },
+      tests: {
+        module: 'Moduł 6 · Ocena',
+        title: 'Czy asystent przejdzie cztery testy?',
+        body: 'Zadajcie cztery pytania testowe przy wybranym ustawieniu. Przy każdym oceńcie: poprawna, niepełna, błędna albo powinna być odmowa, i zapiszcie dowód z karty „Wyszukiwanie”. Potem zmieńcie jedną rzecz i zadajcie je ponownie.',
+      },
+      log: {
+        module: 'Moduł 6–7 · Dowody',
+        title: 'Pobierzcie dziennik testów',
+        body: 'Dziennik ma każde pytanie z rozmowy, ustawienia indeksu, fragmenty w kontekście z wynikami i odpowiedź. To Wasz dowód do karty zespołu i decyzji o pilotażu.',
+        action: 'Pobierz dziennik testów (CSV)',
       },
       map: {
         title: 'Obejrzyj mapę wektorów',
         body: 'Każda kropka to jeden fragment. Fragmenty o podobnej tematyce leżą blisko siebie, nawet jeśli używają innych słów.',
         action: 'Pokaż mapę',
       },
-      ask: {
-        title: 'Zadaj pytanie',
-        body: 'Skorzystaj z czatu (albo z podpowiedzianego pytania). Pytanie zostaje zamienione na wektor i porównane z każdym fragmentem, a najlepiej pasujące fragmenty trafiają do modelu.',
-        action: 'Pokaż czat',
-      },
-      inspect: {
-        title: 'Sprawdź, co zostało wyszukane',
-        body: 'Otwórz kartę „Wyszukiwanie”. Zobaczysz wynik cosinusowy każdego fragmentu, fragmenty, które weszły do kontekstu, i dokładny prompt wysłany do modelu.',
-        action: 'Otwórz wyszukiwanie',
-      },
       compare: {
         title: 'Porównaj odpowiedzi z RAG i bez RAG',
-        body: 'Włącz w czacie „Porównaj” i zadaj pytanie jeszcze raz. Ten sam model odpowie raz z twoimi dokumentami, a raz bez nich. Zobacz, czym różnią się odpowiedzi.',
+        body: 'Włącz w czacie „Porównaj” i zadaj pytanie jeszcze raz. Ten sam model odpowie raz z twoimi dokumentami, a raz bez nich.',
         action: 'Włącz tryb porównania',
-      },
-      experiment: {
-        title: 'Eksperymentuj i psuj',
-        body: 'Zmień rozmiar fragmentu (spróbuj 120 i 900) albo top-k (1 i 8), dodaj do indeksu nieaktualne zasady pracy zdalnej z 2022 r. albo zapytaj o coś, czego nie ma w żadnym dokumencie („Ile zarabia prezes?”).',
       },
     },
   },

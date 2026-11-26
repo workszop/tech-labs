@@ -12,13 +12,15 @@ import { api, ApiError, onAuthLost } from '@/api/client'
 import { compute } from '@/rag/compute'
 import { sha256Hex } from '@/rag/hash'
 import { normalizeConfig } from '@/rag/chunker'
+import { chunkLabel, findSections, labelKey, type ChunkLabelOptions } from '@/rag/chunkHeader'
 import { approximateIndexBytes, openVectorStore, type ChunkRecord, type IndexMeta, type IndexedDocRecord, type VectorStore } from '@/rag/db'
 import { rankBySimilarity, selectTopK, DimensionMismatchError } from '@/rag/similarity'
 import { TOKENIZER_NAME } from '@/rag/tokenizer'
 import { buildChatMessages } from '@shared/prompt'
 import type { ContextChunk, Lang, SessionInfo } from '@shared/api-types'
 import { uid } from '@/lib/utils'
-import { getState, setSettings, setState, setUi, updateJob, updateRun, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
+import { buildTestLogCsv } from './testLog'
+import { getState, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
 
 /** A document of the current-language corpus (ids are the same in every language). */
 export function docById(id: string): CompanyDocument | undefined {
@@ -30,6 +32,12 @@ let jobAbort: AbortController | null = null
 let queryAbort: AbortController | null = null
 /** Vectors produced during the current job, keyed by planned chunk id (kept out of React state). */
 const jobVectors = new Map<string, Float32Array>()
+
+/** Chunk label options from the current settings. */
+function labelOptions(): ChunkLabelOptions {
+  const st = getState().settings
+  return { section: st.labelSection, meta: st.labelMeta }
+}
 
 /** The exact text that is chunked and embedded (the title is included once). */
 export function docText(d: CompanyDocument) {
@@ -151,6 +159,45 @@ export function toggleSelect(ids: string[], on: boolean) {
   })
 }
 
+/**
+ * How many indexed documents a build would re-split because the chunk settings
+ * (size, overlap, label) differ from the index. 0 = the index matches the settings.
+ * Lets the team rebuild after changing one setting without selecting anything again.
+ */
+export function pendingRebuild(s: AppState): number {
+  const meta = s.index.meta
+  if (!meta) return 0
+  const cfg = normalizeConfig({ chunkSize: s.settings.chunkSize, overlap: s.settings.overlap })
+  const differs =
+    meta.chunkSize !== cfg.chunkSize ||
+    meta.overlap !== cfg.overlap ||
+    (meta.labels ?? 'none') !== labelKey({ section: s.settings.labelSection, meta: s.settings.labelMeta })
+  return differs ? Object.keys(s.index.documents).length : 0
+}
+
+/** Select every document of one folder (guide shortcut). */
+export function selectFolder(folder: string) {
+  toggleSelect(getCorpus().documents.filter((d) => d.folder === folder).map((d) => d.id), true)
+}
+
+/** Download the conversation as a CSV test log (one row per question). */
+export function downloadTestLog() {
+  const s = getState()
+  const tx = t().lab.chat
+  const seen = new Set<string>()
+  const runs = s.chat.map((m) => s.runs[m.runId]).filter((r) => r && !seen.has(r.id) && seen.add(r.id))
+  const csv = buildTestLogCsv(runs, s.index.chunks, tx.csv, (c) => t().lab.retrieval.chunkNo(c.chunkIndex + 1), (k) => tx.labelNames[k] ?? k)
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${tx.logFileName}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.csv`
+  document.body.append(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  setUi({ logExported: true })
+}
+
 export async function removeFromIndex(docIds: string[]) {
   if (!store) return
   await store.removeDocuments(docIds)
@@ -175,9 +222,14 @@ export async function buildIndex() {
   const s = getState()
   const caps = s.auth.session?.capabilities
   const config = normalizeConfig({ chunkSize: s.settings.chunkSize, overlap: s.settings.overlap })
+  const labels = labelOptions()
   const meta = s.index.meta
   const spaceChanged =
-    !!meta && (meta.chunkSize !== config.chunkSize || meta.overlap !== config.overlap || (caps && (meta.model !== caps.embeddingModel || meta.dimensions !== caps.embeddingDimensions)))
+    !!meta &&
+    (meta.chunkSize !== config.chunkSize ||
+      meta.overlap !== config.overlap ||
+      (meta.labels ?? 'none') !== labelKey(labels) ||
+      (caps && (meta.model !== caps.embeddingModel || meta.dimensions !== caps.embeddingDimensions)))
   const notes: string[] = []
   // The set of documents this build covers.
   let docIds = [...s.selection]
@@ -202,6 +254,7 @@ export async function buildIndex() {
     step: 'selection',
     startedAt: Date.now(),
     config,
+    labels,
     fullRebuild: !!spaceChanged || !meta,
     notes,
     selection: {
@@ -238,10 +291,22 @@ async function runChunking(hashes?: string[]) {
   const result = await compute.chunk(docs.map((d) => ({ id: d.id, text: docText(d) })), job.config)
   const hashList = hashes ?? (await Promise.all(docs.map((d) => sha256Hex(`${d.version}\n${docText(d)}`))))
   const chunks: PlannedChunk[] = []
+  const words = t().lab.indexBuilder.labelWords
   result.forEach((r, i) => {
     const d = corpus.docById[r.docId]
-    for (const c of r.chunks) chunks.push({ ...c, id: `${d.id}#${c.index}`, docId: d.id, docTitle: d.title, folder: d.folder, docHash: hashList[i] })
+    const sections = job.labels.section ? findSections(docText(d)) : []
+    for (const c of r.chunks) {
+      const label = chunkLabel(d, sections, c.start, job.labels, words)
+      const text = label ? `${label}\n${c.text}` : c.text
+      chunks.push({ ...c, text, labelChars: label ? label.length + 1 : 0, id: `${d.id}#${c.index}`, docId: d.id, docTitle: d.title, folder: d.folder, docHash: hashList[i] })
+    }
   })
+  // A label is embedded with its chunk, so it counts towards the chunk's tokens.
+  const labelled = chunks.filter((c) => c.labelChars > 0)
+  if (labelled.length) {
+    const counts = await compute.countTokens(labelled.map((c) => c.text)).catch(() => labelled.map((c) => Math.round(c.text.length / 4)))
+    labelled.forEach((c, i) => (c.tokens = counts[i]))
+  }
   updateJob((j) => ({ ...j, chunking: { chunks, ms: performance.now() - t0, tokenizer: TOKENIZER_NAME } }))
 }
 
@@ -259,6 +324,7 @@ export async function previewChunking() {
       step: 'chunking',
       startedAt: Date.now(),
       config,
+      labels: labelOptions(),
       fullRebuild: false,
       notes: [t().lab.actions.previewOnly],
       selection: {
@@ -429,6 +495,7 @@ async function runStoring() {
         docTitle: c.docTitle,
         folder: c.folder,
         chunkIndex: c.index,
+        labelChars: c.labelChars,
         text: c.text,
         start: c.start,
         end: c.end,
@@ -452,6 +519,7 @@ async function runStoring() {
     chunkSize: job.config.chunkSize,
     overlap: job.config.overlap,
     tokenizer: TOKENIZER_NAME,
+    labels: labelKey(job.labels),
     createdAt: job.fullRebuild || !prevMeta ? now : prevMeta.createdAt,
     updatedAt: now,
   }
@@ -483,10 +551,19 @@ export async function ask(question: string) {
   const s = getState()
   const caps = s.auth.session?.capabilities
   const ragEnabled = s.settings.ragEnabled
+  const docRecs = Object.values(s.index.documents)
   const run: QueryRun = {
     id: uid('run'),
     question: q,
     createdAt: Date.now(),
+    index: {
+      docIds: docRecs.map((d) => d.docId),
+      docTitles: docRecs.map((d) => d.title),
+      chunkSize: s.index.meta?.chunkSize ?? null,
+      overlap: s.index.meta?.overlap ?? null,
+      labels: s.index.meta?.labels ?? 'none',
+      chunks: s.index.chunks.length,
+    },
     topK: s.settings.topK,
     threshold: s.settings.threshold,
     ragEnabled,
@@ -560,7 +637,7 @@ export async function ask(question: string) {
     updateRun(run.id, (r) => ({
       ...r,
       search: { status: 'completed', ms: performance.now() - t1, compared: chunks.length, ranked: ranked.map((x) => ({ chunkId: x.item.id, score: x.score, rank: x.rank })) },
-      context: { status: 'completed', included: top.map((t) => t.item.id), belowThreshold },
+      context: { status: 'completed', included: top.map((t) => t.item.id), belowThreshold, docs: top.map((t) => ({ docId: t.item.docId, docTitle: t.item.docTitle, chunkIndex: t.item.chunkIndex })) },
     }))
     context = top.map((t) => ({ chunkId: t.item.id, documentTitle: t.item.docTitle, folder: folderName(t.item.folder), text: t.item.text }))
   }

@@ -218,6 +218,9 @@ function sentences(text: string, lang: Lang): string[] {
     .split(boundary)
     .map((s) => s.replace(/^[#>*\-\s]+/, '').trim())
     .filter((s) => s.length >= 3)
+    // A chunk label ("[Title › Section · version …]", added in the browser) describes
+    // the chunk; it is not a sentence of the document, so it is never quoted as an answer.
+    .filter((s) => !/^\[[^\]]*\]$/.test(s))
 }
 
 export function mockAnswer(messages: ChatMessage[]): string {

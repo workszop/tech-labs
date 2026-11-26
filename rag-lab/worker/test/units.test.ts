@@ -193,6 +193,13 @@ describe('Polish text in the mock provider', () => {
     expect(dot(q2, remote)).toBeGreaterThan(dot(q2, leave))
   })
 
+  it('never quotes a chunk label line as an answer sentence', () => {
+    const labelled = [{ chunkId: 'hr-remote-work#22', documentTitle: 'Zasady pracy zdalnej', folder: 'Kadry', text: '[Zasady pracy zdalnej › Dodatek na biuro domowe · wersja 4.0 · aktualny]\n- jednorazowy dodatek na urządzenie biura domowego w wysokości 750 USD' }]
+    const ans = mockAnswer(buildChatMessages({ question: 'Ile wynosi dodatek na biuro domowe?', context: labelled, mode: 'rag', lang: 'pl' }))
+    expect(ans).toContain('750 USD')
+    expect(ans).not.toContain('› Dodatek')
+  })
+
   it('answers in Polish with citations and the Polish mock prefix', () => {
     const m = buildChatMessages({ question: 'Ile dni urlopu przysługuje w roku?', context: sampleContextPl, mode: 'rag', lang: 'pl' })
     const ans = mockAnswer(m)

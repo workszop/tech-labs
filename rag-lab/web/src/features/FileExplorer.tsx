@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useCorpus } from '@/data/corpus'
 import { cn } from '@/lib/utils'
 import { useT } from '@/i18n'
-import { buildIndex, openDocument, removeFromIndex, resetKnowledgeBase, toggleSelect } from '@/state/actions'
+import { buildIndex, openDocument, pendingRebuild, removeFromIndex, resetKnowledgeBase, toggleSelect } from '@/state/actions'
 import { useStore } from '@/state/store'
 import { Explain, IconBadge, folderColor } from './common'
 
@@ -24,6 +24,7 @@ export function FileExplorer() {
   const sel = useMemo(() => new Set(selection), [selection])
   const indexedCount = Object.keys(indexed).length
   const running = job?.status === 'running'
+  const rebuild = useStore(pendingRebuild)
 
   return (
     <div data-panel="docs" className="flex h-full min-h-0 flex-col">
@@ -113,7 +114,7 @@ export function FileExplorer() {
         <p className="px-1 text-[12px] leading-snug text-[var(--ink-2)]">
           {tx.selectNoteBefore}<b>{tx.selectNoteNot}</b>{tx.selectNoteAfter}
         </p>
-        <Button variant="accent" className="w-full" disabled={selection.length === 0 || running} onClick={() => buildIndex()} data-testid="build-index">
+        <Button variant="accent" className="w-full" disabled={(selection.length === 0 && !rebuild) || running} onClick={() => buildIndex()} data-testid="build-index">
           {running ? <Loader2 className="animate-spin" /> : <Hammer />}
           {running ? tx.building : tx.build}
           {selection.length > 0 && !running && <span className="rounded-full bg-foreground px-1.5 font-mono text-[11px] font-medium leading-[18px] text-[var(--yellow)]">{selection.length}</span>}

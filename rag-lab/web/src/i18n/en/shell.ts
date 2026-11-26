@@ -172,47 +172,76 @@ export const shell = {
   },
 
   guide: {
-    title: 'Build a tiny RAG system in your browser',
-    // Rendered as: {introBefore}<b>{introCompany}</b>{introAfter}
-    introBefore: 'You are the new knowledge engineer at ',
+    title: 'Northstar HR assistant: from documents to a pilot decision',
+    // Layout: {introBefore}<b>{introCompany}</b>{introAfter}
+    introBefore: 'You are designing an assistant that answers employees of ',
     introCompany: 'Northstar Technologies',
-    introAfter: '. Turn the company’s documents into a searchable knowledge base, then watch an AI answer questions from it — every step visible.',
+    introAfter: ' from the HR policies. The steps follow the workshop: sources first, then splitting the documents, tests and evidence. Each step ticks itself once you have really done it.',
+    introQuestion: 'Guiding question:',
+    homeOffice: 'How much is the home office stipend?',
+    quote: (s: string) => `“${s}”`,
+    ask: 'Ask',
+    needCode: 'Questions need an access code.',
     progress: (done: number, total: number) => `${done}/${total} done`,
     concepts: 'Concepts',
+    extrasTitle: 'If you have time',
+    tests: [
+      { kind: 'Ordinary', question: 'How many vacation days does an employee with less than 3 years of service get?' },
+      { kind: 'Exception', question: 'By when must I use the home office stipend if I switch to fully remote work?' },
+      { kind: 'Not in the documents', question: 'Has my request for fully remote work been approved yet?' },
+      { kind: 'Restricted', question: 'Who on my team works fully remotely?' },
+    ],
     steps: {
-      pick: {
-        title: 'Pick a few company documents',
-        body: 'In the file explorer, open a folder or two and tick 3–5 documents — e.g. Refund Policy, Remote Work Policy and both Remote Work versions. Preview any file with the eye icon.',
-        action: 'Show the file explorer',
+      sources: {
+        module: 'Module 3 · Sources',
+        title: 'Which version of the policy applies?',
+        body: 'Select the whole Human Resources folder, including “Remote Work Policy (2022, superseded)”, build the vector index and ask the guiding question. Note which amounts the assistant gave and from which documents.',
+        action: 'Select the Human Resources folder',
       },
-      build: {
-        title: 'Build the vector index',
-        body: 'Click “Build Vector Index”. Watch your documents being split into chunks, sent to the embedding model and stored as vectors in this browser.',
-        action: 'Open the index builder',
+      outdated: {
+        module: 'Module 3 · One change',
+        title: 'Remove the outdated version and ask again',
+        body: 'Change only one thing: remove the 2022 version from the index (bin icon next to the document, or the button below) and ask the same question. What changed in the answer and in the sources?',
+        action: 'Remove the 2022 version from the index',
+      },
+      split: {
+        module: 'Module 4 · Preparing documents',
+        title: 'Where does the app cut the document?',
+        body: 'Set the chunk size to 120 tokens and look at the split of the “Remote Work Policy” (works without a code). Find the home office section: which chunk holds the heading and which one the $750 amount? Then check size 400.',
+        action: 'Show the split at 120 tokens',
+      },
+      size: {
+        module: 'Module 5 · Splitting and diagnosis',
+        title: 'Do we cut it into smaller pieces?',
+        body: 'Build the index at two chunk sizes (e.g. 120 and 400) and ask the guiding question at each. In the “Retrieval” tab check which chunks went into the context.\nWrong chunk or wrong answer? If the context lacks the words that answer the question, retrieval failed. If they are there but the answer misses them, generation failed.',
+        action: 'Open retrieval',
+      },
+      label: {
+        module: 'Module 5 · The fix',
+        title: 'Add a chunk label',
+        body: 'Turn on the chunk label (section heading plus version, date and status), build the index again and ask the guiding question. Every chunk now says where it comes from and whether it still applies.',
+        action: 'Turn on the chunk label',
+      },
+      tests: {
+        module: 'Module 6 · Evaluation',
+        title: 'Will the assistant pass four tests?',
+        body: 'Ask the four test questions at your chosen settings. Mark each one: correct, incomplete, wrong or should have refused, and note the evidence from the “Retrieval” tab. Then change one thing and ask them again.',
+      },
+      log: {
+        module: 'Modules 6–7 · Evidence',
+        title: 'Download the test log',
+        body: 'The log holds every question of the conversation, the index settings, the chunks in context with their scores and the answer. It is your evidence for the team sheet and the pilot decision.',
+        action: 'Download the test log (CSV)',
       },
       map: {
         title: 'Explore the vector map',
-        body: 'Every dot is a chunk. Chunks about similar topics cluster together — even when they use different words.',
+        body: 'Each dot is one chunk. Chunks about similar topics sit close together, even when they use different words.',
         action: 'Show the map',
       },
-      ask: {
-        title: 'Ask a question',
-        body: 'Use the chat (or a suggested question). Your question is embedded, compared with every chunk, and the best matches are given to the model.',
-        action: 'Show the chat',
-      },
-      inspect: {
-        title: 'Inspect the retrieval',
-        body: 'Open the Retrieval tab: see the cosine score of every chunk, which ones made it into the context, and the exact prompt sent to the model.',
-        action: 'Open retrieval',
-      },
       compare: {
-        title: 'Compare RAG on vs. off',
-        body: 'Turn on “Compare” in the chat and ask again. The same model answers once with your documents and once without — notice the difference.',
-        action: 'Enable compare mode',
-      },
-      experiment: {
-        title: 'Experiment and break things',
-        body: 'Change chunk size (try 120 and 900), top-k (1 vs 8), index the outdated 2022 remote policy, or ask something no document answers (“What is the CEO’s salary?”).',
+        title: 'Compare answers with and without RAG',
+        body: 'Turn on “Compare” in the chat and ask again. The same model answers once with your documents and once without them.',
+        action: 'Turn on compare mode',
       },
     },
   },

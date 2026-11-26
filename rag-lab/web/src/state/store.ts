@@ -6,11 +6,14 @@
 import { useSyncExternalStore } from 'react'
 import type { PromptEcho, SessionInfo, ChatUsage, UsageInfo, ChatMode, Lang } from '@shared/api-types'
 import type { ChunkConfig, TextChunk } from '@/rag/chunker'
+import type { ChunkLabelOptions } from '@/rag/chunkHeader'
 import type { ChunkRecord, IndexMeta, IndexedDocRecord } from '@/rag/db'
 
 export type StageStatus = 'waiting' | 'processing' | 'completed' | 'error' | 'skipped'
 
 export interface PlannedChunk extends TextChunk {
+  /** Length of the label line (plus its newline) at the start of `text`; 0 without a label. */
+  labelChars: number
   id: string
   docId: string
   docTitle: string
@@ -35,6 +38,8 @@ export interface IndexJob {
   step: IndexStep
   startedAt: number
   config: ChunkConfig
+  /** Chunk label options used by this job (see rag/chunkHeader.ts). */
+  labels: ChunkLabelOptions
   fullRebuild: boolean
   notes: string[]
   selection: {
@@ -76,10 +81,27 @@ export interface GenerationResult {
   error?: string
 }
 
+export interface ContextDoc {
+  docId: string
+  docTitle: string
+  chunkIndex: number
+}
+
+/** What the knowledge base looked like when a question was asked (for the test log). */
+export interface IndexSnapshot {
+  docIds: string[]
+  docTitles: string[]
+  chunkSize: number | null
+  overlap: number | null
+  labels: string
+  chunks: number
+}
+
 export interface QueryRun {
   id: string
   question: string
   createdAt: number
+  index?: IndexSnapshot
   topK: number
   threshold: number | null
   ragEnabled: boolean
@@ -87,7 +109,8 @@ export interface QueryRun {
   embed: { status: StageStatus; ms?: number; model?: string; dims?: number; sample?: number[]; tokens?: number; error?: string }
   vector?: Float32Array
   search: { status: StageStatus; ms?: number; ranked?: RankedChunk[]; compared?: number; error?: string }
-  context: { status: StageStatus; included: string[]; belowThreshold: number }
+  /** `docs` keeps title and number of each included chunk, so an answer stays readable after its document leaves the index. */
+  context: { status: StageStatus; included: string[]; belowThreshold: number; docs?: ContextDoc[] }
   generate: GenerationResult
   baseline?: GenerationResult
 }
@@ -117,6 +140,8 @@ export interface Settings {
   lang: Lang
   chunkSize: number
   overlap: number
+  labelSection: boolean
+  labelMeta: boolean
   topK: number
   threshold: number | null
   showAllScores: boolean
@@ -154,6 +179,9 @@ export interface AppState {
     settingsOpen: boolean
     mapFocusDoc: string | null
     mapFolders: string[] | null
+    /** Guide steps that were completed at least once (they stay ticked). */
+    guideDone: string[]
+    logExported: boolean
   }
 }
 
@@ -161,6 +189,8 @@ export const DEFAULT_SETTINGS: Settings = {
   lang: 'pl',
   chunkSize: 400,
   overlap: 60,
+  labelSection: false,
+  labelMeta: false,
   topK: 3,
   threshold: null,
   showAllScores: false,
@@ -216,6 +246,8 @@ let state: AppState = {
     settingsOpen: false,
     mapFocusDoc: null,
     mapFolders: null,
+    guideDone: [],
+    logExported: false,
   },
 }
 

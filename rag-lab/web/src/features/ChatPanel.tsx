@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUp, ChevronDown, Eraser, FileSearch, Lightbulb, Loader2, MessageSquare, Square, Database, GitCompare, Bot } from 'lucide-react'
+import { ArrowUp, ChevronDown, Download, Eraser, FileSearch, Lightbulb, Loader2, MessageSquare, Square, Database, GitCompare, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -8,9 +8,10 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { useCorpus } from '@/data/corpus'
 import { useT, type Dict } from '@/i18n'
 import { cn, formatMs } from '@/lib/utils'
-import { ask, cancelQuery, clearConversation, indexCompatibility, openChunkInDocument, showActivation } from '@/state/actions'
+import { ask, cancelQuery, clearConversation, downloadTestLog, indexCompatibility, openChunkInDocument, showActivation } from '@/state/actions'
 import { setSettings, setUi, useStore, type GenerationResult, type QueryRun } from '@/state/store'
-import { Alert, Explain, IconBadge, ScoreBar, StatusIcon } from './common'
+import { Alert, Explain, IconBadge, ScoreBar, StatusIcon, isOutdatedDoc } from './common'
+
 import { PromptView } from './RetrievalView'
 
 export function ChatPanel() {
@@ -48,8 +49,13 @@ export function ChatPanel() {
           <h2 className="truncate font-display text-[15px] font-bold leading-tight">{tx.title}</h2>
           <div className="truncate font-mono text-[10.5px] text-muted-foreground">{caps ? tx.subtitle(caps.chatModel) : tx.activateToChat}</div>
         </div>
+        <Tooltip content={tx.exportLogHint}>
+          <Button variant="ghost" size="icon-sm" className="ml-auto hover:bg-muted" onClick={downloadTestLog} disabled={chat.length === 0} aria-label={tx.exportLog} data-testid="export-test-log">
+            <Download />
+          </Button>
+        </Tooltip>
         <Tooltip content={tx.clear}>
-          <Button variant="ghost" size="icon-sm" className="ml-auto hover:bg-muted" onClick={clearConversation} disabled={chat.length === 0} aria-label={tx.clear}>
+          <Button variant="ghost" size="icon-sm" className="hover:bg-muted" onClick={clearConversation} disabled={chat.length === 0} aria-label={tx.clear}>
             <Eraser />
           </Button>
         </Tooltip>
@@ -206,12 +212,17 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
   const chunks = useStore((s) => s.index.chunks)
   const caps = useStore((s) => s.auth.session?.capabilities)
   const cited = useMemo(() => new Set([...gen.answer.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]))), [gen.answer])
-  const sources = run.context.included.map((id, i) => ({ n: i + 1, id, chunk: chunks.find((c) => c.id === id) }))
+  const sources = run.context.included.map((id, i) => {
+    const chunk = chunks.find((c) => c.id === id)
+    const doc = run.context.docs?.[i]
+    return { n: i + 1, id, chunk, docId: chunk?.docId ?? doc?.docId, title: chunk?.docTitle ?? doc?.docTitle ?? id }
+  })
   const pending = gen.status === 'processing' && !gen.answer
   const dict = useT()
   const tx = dict.lab.chat
   const model = gen.prompt?.model ?? caps?.chatModel
   const withRag = run.ragEnabled && !baseline
+  const outdatedTitles = withRag ? [...new Set(sources.filter((s) => s.docId && isOutdatedDoc(s.docId)).map((s) => s.title))] : []
   const showFoot = gen.status === 'completed' || (gen.prompt && gen.status !== 'processing')
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-sm" data-testid={baseline ? 'baseline-answer' : 'answer'}>
@@ -230,6 +241,7 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
       </div>
       <div className="px-3.5 py-3">
         {pending && <div className="flex items-center gap-2 text-[13px] text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> {run.ragEnabled && !baseline ? tx.reading : tx.thinking}</div>}
+        {outdatedTitles.length > 0 && gen.status !== 'processing' && <Alert tone="warn" className="mb-2.5" data-testid="outdated-warning">{tx.outdatedInContext(outdatedTitles.join(', '))}</Alert>}
         {gen.answer && <AnswerText text={gen.answer} sources={sources} baseline={baseline} />}
         {gen.error && <Alert tone="danger" className={cn(gen.answer && 'mt-2.5')}>{gen.error}</Alert>}
         {!baseline && sources.length > 0 && gen.status === 'completed' && (
@@ -242,7 +254,8 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
                 className={cn('flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition-colors cursor-pointer', cited.has(s.n) ? 'border-transparent bg-ok text-white hover:bg-foreground' : 'border-input bg-card text-[var(--ink-2)] hover:bg-muted')}
                 title={cited.has(s.n) ? tx.cited : tx.notCited}
               >
-                <span className="font-mono font-medium">[{s.n}]</span> <span className="truncate">{s.chunk?.docTitle ?? s.id}</span>
+                <span className="font-mono font-medium">[{s.n}]</span> <span className="truncate">{s.title}</span>
+                {s.docId && isOutdatedDoc(s.docId) && <span className="rounded bg-warn px-1 text-[10px] font-semibold text-white">{tx.outdated}</span>}
               </button>
             ))}
           </div>
@@ -254,6 +267,17 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
             <div className="flex flex-wrap items-center gap-x-2 font-mono text-[10.5px] text-muted-foreground">
               {gen.ms !== undefined && <span>{formatMs(gen.ms)}</span>}
               {gen.usage && <span>· {tx.usage(gen.usage.inputTokens, gen.usage.outputTokens)}</span>}
+            </div>
+          )}
+          {withRag && run.index && gen.status === 'completed' && (
+            <div className="font-mono text-[10.5px] text-muted-foreground" data-testid="run-settings">
+              {tx.runSettings(
+                run.index.docTitles.length,
+                run.index.chunkSize != null ? `${run.index.chunkSize}/${run.index.overlap}` : '–',
+                tx.labelNames[run.index.labels] ?? run.index.labels,
+                run.topK,
+                run.threshold == null ? '–' : run.threshold.toFixed(2),
+              )}
             </div>
           )}
           {gen.prompt && gen.status !== 'processing' && <PromptView messages={gen.prompt.messages} echoed />}
