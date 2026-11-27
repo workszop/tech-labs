@@ -212,8 +212,8 @@ export const shell = {
       },
       compare: {
         title: 'Compare answers with and without RAG',
-        body: 'Turn on “Compare” in the chat and ask again. The same model answers once with the Rybex documents and once without them.',
-        action: 'Turn on compare mode',
+        body: 'In the Generator part choose “Both side by side” and ask again. The same model answers once with the Rybex documents and once without them.',
+        action: 'Set “Both side by side” and go back to the chat',
       },
     },
   },

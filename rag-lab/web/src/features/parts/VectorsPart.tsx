@@ -8,7 +8,6 @@ import { BuildControls, ChunkSettings, IndexOverview, JobSteps } from '../IndexB
 import { SectionCard, Stat } from '../common'
 import { RetrievalDecisions } from './RetrievalDecisions'
 import { SplitPreview } from './SplitPreview'
-import { MapOptions } from './MapOptions'
 
 const EmbeddingMap = lazy(() => import('../EmbeddingMap').then((m) => ({ default: m.EmbeddingMap })))
 const Loading = () => (
@@ -19,7 +18,7 @@ const Loading = () => (
 
 /**
  * Part 3. Students: the decisions (how to cut, what label, top-k, threshold), a split preview and the build.
- * Tech: the embedder, what is stored, the last build in detail, and the vector map with its display options.
+ * Tech: the embedder, what is stored, the last build in detail, and the vector map.
  */
 export function VectorsPart() {
   const view = useStore((s) => s.settings.view)
@@ -42,11 +41,9 @@ export function VectorsPart() {
             <IndexOverview />
             <JobSteps />
           </div>
-          <div className="border-t" data-testid="vector-map">
-            <MapOptions />
-            <div className="h-[80vh] min-h-[32rem]">
-              <Suspense fallback={<Loading />}><EmbeddingMap /></Suspense>
-            </div>
+          {/* The map's own toolbar holds its display options (mode, colour, connections, labels, reset). */}
+          <div className="h-[80vh] min-h-[32rem] border-t" data-testid="vector-map">
+            <Suspense fallback={<Loading />}><EmbeddingMap /></Suspense>
           </div>
         </>
       )}

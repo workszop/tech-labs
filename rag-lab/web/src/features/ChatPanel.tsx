@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUp, ChevronDown, Download, Eraser, FileSearch, Lightbulb, Loader2, MessageSquare, Square, Database, GitCompare, Bot } from 'lucide-react'
+import { ArrowUp, ChevronDown, Download, Eraser, FileSearch, Lightbulb, Loader2, MessageSquare, Square, Database, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/input'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useCorpus } from '@/data/corpus'
 import { useT, type Dict } from '@/i18n'
 import { cn, formatMs } from '@/lib/utils'
 import { ask, cancelQuery, clearConversation, downloadTestLog, indexCompatibility, openChunkInDocument, showActivation } from '@/state/actions'
-import { setSettings, setUi, useStore, type GenerationResult, type QueryRun } from '@/state/store'
-import { showRunDetails } from '@/state/nav'
+import { setUi, useStore, type GenerationResult, type QueryRun } from '@/state/store'
+import { goTo, showRunDetails } from '@/state/nav'
+import { answerMode } from '@/state/answerMode'
 import { ContextList } from './ContextList'
 import { Alert, Explain, IconBadge, ScoreBar, StatusIcon, docFlag, isOutdatedDoc } from './common'
 
@@ -24,6 +24,8 @@ export function ChatPanel() {
   const caps = useStore((s) => s.auth.session?.capabilities)
   const indexEmpty = useStore((s) => s.index.chunks.length === 0)
   const tx = useT().lab.chat
+  const modes = useT().lab.generator.modes
+  const mode = answerMode(settings)
   const { suggestedQuestions } = useCorpus()
   const [text, setText] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -98,23 +100,17 @@ export function ChatPanel() {
 
       <div className="border-t border-hairline bg-subtle px-3 pb-3 pt-2.5">
         {!compat.ok && <Alert tone="danger" className="mb-2">{compat.reason}</Alert>}
-        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
-          <label className="flex items-center gap-1.5">
-            <Switch checked={settings.ragEnabled} onCheckedChange={(v) => setSettings({ ragEnabled: v })} aria-label={tx.ragAria} />
-            <span className={cn('font-semibold', !settings.ragEnabled && 'rounded-full bg-primary px-2 py-0.5 text-primary-foreground')}>{tx.ragState(settings.ragEnabled)}</span>
-          </label>
-          <label className={cn('flex items-center gap-1.5', !settings.ragEnabled && 'text-muted-foreground')}>
-            <Switch checked={settings.compareMode} disabled={!settings.ragEnabled} onCheckedChange={(v) => setSettings({ compareMode: v })} aria-label={tx.compareAria} />
-            <GitCompare className="size-3.5" /> {tx.compare} <Explain topic="compare" />
-          </label>
-          <label className={cn('ml-auto flex items-center gap-1.5', !settings.ragEnabled && 'text-muted-foreground')}>
-            {tx.topK} <Explain topic="topk" />
-            <select className="h-6 rounded-md border border-input bg-card px-1 font-mono text-xs disabled:opacity-50" value={settings.topK} onChange={(e) => setSettings({ topK: Number(e.target.value) })} disabled={!settings.ragEnabled} aria-label={tx.topKAria}>
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((k) => (
-                <option key={k} value={k}>{k}</option>
-              ))}
-            </select>
-          </label>
+        {/* Read-only: the answer mode is decided in Generator, top-k in Vector database. */}
+        <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]" data-testid="chat-decisions" data-mode={mode}>
+          <span className="text-muted-foreground">{tx.modeLine}</span>
+          <button type="button" className="rounded-full border border-input bg-card px-2 py-0.5 font-semibold transition-colors hover:bg-muted cursor-pointer" onClick={() => goTo('generator')} title={tx.changeInGenerator} data-testid="chat-mode-link">
+            {modes[mode]}
+          </button>
+          {settings.ragEnabled && (
+            <button type="button" className="rounded-full border border-input bg-card px-2 py-0.5 font-mono transition-colors hover:bg-muted cursor-pointer" onClick={() => goTo('vectors')} title={tx.changeInVectors} data-testid="chat-topk-link">
+              {tx.topK} {settings.topK}
+            </button>
+          )}
         </div>
         {authStatus !== 'active' ? (
           <Button variant="accent" className="w-full" onClick={showActivation}>{tx.enterCode}</Button>

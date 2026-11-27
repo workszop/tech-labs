@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { getState, setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
 import { ask, downloadTestLog, previewChunking, selectFolder, toggleSelect } from '@/state/actions'
 import { goTo } from '@/state/nav'
+import { answerModePatch } from '@/state/answerMode'
 import { t, useT, type Dict } from '@/i18n'
 import { Badge } from '@/components/ui/badge'
 import { IconBadge, LearnCard, SectionCard } from './common'
@@ -122,7 +123,8 @@ const EXTRAS: GuideStep[] = [
     icon: <GitCompare />,
     done: (s) => Object.values(s.runs).some((r) => r.baseline?.status === 'completed'),
     run: () => {
-      setSettings({ compareMode: true, ragEnabled: true })
+      // The decision lives in Generator; the step sets it there and opens the chat to ask again.
+      setSettings(answerModePatch('both'))
       goToChat()
     },
     topic: 'compare',

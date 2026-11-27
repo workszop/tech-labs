@@ -232,8 +232,8 @@ export const shell = {
       },
       compare: {
         title: 'Porównaj odpowiedzi z RAG i bez RAG',
-        body: 'Włącz w czacie „Porównaj” i zadaj pytanie jeszcze raz. Ten sam model odpowie raz z dokumentami Rybex, a raz bez nich.',
-        action: 'Włącz tryb porównania',
+        body: 'W części Generator wybierzcie „Oba obok siebie” i zadajcie pytanie jeszcze raz. Ten sam model odpowie raz z dokumentami Rybex, a raz bez nich.',
+        action: 'Ustaw „Oba obok siebie” i wróć do czatu',
       },
     },
   },
