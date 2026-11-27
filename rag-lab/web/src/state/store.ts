@@ -124,6 +124,7 @@ export interface ChatEntry {
 
 export type Part = 'case' | 'data' | 'vectors' | 'generator' | 'benchmark'
 export type View = 'students' | 'tech'
+export type CaseTechTab = 'retrieval' | 'pipeline'
 export type PipelineNodeId =
   | 'docs'
   | 'selection'
@@ -147,8 +148,6 @@ export interface Settings {
   labelMeta: boolean
   topK: number
   threshold: number | null
-  showAllScores: boolean
-  showRetrievalDetails: boolean
   temperature: number
   maxTokens: number
   streaming: boolean
@@ -178,7 +177,10 @@ export interface AppState {
     previewHighlight: { start: number; end: number; chunkId: string } | null
     inspectChunkId: string | null
     learnTopic: string | null
-    settingsOpen: boolean
+    /** The account panel (access, usage, session, logout, restore defaults) opened from the header. */
+    accountOpen: boolean
+    /** Tab of the Tech face of the Case part; in the store so "Full details" can select it. */
+    caseTechTab: CaseTechTab
     mapFocusDoc: string | null
     mapFolders: string[] | null
     /** Guide steps that were completed at least once (they stay ticked). */
@@ -196,8 +198,6 @@ export const DEFAULT_SETTINGS: Settings = {
   labelMeta: false,
   topK: 3,
   threshold: null,
-  showAllScores: false,
-  showRetrievalDetails: true,
   temperature: 0.2,
   maxTokens: 500,
   streaming: true,
@@ -212,8 +212,9 @@ export const DEFAULT_SETTINGS: Settings = {
 const PREFS_KEY = 'rag-lab-prefs-v1'
 
 const VIEWS: View[] = ['students', 'tech']
+/** Settings older versions stored that no longer exist (the retrieval-detail toggles of the removed settings dialog). */
+const DROPPED_SETTINGS = ['showAllScores', 'showRetrievalDetails']
 
-/** Parse the stored preferences; anything unreadable falls back to the defaults. */
 /**
  * Stored preferences. `selectionIsMembership` marks prefs written by a version where a tick means
  * "belongs to the knowledge base"; without it the ticks still need the one-time migration (see initApp).
@@ -228,7 +229,8 @@ export function loadPrefsFrom(raw: string | null): StoredPrefs {
   try {
     if (raw) {
       const p = JSON.parse(raw)
-      const stored = p && typeof p.settings === 'object' && p.settings ? p.settings : {}
+      const stored = p && typeof p.settings === 'object' && p.settings ? { ...p.settings } : {}
+      for (const k of DROPPED_SETTINGS) delete stored[k]
       const view: View = VIEWS.includes(stored.view) ? stored.view : DEFAULT_SETTINGS.view
       // The map always opens on the question-centred view; an older stored '2d' would hide it.
       return {
@@ -275,7 +277,8 @@ let state: AppState = {
     previewHighlight: null,
     inspectChunkId: null,
     learnTopic: null,
-    settingsOpen: false,
+    accountOpen: false,
+    caseTechTab: 'retrieval',
     mapFocusDoc: null,
     mapFolders: null,
     guideDone: [],

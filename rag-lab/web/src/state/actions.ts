@@ -46,6 +46,11 @@ export function docText(d: CompanyDocument) {
   return d.content.trimStart().startsWith(d.title) ? d.content : `${d.title}\n\n${d.content}`
 }
 
+/** Content hash of a document: what the index stores per document to notice a changed text or version. */
+export function docHash(d: CompanyDocument): Promise<string> {
+  return sha256Hex(`${d.version}\n${docText(d)}`)
+}
+
 // ---------------------------------------------------------------- boot / auth
 
 export async function initApp() {
@@ -72,7 +77,7 @@ export async function initApp() {
 let docHashes: Record<string, string> = {}
 async function refreshDocHashes() {
   const docs = getCorpus().documents
-  const list = await Promise.all(docs.map((d) => sha256Hex(`${d.version}\n${docText(d)}`)))
+  const list = await Promise.all(docs.map(docHash))
   docHashes = Object.fromEntries(docs.map((d, i) => [d.id, list[i]]))
   setState({}) // let views that read the build plan update
 }
@@ -277,7 +282,7 @@ export async function buildIndex() {
   const signal = jobAbort.signal
   jobVectors.clear()
 
-  const hashes = await Promise.all(docs.map((d) => sha256Hex(`${d.version}\n${docText(d)}`)))
+  const hashes = await Promise.all(docs.map(docHash))
   const tokens = await compute.countTokens(docs.map(docText)).catch(() => docs.map((d) => Math.round(docText(d).length / 4)))
   const job: IndexJob = {
     id: uid('job'),
@@ -321,7 +326,7 @@ async function runChunking(hashes?: string[]) {
   const corpus = getCorpus()
   const docs = job.selection.docs.map((d) => corpus.docById[d.id])
   const result = await compute.chunk(docs.map((d) => ({ id: d.id, text: docText(d) })), job.config)
-  const hashList = hashes ?? (await Promise.all(docs.map((d) => sha256Hex(`${d.version}\n${docText(d)}`))))
+  const hashList = hashes ?? (await Promise.all(docs.map(docHash)))
   const chunks: PlannedChunk[] = []
   const words = t().lab.indexBuilder.labelWords
   result.forEach((r, i) => {

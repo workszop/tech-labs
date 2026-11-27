@@ -66,7 +66,7 @@ export function DocumentDialog() {
           <DialogDescription>{doc.summary}</DialogDescription>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <Button size="xs" variant={selected ? 'secondary' : 'outline'} onClick={() => toggleSelect([doc.id], !selected)} aria-pressed={selected} data-testid="dialog-membership">
-              {selected ? <CheckSquare /> : <Square />} {selected ? tx.selected : tx.select}
+              {selected ? <CheckSquare /> : <Square />} {selected ? tx.removeFromBase : tx.addToBase}
             </Button>
             {chunks.length > 0 && (
               <label className="flex items-center gap-2 text-xs text-[var(--ink-2)]">

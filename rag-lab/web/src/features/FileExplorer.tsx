@@ -7,29 +7,32 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCorpus } from '@/data/corpus'
 import { compute } from '@/rag/compute'
-import { sha256Hex } from '@/rag/hash'
 import { cn, formatNumber } from '@/lib/utils'
 import { useT } from '@/i18n'
-import { currentBuildPlan, docText, openDocument, resetKnowledgeBase, toggleSelect } from '@/state/actions'
+import { currentBuildPlan, docHash, docText, openDocument, resetKnowledgeBase, toggleSelect } from '@/state/actions'
 import { isStale } from '@/state/membership'
 import { goTo } from '@/state/nav'
 import { useStore, type View } from '@/state/store'
 import { Alert, Explain, IconBadge, docFlag, folderColor } from './common'
 
-/** Characters, tokens (cl100k_base, in the compute worker) and content hash of every document, for the Tech face. */
-function useDocStats() {
+/**
+ * Tokens (cl100k_base, in the compute worker) and content hash of every document, for the Tech face.
+ * Runs only while `enabled` (the Tech face is shown): the Students face does not pay for tokenizing the corpus.
+ */
+function useDocStats(enabled: boolean) {
   const { documents } = useCorpus()
   const [stats, setStats] = useState<Record<string, { tokens: number; hash: string }>>({})
   useEffect(() => {
+    if (!enabled) return
     let live = true
     const texts = documents.map(docText)
-    void Promise.all([compute.countTokens(texts), Promise.all(documents.map((d) => sha256Hex(`${d.version}\n${docText(d)}`)))]).then(([tokens, hashes]) => {
+    void Promise.all([compute.countTokens(texts), Promise.all(documents.map(docHash))]).then(([tokens, hashes]) => {
       if (live) setStats(Object.fromEntries(documents.map((d, i) => [d.id, { tokens: tokens[i], hash: hashes[i] }])))
     })
     return () => {
       live = false
     }
-  }, [documents])
+  }, [documents, enabled])
   return stats
 }
 
@@ -49,7 +52,7 @@ export function FileExplorer({ view = 'students' }: { view?: View }) {
   const sel = useMemo(() => new Set(selection), [selection])
   const indexedCount = Object.keys(indexed).length
   const students = view === 'students'
-  const stats = useDocStats()
+  const stats = useDocStats(!students)
 
   return (
     <div data-panel="docs" className="flex h-full min-h-0 flex-col">

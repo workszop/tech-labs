@@ -2,10 +2,9 @@ import { useMemo } from 'react'
 import { Bot, ChevronRight, FileSearch, ListOrdered, MessageSquareText, Search, Sparkles, Layers } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { cn, formatMs, formatNumber } from '@/lib/utils'
 import { openChunkInDocument, previewMessages } from '@/state/actions'
-import { setSettings, setUi, useStore, type QueryRun } from '@/state/store'
+import { setUi, useStore, type QueryRun } from '@/state/store'
 import type { ChunkRecord } from '@/rag/db'
 import type { ChatMessage } from '@shared/api-types'
 import { useT } from '@/i18n'
@@ -89,12 +88,12 @@ export function EmbedSection({ run }: { run: QueryRun }) {
 
 export function SearchSection({ run }: { run: QueryRun }) {
   const chunks = useStore((s) => s.index.chunks)
-  const showAll = useStore((s) => s.settings.showAllScores)
   const byId = useMemo(() => new Map(chunks.map((c) => [c.id, c])), [chunks])
   const s = run.search
   const tx = useT().lab.retrieval
   const included = new Set(run.context.included)
-  const list = s.ranked ? (showAll ? s.ranked : s.ranked.slice(0, Math.max(run.topK + 3, 6))) : []
+  // The Tech face always shows every score (the old "show all scores" toggle is gone).
+  const list = s.ranked ?? []
   return (
     <Section
       icon={<Search />}
@@ -111,9 +110,6 @@ export function SearchSection({ run }: { run: QueryRun }) {
           </LearnCard>
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-xs text-[var(--ink-2)]">
             <span className="flex items-center gap-1.5"><ListOrdered className="size-3.5" /> {tx.topK(run.topK, run.threshold != null ? run.threshold.toFixed(2) : null)} <Explain topic="topk" /></span>
-            <label className="flex items-center gap-2">
-              {tx.showAll(s.ranked.length)} <Switch checked={showAll} onCheckedChange={(v) => setSettings({ showAllScores: v })} />
-            </label>
           </div>
           <ol className="divide-y divide-hairline overflow-hidden rounded-lg border" data-testid="ranked-results">
             {list.map((r) => {

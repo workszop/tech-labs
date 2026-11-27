@@ -1,5 +1,5 @@
 /** Navigation between the five parts of the app. */
-import { setUi, type AppState, type Part } from './store'
+import { setState, setUi, type AppState, type Part } from './store'
 
 export const PARTS: Part[] = ['case', 'data', 'vectors', 'generator', 'benchmark']
 
@@ -8,6 +8,12 @@ export function goTo(part: Part): void {
   setUi({ part })
   if (typeof document === 'undefined') return
   document.querySelector<HTMLElement>('[data-part-scroll]')?.scrollTo({ top: 0 })
+}
+
+/** "Full details" of an answer: the Retrieval tab of the Case part (Tech face), showing that answer. */
+export function showRunDetails(runId: string): void {
+  setState({ activeRunId: runId })
+  setUi({ part: 'case', caseTechTab: 'retrieval' })
 }
 
 /** The small count shown next to a part in the parts bar; `null` when there is nothing to count. */

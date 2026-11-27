@@ -1,7 +1,7 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { FileSearch, Loader2, Workflow } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useStore } from '@/state/store'
+import { setUi, useStore, type CaseTechTab } from '@/state/store'
 import { useT } from '@/i18n'
 import { Guide } from '../Guide'
 import { ChatPanel } from '../ChatPanel'
@@ -14,13 +14,12 @@ const Loading = () => (
   </div>
 )
 
-type TechTab = 'retrieval' | 'pipeline'
-
 /** Part 1. Students: the guide next to the chat. Tech: the chat next to retrieval details and the pipeline. */
 export function CasePart() {
   const view = useStore((s) => s.settings.view)
   const tx = useT().shell.techTabs
-  const [tab, setTab] = useState<TechTab>('retrieval')
+  // In the store, so the chat's "Full details" can select it and it survives leaving the part.
+  const tab = useStore((s) => s.ui.caseTechTab)
   const chat = (
     <div className="h-[80vh] min-h-[28rem] border-t bg-card lg:h-full lg:min-h-0 lg:border-t-0">
       <ChatPanel />
@@ -38,7 +37,7 @@ export function CasePart() {
       ) : (
         <>
           <div className="lg:min-h-0 lg:border-r">{chat}</div>
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TechTab)} className="flex h-[80vh] min-h-[28rem] flex-col lg:h-full lg:min-h-0">
+          <Tabs value={tab} onValueChange={(v) => setUi({ caseTechTab: v as CaseTechTab })} className="flex h-[80vh] min-h-[28rem] flex-col lg:h-full lg:min-h-0">
             <div className="scroll-thin flex shrink-0 items-center overflow-x-auto border-b bg-card px-3 py-2">
               <TabsList>
                 <TabsTrigger value="retrieval" data-testid="tab-retrieval"><FileSearch /> {tx.retrieval}</TabsTrigger>

@@ -13,7 +13,8 @@ import { GeneratorPart } from '@/features/parts/GeneratorPart'
 import { BenchmarkPart } from '@/features/parts/BenchmarkPart'
 import { DocumentDialog } from '@/features/DocumentDialog'
 import { LearnDialog } from '@/features/LearnDialog'
-import { SettingsDialog } from '@/features/SettingsDialog'
+import { AccountPanel } from '@/features/AccountPanel'
+import { GuideTracker } from '@/features/Guide'
 import { ChunkInspectDialog } from '@/features/ChunkInspectDialog'
 import { Alert } from '@/features/common'
 
@@ -71,7 +72,8 @@ export default function App() {
           <DocumentDialog />
           <ChunkInspectDialog />
           <LearnDialog />
-          <SettingsDialog />
+          <AccountPanel />
+          <GuideTracker />
         </div>
       )}
     </TooltipProvider>

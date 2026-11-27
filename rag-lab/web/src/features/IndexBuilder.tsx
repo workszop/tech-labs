@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { cn, formatBytes, formatMs, formatNumber } from '@/lib/utils'
-import { buildIndex, cancelIndexing, currentBuildPlan, indexCompatibility, previewChunking, retryFailedBatches } from '@/state/actions'
+import { buildIndex, cancelIndexing, currentBuildPlan, indexCompatibility, retryFailedBatches } from '@/state/actions'
 import { isStale } from '@/state/membership'
 import { setSettings, useStore, type IndexJob, type IndexStep, type StageStatus } from '@/state/store'
 import { goTo } from '@/state/nav'
@@ -88,85 +88,134 @@ export function ChunkSettings({ compact }: { compact?: boolean }) {
   )
 }
 
-export function IndexBuilder() {
+/**
+ * Vector database, Students: the one build button, its progress, the result in one line and the
+ * notice when the ticks or the split settings no longer match the database.
+ */
+export function BuildControls() {
   const job = useStore((s) => s.job)
   const selection = useStore((s) => s.selection)
   const authed = useStore((s) => s.auth.status === 'active')
+  const chunks = useStore((s) => s.index.chunks.length)
+  const docs = useStore((s) => Object.keys(s.index.documents).length)
   const plan = useStore(currentBuildPlan)
   const stale = isStale(plan)
   // Removing documents is local; adding or re-splitting needs embeddings, so an access code.
   const needsEmbeddings = plan.add.length > 0 || plan.resplit.length > 0
+  const tx = useT().lab.indexBuilder
+  const tv = useT().lab.vectors
+  const td = useT().lab.data
+  const running = job?.status === 'running'
+  const e = job?.embedding
+  // A split preview is a job too ('cancelled', no embeddings); its own card shows it.
+  const build = job && !(job.status === 'cancelled' && !job.embedding) ? job : null
+  return (
+    <SectionCard
+      as="h2"
+      icon={<Hammer />}
+      title={tv.buildTitle}
+      explain="rag"
+      data-testid="build-controls"
+      foot={
+        <>
+          {selection.length === 0 && !stale && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground">{tx.selectHint}</p>}
+          <div className="ml-auto flex flex-wrap gap-2">
+            {running && (
+              <Button variant="outline" size="sm" onClick={cancelIndexing}>
+                <X /> {tx.embedding.cancel}
+              </Button>
+            )}
+            <Button variant="accent" size="sm" disabled={!stale || running || (needsEmbeddings && !authed)} onClick={() => buildIndex()} data-testid="rebuild-index">
+              <Hammer /> {stale ? tx.buildPlan(plan.add.length, plan.remove.length, plan.resplit.length) : tx.upToDate}
+            </Button>
+          </div>
+        </>
+      }
+    >
+      <div className="space-y-2.5">
+        <p className="font-display text-[16px] font-bold" data-testid="vectors-result">{chunks > 0 ? tv.result(chunks, docs) : tv.empty}</p>
+        {stale && (
+          <Alert tone="warn" title={td.staleTitle}>
+            {td.stale(plan.add.length, plan.remove.length)}
+          </Alert>
+        )}
+        {build && running && (
+          <div className="space-y-1.5" data-testid="build-progress">
+            <div className="flex items-center gap-2 text-[13px]">
+              <Loader2 className="size-4 animate-spin" /> {tv.building(tx.steps[build.step])}
+            </div>
+            {e && (
+              <>
+                <div className="h-2.5 overflow-hidden rounded-full bg-foreground">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.round((e.done / Math.max(1, e.total)) * 100)}%` }} />
+                </div>
+                <div className="text-[11.5px] text-muted-foreground">{tx.embedding.progress(e.done, e.total)}</div>
+              </>
+            )}
+          </div>
+        )}
+        {build?.notes.map((n, i) => (
+          <Alert key={i} tone="doc">{n}</Alert>
+        ))}
+        {build?.error && (
+          <Alert
+            tone={build.status === 'partial' ? 'warn' : 'danger'}
+            title={build.status === 'partial' ? tx.partialTitle : tx.stoppedTitle}
+            action={
+              build.embedding?.batches.some((b) => b.status === 'failed' || b.status === 'pending') && authed ? (
+                <Button size="xs" variant="outline" onClick={() => retryFailedBatches()}>
+                  <RefreshCw /> {tx.retry}
+                </Button>
+              ) : undefined
+            }
+          >
+            {build.error}
+          </Alert>
+        )}
+      </div>
+    </SectionCard>
+  )
+}
+
+/** Vector database, Tech: every step of the last build (or split preview) with its details: chunks, batches, timings, a sample vector. */
+export function JobSteps() {
+  const job = useStore((s) => s.job)
   const [open, setOpen] = useState<IndexStep | 'none' | null>(null)
   const tx = useT().lab.indexBuilder
-
-  return (
-    <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-5">
-      <SectionCard
-        as="h2"
-        icon={<Hammer />}
-        title={tx.title}
-        explain="rag"
-        foot={
-          <>
-            {selection.length === 0 && !stale && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground">{tx.selectHint}</p>}
-            <div className="ml-auto flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" disabled={selection.length === 0 || job?.status === 'running'} onClick={() => previewChunking()}>
-                <Scissors /> {tx.previewOnly}
-              </Button>
-              <Button variant="accent" size="sm" disabled={!stale || job?.status === 'running' || (needsEmbeddings && !authed)} onClick={() => buildIndex()} data-testid="rebuild-index">
-                <Hammer /> {stale ? tx.buildPlan(plan.add.length, plan.remove.length, plan.resplit.length) : tx.upToDate}
-              </Button>
-            </div>
-          </>
-        }
-      >
-        <ChunkSettings />
+  const tv = useT().lab.vectors
+  if (!job)
+    return (
+      <SectionCard icon={<FileStack />} title={tv.lastJobTitle}>
+        <p className="text-[13px] text-muted-foreground">{tv.noJob}</p>
       </SectionCard>
-
-      {!job ? (
-        <IndexOverview />
-      ) : (
-        <div className="space-y-3">
-          {job.notes.map((n, i) => (
-            <Alert key={i} tone="doc">{n}</Alert>
-          ))}
-          {job.error && (
-            <Alert
-              tone={job.status === 'partial' ? 'warn' : 'danger'}
-              title={job.status === 'partial' ? tx.partialTitle : tx.stoppedTitle}
-              action={
-                job.embedding?.batches.some((b) => b.status === 'failed' || b.status === 'pending') && authed ? (
-                  <Button size="xs" variant="outline" onClick={() => retryFailedBatches()}>
-                    <RefreshCw /> {tx.retry}
-                  </Button>
-                ) : undefined
-              }
-            >
-              {job.error}
-            </Alert>
-          )}
-          <ol className="space-y-2.5">
-            {STEPS.map((step) => {
-              const st = stepStatus(job, step.id)
-              const expanded = open === step.id || (open === null && job.step === step.id)
-              return (
-                <li key={step.id} data-step={step.id} data-status={st} className={cn('overflow-hidden rounded-xl border bg-card shadow-sm', st === 'processing' && 'rl-processing border-[var(--yellow)]')}>
-                  <button className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-1.5 bg-subtle px-4 py-2.5 text-left transition-colors cursor-pointer hover:bg-muted" onClick={() => setOpen(expanded ? 'none' : step.id)} aria-expanded={expanded}>
-                    <IconBadge>{step.icon}</IconBadge>
-                    <span className="font-display text-[15px] font-bold leading-tight">{tx.steps[step.id]}</span>
-                    <span className="ml-auto flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                      <StepMeta job={job} step={step.id} />
-                      <StatusBadge status={st} />
-                      <ChevronDown className={cn('size-4 text-foreground transition-transform', expanded && 'rotate-180')} />
-                    </span>
-                  </button>
-                  {expanded && <div className="border-t border-hairline px-4 py-4">{renderStep(job, step.id)}</div>}
-                </li>
-              )
-            })}
-          </ol>
-        </div>
-      )}
+    )
+  return (
+    <div className="space-y-3" data-testid="job-steps">
+      <h3 className="font-display text-[15px] font-bold">{tv.lastJobTitle}</h3>
+      {job.notes.map((n, i) => (
+        <Alert key={i} tone="doc">{n}</Alert>
+      ))}
+      {job.error && <Alert tone={job.status === 'partial' ? 'warn' : 'danger'} title={job.status === 'partial' ? tx.partialTitle : tx.stoppedTitle}>{job.error}</Alert>}
+      <ol className="space-y-2.5">
+        {STEPS.map((step) => {
+          const st = stepStatus(job, step.id)
+          const expanded = open === step.id || (open === null && job.step === step.id)
+          return (
+            <li key={step.id} data-step={step.id} data-status={st} className={cn('overflow-hidden rounded-xl border bg-card shadow-sm', st === 'processing' && 'rl-processing border-[var(--yellow)]')}>
+              <button className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-1.5 bg-subtle px-4 py-2.5 text-left transition-colors cursor-pointer hover:bg-muted" onClick={() => setOpen(expanded ? 'none' : step.id)} aria-expanded={expanded}>
+                <IconBadge>{step.icon}</IconBadge>
+                <span className="font-display text-[15px] font-bold leading-tight">{tx.steps[step.id]}</span>
+                <span className="ml-auto flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                  <StepMeta job={job} step={step.id} />
+                  <StatusBadge status={st} />
+                  <ChevronDown className={cn('size-4 text-foreground transition-transform', expanded && 'rotate-180')} />
+                </span>
+              </button>
+              {expanded && <div className="border-t border-hairline px-4 py-4">{renderStep(job, step.id)}</div>}
+            </li>
+          )
+        })}
+      </ol>
     </div>
   )
 }
@@ -344,6 +393,8 @@ export function IndexOverview({ compact }: { compact?: boolean }) {
   const storage = useStore((s) => s.storage)
   const usageTokens = useStore((s) => s.job?.embedding?.tokens ?? 0)
   const compat = indexCompatibility()
+  const view = useStore((s) => s.settings.view)
+  const [mapHint, setMapHint] = useState(false)
   const tx = useT().lab.indexBuilder.overview
   const docs = Object.values(index.documents)
   const bytes = useMemo(() => approximateIndexBytes(index.chunks), [index.chunks])
@@ -355,14 +406,21 @@ export function IndexOverview({ compact }: { compact?: boolean }) {
         </EmptyState>
       </div>
     )
+  // The map lives only in the Tech face of Vector database; the app never switches the face itself.
+  const exploreMap = () => {
+    goTo('vectors')
+    if (view === 'students') setMapHint(true)
+    else requestAnimationFrame(() => document.querySelector('[data-testid="vector-map"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
   const actions = (
     <>
-      <Button size="sm" variant="accent" onClick={() => goTo('vectors')}>
+      <Button size="sm" variant="accent" onClick={exploreMap} data-testid="explore-map">
         <Map /> {tx.exploreMap}
       </Button>
       <Button size="sm" variant="outline" onClick={() => goTo('case')}>
         {tx.ask}
       </Button>
+      {mapHint && view === 'students' && <p className="basis-full text-[12px] text-muted-foreground" role="status">{tx.mapHint}</p>}
     </>
   )
   const body = (

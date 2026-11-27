@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { ArrowRight, BookOpen, Check, Download, FileSearch, FlaskConical, FolderTree, GitCompare, Map as MapIcon, Scissors, Tag, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
+import { getState, setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
 import { ask, downloadTestLog, previewChunking, selectFolder, toggleSelect } from '@/state/actions'
 import { goTo } from '@/state/nav'
 import { t, useT, type Dict } from '@/i18n'
@@ -76,7 +76,7 @@ const STEPS: GuideStep[] = [
     id: 'size',
     icon: <FileSearch />,
     done: (s) => new Set(ragRuns(s).filter((r) => r.index!.docIds.includes(CURRENT)).map((r) => `${r.index!.chunkSize}/${r.index!.overlap}/${r.index!.labels}`)).size >= 2,
-    run: () => goTo('case'),
+    run: showLatestContext,
     askGuiding: true,
     topic: 'cosine',
   },
@@ -112,7 +112,8 @@ const EXTRAS: GuideStep[] = [
   {
     id: 'map',
     icon: <MapIcon />,
-    done: (s) => s.ui.part === 'vectors' && s.index.chunks.length > 0,
+    // The map lives only in the Tech face of Vector database; only the user flips the switch.
+    done: (s) => s.ui.part === 'vectors' && s.settings.view === 'tech' && s.index.chunks.length > 0,
     run: () => goTo('vectors'),
     topic: 'embedding',
   },
@@ -136,9 +137,43 @@ function goToChat() {
   requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-panel="chat"] textarea')?.focus())
 }
 
+/**
+ * Open the Case part on the list of fragments under the latest answer (Students face), or on the
+ * Retrieval tab (Tech face). Without an answer yet, the cursor goes to the chat box.
+ */
+function showLatestContext() {
+  if (getState().settings.view === 'tech') {
+    setUi({ part: 'case', caseTechTab: 'retrieval' })
+    return
+  }
+  goTo('case')
+  requestAnimationFrame(() => {
+    const lists = document.querySelectorAll<HTMLElement>('[data-panel="chat"] [data-testid="context-list"]')
+    const last = lists[lists.length - 1]
+    if (!last) return document.querySelector<HTMLElement>('[data-panel="chat"] textarea')?.focus()
+    last.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    last.focus({ preventScroll: true })
+  })
+}
+
 function askFromGuide(q: string) {
   goToChat()
   void ask(q)
+}
+
+/**
+ * Records steps the moment they are done, wherever the user is (mounted once in App): a step such as
+ * the vector map is done in another part, while the guide itself is shown only in the Case part.
+ * A step that was done once stays ticked, even after the team changes the index again.
+ */
+export function GuideTracker() {
+  const state = useStore((s) => s)
+  const sticky = state.ui.guideDone
+  useEffect(() => {
+    const newly = [...STEPS, ...EXTRAS].filter((st) => !sticky.includes(st.id) && st.done(state)).map((st) => st.id)
+    if (newly.length) setUi({ guideDone: [...sticky, ...newly] })
+  }, [state, sticky])
+  return null
 }
 
 export function Guide() {
@@ -152,12 +187,6 @@ export function Guide() {
   const doneCount = STEPS.filter(isDone).length
   const nextIdx = STEPS.findIndex((st) => !isDone(st))
   const doneLabel = useT().shell.common.status.completed
-
-  // A step that was done once stays ticked, even after the team changes the index again.
-  useEffect(() => {
-    const newly = [...STEPS, ...EXTRAS].filter((st) => !sticky.includes(st.id) && st.done(state)).map((st) => st.id)
-    if (newly.length) setUi({ guideDone: [...sticky, ...newly] })
-  }, [state, sticky])
 
   const chip = (key: string, label: React.ReactNode, q: string) => (
     <button key={key} disabled={!authed || busy} onClick={() => askFromGuide(q)} className="rounded-full border border-input bg-card px-2.5 py-1 text-left text-xs transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">

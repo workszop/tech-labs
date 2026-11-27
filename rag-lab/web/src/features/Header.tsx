@@ -1,4 +1,4 @@
-import { Gauge, GraduationCap, KeyRound, Settings } from 'lucide-react'
+import { Gauge, GraduationCap, KeyRound, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
@@ -47,7 +47,7 @@ export function Header() {
               cost: fmtUsd(usage.estimatedCostUsd),
             })}
           >
-            <button className="hidden items-center gap-2 rounded-full px-2.5 py-1.5 font-mono text-[11.5px] text-[var(--ink-2)] transition-colors hover:bg-muted lg:flex cursor-pointer" onClick={() => setUi({ settingsOpen: true })} data-testid="usage-meter">
+            <button className="hidden items-center gap-2 rounded-full px-2.5 py-1.5 font-mono text-[11.5px] text-[var(--ink-2)] transition-colors hover:bg-muted lg:flex cursor-pointer" onClick={() => setUi({ accountOpen: true })} data-testid="usage-meter">
               <Gauge className="size-3.5" />
               <span className="block h-2 w-20 overflow-hidden rounded-full bg-foreground">
                 <span className="block h-full bg-primary" style={{ width: `${pct}%` }} />
@@ -69,9 +69,9 @@ export function Header() {
               <GraduationCap />
             </Button>
           </Tooltip>
-          <Tooltip content={tx.settingsTooltip}>
-            <Button variant="ghost" size="icon" className="hover:bg-muted" onClick={() => setUi({ settingsOpen: true })} aria-label={tx.settingsAria}>
-              <Settings />
+          <Tooltip content={tx.accountTooltip}>
+            <Button variant="ghost" size="icon" className="hover:bg-muted" onClick={() => setUi({ accountOpen: true })} aria-label={tx.accountAria} data-testid="account-button">
+              <UserRound />
             </Button>
           </Tooltip>
         </div>

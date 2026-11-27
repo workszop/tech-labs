@@ -10,7 +10,8 @@ import { useT, type Dict } from '@/i18n'
 import { cn, formatMs } from '@/lib/utils'
 import { ask, cancelQuery, clearConversation, downloadTestLog, indexCompatibility, openChunkInDocument, showActivation } from '@/state/actions'
 import { setSettings, setUi, useStore, type GenerationResult, type QueryRun } from '@/state/store'
-import { goTo } from '@/state/nav'
+import { showRunDetails } from '@/state/nav'
+import { ContextList } from './ContextList'
 import { Alert, Explain, IconBadge, ScoreBar, StatusIcon, docFlag, isOutdatedDoc } from './common'
 
 import { PromptView } from './RetrievalView'
@@ -169,7 +170,7 @@ function stageLine(run: QueryRun, tx: Dict['lab']['chat']['stages']) {
 }
 
 function AssistantMessage({ run }: { run: QueryRun }) {
-  const showDetails = useStore((s) => s.settings.showRetrievalDetails)
+  const view = useStore((s) => s.settings.view)
   const [open, setOpen] = useState(false)
   const tx = useT().lab.chat
   return (
@@ -183,7 +184,9 @@ function AssistantMessage({ run }: { run: QueryRun }) {
         <AnswerCard run={run} gen={run.generate} title={run.baseline ? tx.withRag : undefined} />
         {run.baseline && <AnswerCard run={run} gen={run.baseline} title={tx.withoutRag} baseline />}
       </div>
-      {run.ragEnabled && run.search.ranked && showDetails && (
+      {/* Students: the fragments that reached the model, always shown. Tech: the ranking, with a way to the full trace. */}
+      {view === 'students' && run.ragEnabled && run.context.status === 'completed' && <ContextList run={run} />}
+      {view === 'tech' && run.ragEnabled && run.search.ranked && (
         <div className="overflow-hidden rounded-xl border bg-card">
           <button className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-[12px] font-semibold transition-colors cursor-pointer hover:bg-muted" onClick={() => setOpen(!open)} aria-expanded={open}>
             <Database className="size-3.5 shrink-0" /> {tx.retrieved(run.context.included.length, run.search.compared ?? 0)}
@@ -197,7 +200,7 @@ function AssistantMessage({ run }: { run: QueryRun }) {
                   <ScoreBar score={r.score} highlight={run.context.included.includes(r.chunkId)} />
                 </button>
               ))}
-              <Button size="xs" variant="outline" onClick={() => goTo('case')}>
+              <Button size="xs" variant="outline" onClick={() => showRunDetails(run.id)} data-testid="full-details">
                 <FileSearch /> {tx.fullDetails}
               </Button>
             </div>
