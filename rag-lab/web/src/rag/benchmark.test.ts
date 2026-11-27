@@ -77,6 +77,12 @@ describe('containsTerm', () => {
     expect(containsTerm('wstrzymanai', 'wstrzymana')).toBe(false)
     expect(containsTerm('x 300 zł, 300 zł', '300 zł')).toBe(true)
   })
+  it('does not find a number inside a number grouped with a dot or a comma', () => {
+    expect(containsTerm('zwrot do 1.300 zł', '300 zł')).toBe(false)
+    expect(containsTerm('zwrot do 1,300 zł', '300 zł')).toBe(false)
+    expect(containsTerm('ok. 14 dni', '14 dni')).toBe(true)
+    expect(containsTerm('terminy: 7, 14 dni', '14 dni')).toBe(true)
+  })
 })
 describe('casePassed and scoreRun', () => {
   const base: CaseResult = { caseId: 'c1', runId: 'r', status: 'done', answerText: 'a', override: null,

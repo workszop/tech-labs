@@ -82,8 +82,8 @@ const DIGIT = /\p{N}/u
 
 /**
  * Is `term` in `text` (both normalised here) as a whole token? The characters around a match must not be
- * letters or digits, and a term starting with a digit does not count after "<digit><space>" (thousands
- * grouping: "300 zł" is not in "1 300 zł").
+ * letters or digits, and a term starting with a digit does not count after "<digit><space>", "<digit>." or
+ * "<digit>," (thousands grouping: "300 zł" is not in "1 300 zł", "1.300 zł" or "1,300 zł").
  */
 export function containsTerm(text: string, term: string): boolean {
   const s = normalizeText(text)
@@ -95,7 +95,7 @@ export function containsTerm(text: string, term: string): boolean {
     const after = s[i + n.length] ?? ''
     if (before && WORD_CHAR.test(before)) continue
     if (after && WORD_CHAR.test(after)) continue
-    if (leadingDigit && before === ' ' && i > 1 && DIGIT.test(s[i - 2])) continue
+    if (leadingDigit && (before === ' ' || before === '.' || before === ',') && i > 1 && DIGIT.test(s[i - 2])) continue
     return true
   }
   return false

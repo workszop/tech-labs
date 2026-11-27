@@ -299,8 +299,14 @@ export function cancelIndexing() {
   jobAbort?.abort()
 }
 
+/** A benchmark run is in progress: the knowledge base must not change under it. */
+export function benchmarkRunning(s: AppState): boolean {
+  return s.bench.currentRunId !== null
+}
+
 export async function buildIndex() {
   const s = getState()
+  if (benchmarkRunning(s)) return
   const caps = s.auth.session?.capabilities
   const config = normalizeConfig({ chunkSize: s.settings.chunkSize, overlap: s.settings.overlap })
   const labels = labelOptions()
@@ -567,6 +573,7 @@ function setBatch(index: number, patch: Partial<EmbeddingBatch>) {
 }
 
 export async function retryFailedBatches() {
+  if (benchmarkRunning(getState())) return
   jobAbort = new AbortController()
   updateJob((j) => ({ ...j, status: 'running', error: undefined, step: 'embedding' }))
   await processBatches(jobAbort.signal)

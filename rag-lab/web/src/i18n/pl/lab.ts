@@ -458,6 +458,7 @@ export const lab: Dict['lab'] = {
 
   benchmark: {
     fileName: 'rag-lab-benchmark',
+    indexChanged: 'Baza wiedzy zmieniła się w trakcie przebiegu. Pozostałe pytania pominięto; uruchom przebieg ponownie.',
     csv: {
       time: 'Czas przebiegu',
       run: 'Nr przebiegu',

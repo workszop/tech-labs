@@ -459,6 +459,7 @@ export const lab = {
 
   benchmark: {
     fileName: 'rag-lab-benchmark',
+    indexChanged: 'The knowledge base changed during the run. The remaining questions were skipped; run the benchmark again.',
     csv: {
       time: 'Run time',
       run: 'Run no.',

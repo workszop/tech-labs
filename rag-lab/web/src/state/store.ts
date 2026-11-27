@@ -8,7 +8,7 @@ import type { PromptEcho, SessionInfo, ChatUsage, UsageInfo, ChatMode, Lang } fr
 import type { ChunkConfig, TextChunk } from '@/rag/chunker'
 import type { ChunkLabelOptions } from '@/rag/chunkHeader'
 import type { ChunkRecord, IndexMeta, IndexedDocRecord } from '@/rag/db'
-import type { BenchmarkCase, CaseResult } from '@/rag/benchmark'
+import type { BenchmarkCase, CaseKind, CaseResult } from '@/rag/benchmark'
 
 export type StageStatus = 'waiting' | 'processing' | 'completed' | 'error' | 'skipped'
 
@@ -136,6 +136,14 @@ export interface BenchmarkRun {
   status: 'running' | 'done' | 'cancelled' | 'error'
   results: CaseResult[]
   error?: string
+  /** What the export needs about each planned case, kept when the run starts (a case may be edited or deleted later). */
+  caseInfo?: Record<string, BenchCaseInfo>
+}
+
+export interface BenchCaseInfo {
+  kind: CaseKind
+  question: string
+  expectedDocTitles: string[]
 }
 
 /** Close a run: every planned case without a result gets a 'skipped' one. */

@@ -5,6 +5,7 @@
  */
 import { ApiError } from '@/api/client'
 import { BUILT_IN_CASES } from '@/data/benchmark'
+import { getCorpus } from '@/data/corpus'
 import { docFlag } from '@/data/docFlag'
 import { t } from '@/i18n'
 import { uid } from '@/lib/utils'
@@ -60,10 +61,15 @@ export function canRun(
 
 // ---------------------------------------------------------------- run loop
 
-/** Errors after which every further case would fail the same way. */
+/** Errors after which further cases would fail the same way (a rate limit would turn the rest into noise). */
 function stopsTheRun(code: string | undefined): boolean {
   if (!code) return false
-  return code === 'quota_exceeded' || new ApiError(code as ApiError['code'], '').isAuthError
+  return code === 'quota_exceeded' || code === 'rate_limited' || new ApiError(code as ApiError['code'], '').isAuthError
+}
+
+/** Does the knowledge base still match the one the run started on (and the decisions on screen)? */
+function sameIndex(run: BenchmarkRun, s: AppState): boolean {
+  return JSON.stringify(indexSnapshot(s)) === JSON.stringify(run.index) && !isStale(currentBuildPlan(s))
 }
 
 const isOurs = (runId: string) => getState().bench.runs.some((r) => r.id === runId)
@@ -118,6 +124,9 @@ export async function runBenchmark(filter: RunFilter = {}): Promise<void> {
     totalActive: activeCases(s).length,
     status: 'running',
     results: [],
+    caseInfo: Object.fromEntries(
+      cases.map((c) => [c.id, { kind: c.kind, question: c.question, expectedDocTitles: c.expectedDocIds.map((id) => getCorpus(s.settings.lang).docById[id]?.title ?? id) }]),
+    ),
   }
   setState((st) => ({ bench: { ...st.bench, runs: [...st.bench.runs, run], currentRunId: run.id } }))
   await save(run)
@@ -125,6 +134,11 @@ export async function runBenchmark(filter: RunFilter = {}): Promise<void> {
   for (const c of cases) {
     if (signal.aborted) {
       end = { status: 'cancelled' }
+      break
+    }
+    // Safety net behind the build guard: a run never measures another database than the one it records.
+    if (!sameIndex(run, getState())) {
+      end = { status: 'error', error: t().lab.benchmark.indexChanged }
       break
     }
     const q = await runQuery(c.question, { ragEnabled: true, compare: false, topK: run.topK, threshold: run.threshold, toChat: false, signal })

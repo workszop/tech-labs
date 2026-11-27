@@ -45,7 +45,10 @@ export function buildRunsCsv(runs: BenchmarkRun[], cases: BenchmarkCase[], w: Ru
   const header = [w.time, w.run, w.documents, w.chunkSize, w.overlap, w.labels, w.topK, w.threshold, w.kind, w.question, w.expected, w.retrieval, w.answerCheck, w.verdict, w.overridden, w.answer]
   const rows = runs.flatMap((run, i) =>
     run.results.map((r) => {
+      // The snapshot taken when the run started first; runs stored without it fall back to the current cases.
       const c = byId.get(r.caseId)
+      const info = run.caseInfo?.[r.caseId]
+      const kind = info?.kind ?? c?.kind
       return [
         new Date(run.createdAt).toLocaleString(),
         i + 1,
@@ -55,9 +58,9 @@ export function buildRunsCsv(runs: BenchmarkRun[], cases: BenchmarkCase[], w: Ru
         labelName(run.index.labels),
         run.topK,
         run.threshold == null ? '' : run.threshold.toFixed(2),
-        c ? w.kinds[c.kind] : '',
-        c?.question ?? '',
-        c ? c.expectedDocIds.join(' | ') : '',
+        kind ? w.kinds[kind] : '',
+        info?.question ?? c?.question ?? '',
+        (info?.expectedDocTitles ?? c?.expectedDocIds ?? []).join(' | '),
         r.retrieval?.applicable ? r.retrieval.share.toFixed(2) : '',
         answerCheck(r),
         verdict(r),

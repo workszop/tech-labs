@@ -21,7 +21,7 @@ import { pl } from '@/i18n/pl'
 import { en } from '@/i18n/en'
 import { CASE_KINDS, containsTerm, type BenchmarkCase } from '@/rag/benchmark'
 import { openVectorStore, type ChunkRecord, type IndexedDocRecord } from '@/rag/db'
-import { docHash, docText, initApp, resetKnowledgeBase, setLang, toggleSelect } from './actions'
+import { benchmarkRunning, buildIndex, docHash, docText, initApp, resetKnowledgeBase, setLang, toggleSelect } from './actions'
 import { activeCases, allCases, canRun, cancelBenchmark, deleteCase, plannedCases, runBenchmark, runCost, saveCase, setOverride, toggleCase } from './benchmark'
 import { partMark } from './nav'
 import { DEFAULT_SETTINGS, getState, setState, type BenchmarkRun } from './store'
@@ -203,6 +203,48 @@ describe('the run loop', () => {
     expect(run.status).toBe('cancelled')
     expect(run.results.map((r) => r.status)).toEqual(['done', 'skipped', 'skipped', 'skipped'])
     expect((await storedRuns())[0].status).toBe('cancelled')
+  })
+  it('stops on a rate limit and skips the rest', async () => {
+    vi.mocked(api.chat).mockImplementationOnce(chatOk as never).mockRejectedValue(new ApiError('rate_limited', 'Too many requests.', 429))
+    await runBenchmark()
+    const run = getState().bench.runs.at(-1)!
+    expect(run.status).toBe('error')
+    expect(run.results.map((r) => r.status)).toEqual(['done', 'error', 'skipped', 'skipped'])
+  })
+  it('stops when the knowledge base changes between cases', async () => {
+    vi.mocked(api.chat).mockImplementation((async () => {
+      if (vi.mocked(api.chat).mock.calls.length === 2) setState({ index: { ...getState().index, chunks: getState().index.chunks.slice(0, 1) } })
+      return chatOk()
+    }) as never)
+    await runBenchmark()
+    const run = getState().bench.runs.at(-1)!
+    expect(run.status).toBe('error')
+    expect(run.error).toBeTruthy()
+    expect(run.results.map((r) => r.status)).toEqual(['done', 'done', 'skipped', 'skipped'])
+    expect((await storedRuns())[0].status).toBe('error')
+  })
+  it('refuses to build or remove documents while a run is in progress', async () => {
+    let release!: () => void
+    vi.mocked(api.chat).mockImplementationOnce((() => new Promise((res) => (release = () => res(chatOk() as never)))) as never)
+    const first = runBenchmark()
+    await vi.waitFor(() => expect(release).toBeDefined())
+    expect(benchmarkRunning(getState())).toBe(true)
+    toggleSelect(['proces-06'], false) // a build would now remove proces-06
+    await buildIndex()
+    expect(getState().index.chunks).toHaveLength(2)
+    expect(getState().job).toBeNull()
+    release()
+    await first
+    expect(benchmarkRunning(getState())).toBe(false)
+  })
+  it('keeps what the export needs about each planned case with the run', async () => {
+    await saveCase({ kind: 'missing', question: 'Własne pytanie?', expectedDocIds: ['proces-06'], expectedAnswer: '', keyFacts: [], mustNotContain: [] })
+    const own = getState().bench.customCases[0]
+    await runBenchmark()
+    await deleteCase(own.id)
+    const run = getState().bench.runs.at(-1)!
+    expect(run.caseInfo?.[own.id]).toEqual({ kind: 'missing', question: 'Własne pytanie?', expectedDocTitles: ['PROCES-06 Wstrzymanie i zwolnienie partii'] })
+    expect(run.caseInfo?.['b-ordinary-1']?.expectedDocTitles).toEqual(['PROCES-04 Obsługa reklamacji'])
   })
   it('does not start a second run while one is running', async () => {
     let release!: () => void
