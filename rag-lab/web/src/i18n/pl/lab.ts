@@ -186,7 +186,7 @@ export const lab: Dict['lab'] = {
     dimensions: 'Liczba wymiarów wektora',
     none: '–',
     lastJobTitle: 'Ostatnia budowa w tej sesji',
-    noJob: 'W tej sesji nie było jeszcze budowy ani podglądu podziału.',
+    noJob: 'W tej sesji nie było jeszcze budowy.',
   },
 
   generator: {

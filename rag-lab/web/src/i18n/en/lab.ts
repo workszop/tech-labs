@@ -186,7 +186,7 @@ export const lab = {
     dimensions: 'Vector dimensions',
     none: '–',
     lastJobTitle: 'Last build in this session',
-    noJob: 'No build or split preview in this session yet.',
+    noJob: 'No build in this session yet.',
   },
 
   generator: {

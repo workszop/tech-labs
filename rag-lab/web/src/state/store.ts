@@ -261,6 +261,11 @@ function loadPrefs(): StoredPrefs {
 const prefs: StoredPrefs = typeof window === 'undefined' ? { settings: DEFAULT_SETTINGS, selection: [], selectionIsMembership: false } : loadPrefs()
 /** Did the prefs found at start-up already carry the membership marker? Read once by initApp. */
 export const loadedSelectionIsMembership = prefs.selectionIsMembership
+/** Whether saved prefs carry the membership marker; initApp turns it on once the migration really ran. */
+let selectionIsMembership = prefs.selectionIsMembership
+export function markSelectionIsMembership(): void {
+  selectionIsMembership = true
+}
 
 let state: AppState = {
   auth: { status: 'locked', session: null, notice: null },
@@ -302,7 +307,7 @@ export function setState(update: Partial<AppState> | ((s: AppState) => Partial<A
   state = { ...state, ...patch }
   if (prev.settings !== state.settings || prev.selection !== state.selection) {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ settings: state.settings, selection: state.selection, selectionIsMembership: true }))
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ settings: state.settings, selection: state.selection, selectionIsMembership }))
     } catch {
       /* ignore */
     }

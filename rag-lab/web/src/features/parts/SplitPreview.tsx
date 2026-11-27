@@ -6,7 +6,7 @@ import { useCorpus } from '@/data/corpus'
 import { previewChunking } from '@/state/actions'
 import { useStore } from '@/state/store'
 import { useT } from '@/i18n'
-import { ChunkText, SectionCard } from '../common'
+import { Alert, ChunkText, SectionCard } from '../common'
 
 const FIRST = 6
 
@@ -32,7 +32,8 @@ export function SplitPreview() {
   const doc = documents.find((d) => d.id === docId)
   // Fragments of the latest preview of this document; else those of the last build that cut it.
   const source = [preview, build].find((j) => !!docId && !!j?.selection.docs.some((d) => d.id === docId)) ?? null
-  const chunking = !!source && !source.chunking
+  const failed = !!source && !source.chunking && source.status === 'error'
+  const chunking = !!source && !source.chunking && !failed
   const chunks = source?.chunking ? source.chunking.chunks.filter((c) => c.docId === docId) : []
   const shown = showAll ? chunks : chunks.slice(0, FIRST)
 
@@ -65,6 +66,7 @@ export function SplitPreview() {
           {chunking && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> {tc.loading}</div>
           )}
+          {failed && source === preview && <Alert tone="danger">{preview?.error}</Alert>}
           {chunks.length > 0 && doc && (
             <div className="space-y-2" data-testid="split-preview-chunks">
               <div className="font-mono text-[11.5px] font-medium">{tx.previewCount(doc.title, chunks.length)}</div>

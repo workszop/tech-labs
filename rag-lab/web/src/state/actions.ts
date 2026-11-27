@@ -21,7 +21,7 @@ import type { ContextChunk, Lang, SessionInfo } from '@shared/api-types'
 import { uid } from '@/lib/utils'
 import { buildTestLogCsv } from './testLog'
 import { initialSelection, planBuild, type BuildPlan } from './membership'
-import { getState, loadedSelectionIsMembership, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
+import { getState, loadedSelectionIsMembership, markSelectionIsMembership, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
 import { goTo } from './nav'
 
 /** A document of the current-language corpus (ids are the same in every language). */
@@ -67,6 +67,10 @@ export async function initApp() {
   writeIndexLang(getState().settings.lang)
   // A tick means membership. Prefs from before that (no marker) get the indexed documents ticked, once:
   // saving the prefs writes the marker, so afterwards the stored ticks are the truth.
+  // The marker waits for a database that was really read: after a failed open (memory fallback) or
+  // load the indexed documents are unknown, and marking then would leave them unticked for good.
+  const { persistent, error } = getState().storage
+  if (persistent && !error) markSelectionIsMembership()
   setState((s) => ({
     selection: initialSelection(s.selection, loadedSelectionIsMembership, Object.keys(s.index.documents), getCorpus().documents.map((d) => d.id)),
   }))
@@ -312,7 +316,13 @@ export async function buildIndex() {
   if (!caps) {
     updateJob((j) => ({ ...j, status: 'error', error: t().lab.actions.needCodeForEmbeddings }))
   }
-  await runChunking(hashes)
+  try {
+    await runChunking(hashes)
+  } catch (e) {
+    // A failed split must not leave the job "running": the build button would stay disabled.
+    updateJob((j) => ({ ...j, status: 'error', error: (e as Error).message }))
+    return
+  }
   if (!caps || signal.aborted) return
   await runEmbedding(signal)
 }
@@ -360,7 +370,7 @@ export async function previewChunking(docIds?: string[]) {
   if (ids.length === 0) return
   const config = normalizeConfig({ chunkSize: s.settings.chunkSize, overlap: s.settings.overlap })
   const docs = getCorpus().documents.filter((d) => ids.includes(d.id))
-  const tokens = await compute.countTokens(docs.map(docText))
+  const tokens = await compute.countTokens(docs.map(docText)).catch(() => docs.map((d) => Math.round(docText(d).length / 4)))
   // Kept in `preview`, not `job`: a preview must not replace a failed build's error and Retry.
   const preview: IndexJob = {
     id: uid('preview'),
@@ -379,9 +389,14 @@ export async function previewChunking(docIds?: string[]) {
   }
   setState({ preview })
   goTo('vectors')
-  const chunking = await chunkJob(preview)
   // A newer preview (or a reset) may have replaced this one meanwhile.
-  setState((s) => (s.preview?.id === preview.id ? { preview: { ...s.preview, chunking } } : {}))
+  const patch = (p: Partial<IndexJob>) => setState((s) => (s.preview?.id === preview.id ? { preview: { ...s.preview, ...p } } : {}))
+  try {
+    patch({ chunking: await chunkJob(preview) })
+  } catch (e) {
+    // Without this the preview card would wait for its fragments forever.
+    patch({ status: 'error', error: (e as Error).message })
+  }
 }
 
 const MAX_BATCH_TOKENS = 7000

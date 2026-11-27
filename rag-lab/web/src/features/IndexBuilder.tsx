@@ -117,6 +117,8 @@ export function BuildControls() {
       foot={
         <>
           {selection.length === 0 && !stale && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground">{tx.selectHint}</p>}
+          {/* Without an access code the button is disabled: say why. */}
+          {needsEmbeddings && !authed && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground" data-testid="build-needs-code">{tx.embedding.needSession}</p>}
           <div className="ml-auto flex flex-wrap gap-2">
             {running && (
               <Button variant="outline" size="sm" onClick={cancelIndexing}>
