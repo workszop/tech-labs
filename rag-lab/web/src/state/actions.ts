@@ -21,7 +21,7 @@ import type { ContextChunk, Lang, SessionInfo } from '@shared/api-types'
 import { uid } from '@/lib/utils'
 import { buildTestLogCsv } from './testLog'
 import { initialSelection, planBuild, type BuildPlan } from './membership'
-import { getState, loadedSelectionIsMembership, markSelectionIsMembership, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
+import { closeBenchRun, getState, loadedSelectionIsMembership, markSelectionIsMembership, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type IndexSnapshot, type PlannedChunk, type QueryRun } from './store'
 import { goTo } from './nav'
 
 /** A document of the current-language corpus (ids are the same in every language). */
@@ -32,6 +32,7 @@ export function docById(id: string): CompanyDocument | undefined {
 let store: VectorStore | null = null
 let jobAbort: AbortController | null = null
 let queryAbort: AbortController | null = null
+let benchAbort: AbortController | null = null
 /** Vectors produced during the current job, keyed by planned chunk id (kept out of React state). */
 const jobVectors = new Map<string, Float32Array>()
 
@@ -65,6 +66,7 @@ export async function initApp() {
   // An index built from the other language version of the documents cannot be mixed with this one.
   if (getState().index.chunks.length > 0 && readIndexLang() !== getState().settings.lang) await resetKnowledgeBase()
   writeIndexLang(getState().settings.lang)
+  await loadBenchmark()
   // A tick means membership. Prefs from before that (no marker) get the indexed documents ticked, once:
   // saving the prefs writes the marker, so afterwards the stored ticks are the truth.
   // The marker waits for a database that was really read: after a failed open (memory fallback) or
@@ -84,6 +86,40 @@ async function refreshDocHashes() {
   const list = await Promise.all(docs.map(docHash))
   docHashes = Object.fromEntries(docs.map((d, i) => [d.id, list[i]]))
   setState({}) // let views that read the build plan update
+}
+
+// ---------------------------------------------------------------- benchmark storage
+
+/** The open vector store (null before initApp). The benchmark saves its cases and runs through it. */
+export function vectorStore(): VectorStore | null {
+  return store
+}
+
+/** A fresh signal for a benchmark run; a reset or a language switch aborts it. */
+export function benchmarkSignal(): AbortSignal {
+  benchAbort?.abort()
+  benchAbort = new AbortController()
+  return benchAbort.signal
+}
+export function abortBenchmark(): void {
+  benchAbort?.abort()
+}
+
+/**
+ * Custom cases and stored runs. A run still 'running' was cut off by a reload: it becomes 'cancelled'
+ * with its missing cases 'skipped'. Runs of the other language are not shown (a switch clears them anyway).
+ */
+async function loadBenchmark() {
+  if (!store) return
+  try {
+    const { cases, runs } = await store.loadBenchmark()
+    const fixed = runs.map((r) => (r.status === 'running' ? closeBenchRun(r, 'cancelled') : r))
+    await Promise.all(fixed.filter((r, i) => r !== runs[i]).map((r) => store!.putBenchRun(r).catch(() => undefined)))
+    const lang = getState().settings.lang
+    setState((s) => ({ bench: { ...s.bench, customCases: cases.filter((c) => !c.builtIn), runs: fixed.filter((r) => r.lang === lang), currentRunId: null } }))
+  } catch {
+    /* unreadable benchmark tables: start without them */
+  }
 }
 
 // ---------------------------------------------------------------- language
@@ -117,8 +153,10 @@ export async function setLang(lang: Lang) {
   if (getState().settings.lang === lang) return
   await resetKnowledgeBase()
   setSettings({ lang })
+  // Ticked custom cases belong to the other language.
+  setState((s) => ({ bench: { ...s.bench, ticked: [] } }))
   writeIndexLang(lang)
-  document.documentElement.lang = lang
+  if (typeof document !== 'undefined') document.documentElement.lang = lang
   await refreshDocHashes()
 }
 
@@ -246,6 +284,9 @@ async function removeFromIndex(docIds: string[]) {
 
 export async function resetKnowledgeBase() {
   jobAbort?.abort()
+  benchAbort?.abort()
+  // Runs measured a database that no longer exists; the user's own cases stay (store.clear keeps them too).
+  setState((s) => ({ bench: { ...s.bench, runs: [], currentRunId: null } }))
   if (store) await store.clear()
   jobVectors.clear()
   setState({ job: null, preview: null, runs: {}, chat: [], activeRunId: null })
@@ -640,24 +681,29 @@ export async function ask(question: string) {
  * Never throws: failures are in the run's stage statuses. The caller owns the signal; only chat questions
  * (see `ask`) share the module-level controller that a newer chat question cancels.
  */
+/** What the knowledge base looks like now (kept with a question or a benchmark run). */
+export function indexSnapshot(s: AppState): IndexSnapshot {
+  const docRecs = Object.values(s.index.documents)
+  return {
+    docIds: docRecs.map((d) => d.docId),
+    docTitles: docRecs.map((d) => d.title),
+    chunkSize: s.index.meta?.chunkSize ?? null,
+    overlap: s.index.meta?.overlap ?? null,
+    labels: s.index.meta?.labels ?? 'none',
+    chunks: s.index.chunks.length,
+  }
+}
+
 export async function runQuery(question: string, opts: QueryOptions): Promise<QueryRun> {
   const q = question.trim()
   const s = getState()
   const caps = s.auth.session?.capabilities
   const { ragEnabled, signal } = opts
-  const docRecs = Object.values(s.index.documents)
   const run: QueryRun = {
     id: uid('run'),
     question: q,
     createdAt: Date.now(),
-    index: {
-      docIds: docRecs.map((d) => d.docId),
-      docTitles: docRecs.map((d) => d.title),
-      chunkSize: s.index.meta?.chunkSize ?? null,
-      overlap: s.index.meta?.overlap ?? null,
-      labels: s.index.meta?.labels ?? 'none',
-      chunks: s.index.chunks.length,
-    },
+    index: indexSnapshot(s),
     topK: opts.topK,
     threshold: opts.threshold,
     ragEnabled,
@@ -760,14 +806,14 @@ async function generate(runId: string, slot: 'generate' | 'baseline', mode: 'rag
     patch((g) => ({ ...g, status: 'completed', answer: res.answer, prompt: res.prompt, usage: res.usage, finishReason: res.finishReason, ms: performance.now() - t0 }))
   } catch (e) {
     const err = e instanceof ApiError ? e : new ApiError('internal', (e as Error).message)
-    patch((g) => ({ ...g, status: 'error', error: err.code === 'aborted' ? t().lab.actions.stopped : err.message, ms: performance.now() - t0 }))
+    patch((g) => ({ ...g, status: 'error', error: err.code === 'aborted' ? t().lab.actions.stopped : err.message, errorCode: err.code, ms: performance.now() - t0 }))
   }
 }
 
 function failRun(runId: string, stage: 'embed', e: unknown) {
   const err = e instanceof ApiError ? e : new ApiError('internal', (e as Error).message)
   const msg = err.code === 'aborted' ? t().lab.actions.stopped : err.message
-  updateRun(runId, (r) => ({ ...r, [stage]: { ...r[stage], status: 'error', error: msg }, generate: { ...r.generate, status: 'error', error: msg } }))
+  updateRun(runId, (r) => ({ ...r, [stage]: { ...r[stage], status: 'error', error: msg }, generate: { ...r.generate, status: 'error', error: msg, errorCode: err.code } }))
 }
 
 export function clearConversation() {

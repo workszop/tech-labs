@@ -8,6 +8,7 @@ import type { PromptEcho, SessionInfo, ChatUsage, UsageInfo, ChatMode, Lang } fr
 import type { ChunkConfig, TextChunk } from '@/rag/chunker'
 import type { ChunkLabelOptions } from '@/rag/chunkHeader'
 import type { ChunkRecord, IndexMeta, IndexedDocRecord } from '@/rag/db'
+import type { BenchmarkCase, CaseResult } from '@/rag/benchmark'
 
 export type StageStatus = 'waiting' | 'processing' | 'completed' | 'error' | 'skipped'
 
@@ -79,6 +80,8 @@ export interface GenerationResult {
   usage?: ChatUsage
   finishReason?: string | null
   error?: string
+  /** The API error code behind `error` (absent when the failure was not an API error). */
+  errorCode?: string
 }
 
 export interface ContextDoc {
@@ -116,6 +119,32 @@ export interface QueryRun {
   context: { status: StageStatus; included: string[]; belowThreshold: number; docs?: ContextDoc[] }
   generate: GenerationResult
   baseline?: GenerationResult
+}
+
+/** One benchmark run: the settings it ran with and one result per planned case (saved after every case). */
+export interface BenchmarkRun {
+  id: string
+  createdAt: number
+  lang: Lang
+  index: IndexSnapshot
+  topK: number
+  threshold: number | null
+  /** The cases planned for this run, in order. */
+  caseIds: string[]
+  /** Active cases when the run started (a run of fewer is not a full run). */
+  totalActive: number
+  status: 'running' | 'done' | 'cancelled' | 'error'
+  results: CaseResult[]
+  error?: string
+}
+
+/** Close a run: every planned case without a result gets a 'skipped' one. */
+export function closeBenchRun(r: BenchmarkRun, status: 'done' | 'cancelled' | 'error', error?: string): BenchmarkRun {
+  const have = new Set(r.results.map((x) => x.caseId))
+  const skipped: CaseResult[] = r.caseIds
+    .filter((id) => !have.has(id))
+    .map((caseId) => ({ caseId, runId: r.id, status: 'skipped', retrieval: null, answer: null, answerText: '', override: null }))
+  return { ...r, status, results: [...r.results, ...skipped], ...(error ? { error } : {}) }
 }
 
 export interface ChatEntry {
@@ -160,6 +189,8 @@ export interface Settings {
   colorBy: 'folder' | 'document'
   showConnections: boolean
   showLabels: boolean
+  /** Ids of benchmark cases switched off. */
+  benchOff: string[]
 }
 
 export interface AppState {
@@ -175,6 +206,8 @@ export interface AppState {
   runs: Record<string, QueryRun>
   chat: ChatEntry[]
   activeRunId: string | null
+  /** Benchmark: the user's own cases (every language), runs of the current language oldest first, the running run, ticked cases. */
+  bench: { customCases: BenchmarkCase[]; runs: BenchmarkRun[]; currentRunId: string | null; ticked: string[] }
   settings: Settings
   ui: {
     part: Part
@@ -192,6 +225,7 @@ export interface AppState {
     /** Guide steps that were completed at least once (they stay ticked). */
     guideDone: string[]
     logExported: boolean
+    benchExported: boolean
   }
 }
 
@@ -213,6 +247,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorBy: 'folder',
   showConnections: true,
   showLabels: false,
+  benchOff: [],
 }
 
 const PREFS_KEY = 'rag-lab-prefs-v1'
@@ -238,6 +273,7 @@ export function loadPrefsFrom(raw: string | null): StoredPrefs {
       const stored = p && typeof p.settings === 'object' && p.settings ? { ...p.settings } : {}
       for (const k of DROPPED_SETTINGS) delete stored[k]
       const view: View = VIEWS.includes(stored.view) ? stored.view : DEFAULT_SETTINGS.view
+      if (!Array.isArray(stored.benchOff) || !stored.benchOff.every((x: unknown) => typeof x === 'string')) delete stored.benchOff
       // The map always opens on the question-centred view; an older stored '2d' would hide it.
       return {
         settings: { ...DEFAULT_SETTINGS, ...stored, view, vizMode: DEFAULT_SETTINGS.vizMode },
@@ -281,6 +317,7 @@ let state: AppState = {
   runs: {},
   chat: [],
   activeRunId: null,
+  bench: { customCases: [], runs: [], currentRunId: null, ticked: [] },
   settings: prefs.settings,
   ui: {
     part: 'case',
@@ -295,6 +332,7 @@ let state: AppState = {
     mapFolders: null,
     guideDone: [],
     logExported: false,
+    benchExported: false,
   },
 }
 

@@ -7,6 +7,7 @@ import { setUi, type StageStatus } from '@/state/store'
 import { useExplainers } from './explainers'
 import { getCorpus } from '@/data/corpus'
 import { getLang, t, useT } from '@/i18n'
+import { docFlag } from '@/data/docFlag'
 
 // ---------------------------------------------------------------- locale-aware formatting
 // These read the current language at call time; components calling them re-render on a
@@ -333,17 +334,7 @@ export function ChunkText({ text, labelChars = 0, overlapPrevChars = 0, overlapN
   )
 }
 
-/**
- * Why to think twice about a document: superseded ('outdated'), newer but not approved ('draft'),
- * or holding personal data ('personal-data'). null = nothing to warn about.
- */
-export type DocFlag = 'outdated' | 'draft' | 'personal-data' | null
-export function docFlag(docId: string): DocFlag {
-  const doc = getCorpus().docById[docId]
-  if (!doc) return null
-  if (doc.status === 'outdated' || doc.status === 'draft') return doc.status
-  return (doc as { sensitive?: string }).sensitive === 'personal-data' ? 'personal-data' : null
-}
+export { docFlag, type DocFlag } from '@/data/docFlag'
 /** True for documents that should not be relied on: outdated or draft. */
 export function isOutdatedDoc(docId: string): boolean {
   const f = docFlag(docId)

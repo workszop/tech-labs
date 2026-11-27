@@ -1,4 +1,6 @@
 /** Navigation between the five parts of the app. */
+import { BUILT_IN_CASES } from '@/data/benchmark'
+import { scoreRun, type CaseKind } from '@/rag/benchmark'
 import { getState, setState, setUi, type AppState, type Part } from './store'
 
 export const PARTS: Part[] = ['case', 'data', 'vectors', 'generator', 'benchmark']
@@ -38,6 +40,13 @@ export function showRunDetails(runId: string): void {
 
 /** The small count shown next to a part in the parts bar; `null` when there is nothing to count. */
 export function partMark(part: Part, s: AppState): number | null {
+  if (part === 'benchmark') {
+    // The passed count of the latest run, 0 included; null before the first run.
+    const run = s.bench.runs.at(-1)
+    if (!run) return null
+    const kinds = new Map<string, CaseKind>([...BUILT_IN_CASES[s.settings.lang], ...s.bench.customCases].map((c) => [c.id, c.kind]))
+    return scoreRun(run.results, (id) => kinds.get(id) ?? 'ordinary', run.caseIds.length, run.totalActive).passed
+  }
   let n: number | null
   switch (part) {
     case 'data':

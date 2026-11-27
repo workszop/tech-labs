@@ -49,3 +49,27 @@ it('reports persistence correctly', async () => {
   expect((await openVectorStore('p-test')).persistent).toBe(true)
   expect(new MemoryStore().persistent).toBe(false)
 })
+
+describe.each([
+  ['IndexedDB (Dexie)', () => openVectorStore(`bench-test-${Math.random()}`)],
+  ['memory fallback', async () => new MemoryStore()],
+])('%s benchmark storage', (_name, make) => {
+  it('stores benchmark cases and runs, and keeps the cases on clear', async () => {
+    const store = await make()
+    await store.putBenchCase({ id: 'u1', lang: 'pl', kind: 'ordinary', question: 'q', expectedDocIds: [], expectedAnswer: '', keyFacts: [], mustNotContain: [], builtIn: false })
+    await store.putBenchRun({ id: 'r1', createdAt: 1, lang: 'pl', index: { docIds: [], docTitles: [], chunkSize: 400, overlap: 60, labels: 'none', chunks: 0 }, topK: 3, threshold: null, caseIds: ['u1'], totalActive: 1, status: 'done', results: [] })
+    expect((await store.loadBenchmark()).runs).toHaveLength(1)
+    await store.clear()
+    const after = await store.loadBenchmark()
+    expect(after.runs).toHaveLength(0)
+    expect(after.cases.map((c) => c.id)).toEqual(['u1'])
+  })
+  it('deletes a case and clears runs on their own', async () => {
+    const store = await make()
+    await store.putBenchCase({ id: 'u1', lang: 'pl', kind: 'ordinary', question: 'q', expectedDocIds: [], expectedAnswer: '', keyFacts: [], mustNotContain: [], builtIn: false })
+    await store.putBenchRun({ id: 'r1', createdAt: 1, lang: 'pl', index: { docIds: [], docTitles: [], chunkSize: 400, overlap: 60, labels: 'none', chunks: 0 }, topK: 3, threshold: null, caseIds: [], totalActive: 0, status: 'done', results: [] })
+    await store.deleteBenchCase('u1')
+    await store.clearBenchRuns()
+    expect(await store.loadBenchmark()).toEqual({ cases: [], runs: [] })
+  })
+})

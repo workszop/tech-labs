@@ -9,12 +9,16 @@
  *                models are never mixed.
  *  - embeddingCache: vectors keyed by sha256(model + text), so re-building with unchanged
  *                text never pays for the same embedding twice.
+ *  - benchCases: the user's own benchmark cases (version 2); kept when the knowledge base is reset.
+ *  - benchRuns:  benchmark runs with their case results (version 2); cleared with the knowledge base.
  *
  * If IndexedDB is unavailable (private mode in some browsers, blocked storage),
  * the same API runs against an in-memory store and the UI warns that nothing
  * will survive a reload.
  */
 import Dexie, { type Table } from 'dexie'
+import type { BenchmarkCase } from './benchmark'
+import type { BenchmarkRun } from '@/state/store'
 
 export interface ChunkRecord {
   id: string // `${docId}#${chunkIndex}`
@@ -74,6 +78,8 @@ class RagDatabase extends Dexie {
   documents!: Table<IndexedDocRecord, string>
   meta!: Table<IndexMeta, string>
   embeddingCache!: Table<CacheRecord, string>
+  benchCases!: Table<BenchmarkCase, string>
+  benchRuns!: Table<BenchmarkRun, string>
   constructor(name: string) {
     super(name)
     this.version(1).stores({
@@ -82,6 +88,7 @@ class RagDatabase extends Dexie {
       meta: 'key',
       embeddingCache: 'key, model',
     })
+    this.version(2).stores({ benchCases: 'id, lang', benchRuns: 'id, createdAt' })
   }
 }
 
@@ -94,6 +101,12 @@ export interface VectorStore {
   getCached(keys: string[]): Promise<(CacheRecord | undefined)[]>
   putCached(records: CacheRecord[]): Promise<void>
   estimateBytes(): Promise<number | null>
+  /** Custom benchmark cases and the stored runs (runs oldest first). */
+  loadBenchmark(): Promise<{ cases: BenchmarkCase[]; runs: BenchmarkRun[] }>
+  putBenchCase(c: BenchmarkCase): Promise<void>
+  deleteBenchCase(id: string): Promise<void>
+  putBenchRun(r: BenchmarkRun): Promise<void>
+  clearBenchRuns(): Promise<void>
 }
 
 export class StorageFullError extends Error {
@@ -145,7 +158,23 @@ class DexieStore implements VectorStore {
     })
   }
   async clear() {
-    await Promise.all([this.db.chunks.clear(), this.db.documents.clear(), this.db.meta.clear(), this.db.embeddingCache.clear()])
+    await Promise.all([this.db.chunks.clear(), this.db.documents.clear(), this.db.meta.clear(), this.db.embeddingCache.clear(), this.db.benchRuns.clear()])
+  }
+  async loadBenchmark() {
+    const [cases, runs] = await Promise.all([this.db.benchCases.toArray(), this.db.benchRuns.orderBy('createdAt').toArray()])
+    return { cases, runs }
+  }
+  putBenchCase(c: BenchmarkCase) {
+    return wrapQuota(this.db.benchCases.put(c).then(() => undefined))
+  }
+  async deleteBenchCase(id: string) {
+    await this.db.benchCases.delete(id)
+  }
+  putBenchRun(r: BenchmarkRun) {
+    return wrapQuota(this.db.benchRuns.put(r).then(() => undefined))
+  }
+  async clearBenchRuns() {
+    await this.db.benchRuns.clear()
   }
   getCached(keys: string[]) {
     return this.db.embeddingCache.bulkGet(keys)
@@ -169,6 +198,8 @@ export class MemoryStore implements VectorStore {
   private chunks = new Map<string, ChunkRecord>()
   private docs = new Map<string, IndexedDocRecord>()
   private cache = new Map<string, CacheRecord>()
+  private benchCases = new Map<string, BenchmarkCase>()
+  private benchRuns = new Map<string, BenchmarkRun>()
   async load() {
     return { meta: this.meta, chunks: [...this.chunks.values()], documents: [...this.docs.values()] }
   }
@@ -195,6 +226,24 @@ export class MemoryStore implements VectorStore {
     this.chunks.clear()
     this.docs.clear()
     this.cache.clear()
+    this.benchRuns.clear()
+  }
+  async loadBenchmark() {
+    // Copies, as IndexedDB would return: callers must not mutate what is stored.
+    const runs = [...this.benchRuns.values()].sort((a, b) => a.createdAt - b.createdAt)
+    return { cases: structuredClone([...this.benchCases.values()]), runs: structuredClone(runs) }
+  }
+  async putBenchCase(c: BenchmarkCase) {
+    this.benchCases.set(c.id, structuredClone(c))
+  }
+  async deleteBenchCase(id: string) {
+    this.benchCases.delete(id)
+  }
+  async putBenchRun(r: BenchmarkRun) {
+    this.benchRuns.set(r.id, structuredClone(r))
+  }
+  async clearBenchRuns() {
+    this.benchRuns.clear()
   }
   async getCached(keys: string[]) {
     return keys.map((k) => this.cache.get(k))
