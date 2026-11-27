@@ -7,8 +7,8 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { useCorpus } from '@/data/corpus'
 import { useT, type Dict } from '@/i18n'
 import { cn, formatMs } from '@/lib/utils'
-import { ask, cancelQuery, clearConversation, downloadTestLog, indexCompatibility, openChunkInDocument, showActivation } from '@/state/actions'
-import { setUi, useStore, type GenerationResult, type QueryRun } from '@/state/store'
+import { ask, cancelQuery, clearConversation, downloadTestLog, indexCompatibility, openChunkInDocument, openDocument, showActivation } from '@/state/actions'
+import { setUi, useStore, type ContextDoc, type GenerationResult, type QueryRun } from '@/state/store'
 import { goTo, showRunDetails } from '@/state/nav'
 import { answerMode } from '@/state/answerMode'
 import { ContextList } from './ContextList'
@@ -217,7 +217,7 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
   const sources = run.context.included.map((id, i) => {
     const chunk = chunks.find((c) => c.id === id)
     const doc = run.context.docs?.[i]
-    return { n: i + 1, id, chunk, docId: chunk?.docId ?? doc?.docId, title: chunk?.docTitle ?? doc?.docTitle ?? id }
+    return { n: i + 1, id, chunk, doc, docId: chunk?.docId ?? doc?.docId, title: chunk?.docTitle ?? doc?.docTitle ?? id }
   })
   const pending = gen.status === 'processing' && !gen.answer
   const dict = useT()
@@ -251,7 +251,7 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
             {sources.map((s) => (
               <button
                 key={s.id}
-                onClick={() => openChunkInDocument(s.id)}
+                onClick={() => openSource(s)}
                 data-cited={cited.has(s.n)}
                 className={cn('flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition-colors cursor-pointer', cited.has(s.n) ? 'border-transparent bg-ok text-white hover:bg-foreground' : 'border-input bg-card text-[var(--ink-2)] hover:bg-muted')}
                 title={cited.has(s.n) ? tx.cited : tx.notCited}
@@ -289,8 +289,16 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
   )
 }
 
+type Source = { n: number; id: string; doc?: ContextDoc }
+
+/** Opens the passage the model received, by the offsets recorded with the run (the id may point elsewhere after a re-split). */
+function openSource(src: Source) {
+  if (src.doc) openDocument(src.doc.docId, { start: src.doc.start, end: src.doc.end, chunkId: src.id })
+  else openChunkInDocument(src.id)
+}
+
 /** Render the answer with [n] citations turned into clickable chips. */
-function AnswerText({ text, sources, baseline }: { text: string; sources: { n: number; id: string }[]; baseline?: boolean }) {
+function AnswerText({ text, sources, baseline }: { text: string; sources: Source[]; baseline?: boolean }) {
   const parts = text.split(/(\[\d+\])/g)
   const tx = useT().lab.chat
   return (
@@ -300,7 +308,7 @@ function AnswerText({ text, sources, baseline }: { text: string; sources: { n: n
         if (!m || baseline) return <span key={i}>{p}</span>
         const src = sources.find((s) => s.n === Number(m[1]))
         return src ? (
-          <button key={i} onClick={() => openChunkInDocument(src.id)} className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-[var(--r-xs)] bg-ok px-1 align-text-top font-mono text-[10.5px] font-medium text-white transition-colors hover:bg-foreground cursor-pointer" title={tx.openSource(src.id)}>
+          <button key={i} onClick={() => openSource(src)} className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-[var(--r-xs)] bg-ok px-1 align-text-top font-mono text-[10.5px] font-medium text-white transition-colors hover:bg-foreground cursor-pointer" title={tx.openSource(src.id)}>
             {m[1]}
           </button>
         ) : (

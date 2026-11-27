@@ -3,7 +3,7 @@ import { Bot, ChevronRight, FileSearch, ListOrdered, MessageSquareText, Search, 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn, formatMs, formatNumber } from '@/lib/utils'
-import { openChunkInDocument, previewMessages } from '@/state/actions'
+import { openChunkInDocument, openDocument, previewMessages } from '@/state/actions'
 import { setUi, useStore, type QueryRun } from '@/state/store'
 import type { ChunkRecord } from '@/rag/db'
 import type { ChatMessage } from '@shared/api-types'
@@ -161,7 +161,7 @@ export function ContextSection({ run }: { run: QueryRun }) {
                 <span className="min-w-0 truncate font-semibold">{c.docTitle}</span>
                 <span className="shrink-0 font-mono text-[11px] text-muted-foreground" title={c.id}>{tx.chunkNo(c.chunkIndex + 1)}</span>
                 {isOutdatedDoc(c.docId) && <Badge variant="warn">{docFlag(c.docId) === 'draft' ? tx.draft : tx.outdated}</Badge>}
-                <button className="ml-auto shrink-0 font-medium text-doc underline underline-offset-2 cursor-pointer" onClick={() => openChunkInDocument(c.id)}>{tx.openInDocument}</button>
+                <button className="ml-auto shrink-0 font-medium text-doc underline underline-offset-2 cursor-pointer" onClick={() => { const d = run.context.docs?.[run.context.included.indexOf(c.id)]; if (d) openDocument(d.docId, { start: d.start, end: d.end, chunkId: c.id }); else openChunkInDocument(c.id) }}>{tx.openInDocument}</button>
               </div>
               <p className="line-clamp-4 whitespace-pre-wrap text-[12px] leading-relaxed text-[var(--ink-2)]">{c.text}</p>
             </div>

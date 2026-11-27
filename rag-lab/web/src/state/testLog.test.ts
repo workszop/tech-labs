@@ -43,7 +43,7 @@ describe('buildTestLogCsv', () => {
     expect(lines[1]).toContain('"Dodatek wynosi 750 USD; „cytat” [1]."')
   })
   it('keeps the source title when the chunk is no longer in the index', () => {
-    const gone = { ...run, id: 'r2', context: { ...run.context, included: ['hr-remote-work-2022#3'], docs: [{ docId: 'hr-remote-work-2022', docTitle: 'Zasady pracy zdalnej (2022, nieaktualne)', chunkIndex: 3 }] } }
+    const gone = { ...run, id: 'r2', context: { ...run.context, included: ['hr-remote-work-2022#3'], docs: [{ docId: 'hr-remote-work-2022', docTitle: 'Zasady pracy zdalnej (2022, nieaktualne)', chunkIndex: 3, start: 0, end: 10 }] } }
     const csv = buildTestLogCsv([gone], [], W, (c) => `fragment ${c.chunkIndex + 1}`, (k) => k)
     expect(csv).toContain('[1] Zasady pracy zdalnej (2022, nieaktualne), fragment 4')
   })

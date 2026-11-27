@@ -85,6 +85,9 @@ export interface ContextDoc {
   docId: string
   docTitle: string
   chunkIndex: number
+  /** Character offsets of the fragment in its document when the run was made (ids change when the knowledge base is re-split). */
+  start: number
+  end: number
 }
 
 /** What the knowledge base looked like when a question was asked (for the test log). */

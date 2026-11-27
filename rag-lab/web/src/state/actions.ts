@@ -604,12 +604,47 @@ export function cancelQuery() {
   queryAbort?.abort()
 }
 
+export interface QueryOptions {
+  ragEnabled: boolean
+  compare: boolean
+  topK: number
+  threshold: number | null
+  /** true: the question and answer appear in the Case chat and become the active run. */
+  toChat: boolean
+  signal: AbortSignal
+}
+
+/** A question typed in the chat: replaces the previous chat question, settings come from the store. */
 export async function ask(question: string) {
   const q = question.trim()
   if (!q) return
   const s = getState()
-  const caps = s.auth.session?.capabilities
   const ragEnabled = s.settings.ragEnabled
+  if (s.auth.session?.capabilities) {
+    queryAbort?.abort()
+    queryAbort = new AbortController()
+  }
+  await runQuery(q, {
+    ragEnabled,
+    compare: ragEnabled && s.settings.compareMode,
+    topK: s.settings.topK,
+    threshold: s.settings.threshold,
+    toChat: true,
+    // Without a session runQuery fails before using the signal; a fresh one keeps the call total.
+    signal: (queryAbort ?? new AbortController()).signal,
+  })
+}
+
+/**
+ * Runs the whole pipeline for one question and resolves with the finished run (also stored in state.runs).
+ * Never throws: failures are in the run's stage statuses. The caller owns the signal; only chat questions
+ * (see `ask`) share the module-level controller that a newer chat question cancels.
+ */
+export async function runQuery(question: string, opts: QueryOptions): Promise<QueryRun> {
+  const q = question.trim()
+  const s = getState()
+  const caps = s.auth.session?.capabilities
+  const { ragEnabled, signal } = opts
   const docRecs = Object.values(s.index.documents)
   const run: QueryRun = {
     id: uid('run'),
@@ -623,29 +658,26 @@ export async function ask(question: string) {
       labels: s.index.meta?.labels ?? 'none',
       chunks: s.index.chunks.length,
     },
-    topK: s.settings.topK,
-    threshold: s.settings.threshold,
+    topK: opts.topK,
+    threshold: opts.threshold,
     ragEnabled,
-    compare: ragEnabled && s.settings.compareMode,
+    compare: ragEnabled && opts.compare,
     embed: { status: ragEnabled ? 'waiting' : 'skipped' },
     search: { status: ragEnabled ? 'waiting' : 'skipped' },
     context: { status: ragEnabled ? 'waiting' : 'skipped', included: [], belowThreshold: 0 },
     generate: { status: 'waiting', mode: ragEnabled ? 'rag' : 'no-rag', answer: '' },
-    baseline: ragEnabled && s.settings.compareMode ? { status: 'waiting', mode: 'no-rag', answer: '' } : undefined,
+    baseline: ragEnabled && opts.compare ? { status: 'waiting', mode: 'no-rag', answer: '' } : undefined,
   }
   setState((st) => ({
     runs: { ...st.runs, [run.id]: run },
-    chat: [...st.chat, { id: uid('m'), role: 'user', runId: run.id }, { id: uid('m'), role: 'assistant', runId: run.id }],
-    activeRunId: run.id,
+    ...(opts.toChat
+      ? { chat: [...st.chat, { id: uid('m'), role: 'user' as const, runId: run.id }, { id: uid('m'), role: 'assistant' as const, runId: run.id }], activeRunId: run.id }
+      : {}),
   }))
   if (!caps) {
     updateRun(run.id, (r) => ({ ...r, generate: { ...r.generate, status: 'error', error: t().lab.actions.needCodeToAsk } }))
-    return
+    return getState().runs[run.id] ?? run
   }
-  queryAbort?.abort()
-  queryAbort = new AbortController()
-  const signal = queryAbort.signal
-
   let context: ContextChunk[] = []
   if (ragEnabled) {
     const chunks = getState().index.chunks
@@ -656,12 +688,12 @@ export async function ask(question: string) {
         search: { status: 'error', error: t().lab.actions.emptyKnowledgeBase },
         generate: { ...r.generate, status: 'error', error: t().lab.actions.emptyKnowledgeBaseLong },
       }))
-      return
+      return getState().runs[run.id] ?? run
     }
     const compat = indexCompatibility()
     if (!compat.ok) {
       updateRun(run.id, (r) => ({ ...r, embed: { status: 'error', error: compat.reason }, generate: { ...r.generate, status: 'error', error: compat.reason } }))
-      return
+      return getState().runs[run.id] ?? run
     }
     // Stage 2 — query embedding
     updateRun(run.id, (r) => ({ ...r, embed: { status: 'processing' } }))
@@ -678,7 +710,7 @@ export async function ask(question: string) {
       }))
     } catch (e) {
       failRun(run.id, 'embed', e)
-      return
+      return getState().runs[run.id] ?? run
     }
     // Stage 3 — similarity search (exact cosine over the original vectors)
     updateRun(run.id, (r) => ({ ...r, search: { status: 'processing' } }))
@@ -689,14 +721,14 @@ export async function ask(question: string) {
     } catch (e) {
       const msg = e instanceof DimensionMismatchError ? t().lab.actions.dimensionMismatch(e.message, e.expected, e.actual) : (e as Error).message
       updateRun(run.id, (r) => ({ ...r, search: { status: 'error', error: msg }, generate: { ...r.generate, status: 'error', error: msg } }))
-      return
+      return getState().runs[run.id] ?? run
     }
     const top = selectTopK(ranked, run.topK, run.threshold)
     const belowThreshold = run.threshold == null ? 0 : ranked.slice(0, run.topK).filter((r) => r.score < run.threshold!).length
     updateRun(run.id, (r) => ({
       ...r,
       search: { status: 'completed', ms: performance.now() - t1, compared: chunks.length, ranked: ranked.map((x) => ({ chunkId: x.item.id, score: x.score, rank: x.rank })) },
-      context: { status: 'completed', included: top.map((t) => t.item.id), belowThreshold, docs: top.map((t) => ({ docId: t.item.docId, docTitle: t.item.docTitle, chunkIndex: t.item.chunkIndex })) },
+      context: { status: 'completed', included: top.map((t) => t.item.id), belowThreshold, docs: top.map((t) => ({ docId: t.item.docId, docTitle: t.item.docTitle, chunkIndex: t.item.chunkIndex, start: t.item.start, end: t.item.end })) },
     }))
     context = top.map((t) => ({ chunkId: t.item.id, documentTitle: t.item.docTitle, folder: folderName(t.item.folder), text: t.item.text }))
   }
@@ -706,6 +738,7 @@ export async function ask(question: string) {
   if (run.compare) gens.push(generate(run.id, 'baseline', 'no-rag', q, [], signal))
   await Promise.all(gens)
   void refreshUsage()
+  return getState().runs[run.id] ?? run
 }
 
 async function generate(runId: string, slot: 'generate' | 'baseline', mode: 'rag' | 'no-rag', question: string, context: ContextChunk[], signal: AbortSignal) {
