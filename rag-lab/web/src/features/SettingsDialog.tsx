@@ -8,8 +8,7 @@ import { DEFAULT_SETTINGS, setSettings, setUi, useStore } from '@/state/store'
 import { logout } from '@/state/actions'
 import { useT } from '@/i18n'
 import { ChunkSettings } from './IndexBuilder'
-import { cn } from '@/lib/utils'
-import { Explain, fmtDateTime, fmtNumber, fmtUsd } from './common'
+import { Explain, SEG, fmtDateTime, fmtNumber, fmtUsd, segItem } from './common'
 
 function Row({ label, hint, children }: { label: React.ReactNode; hint?: string; children: React.ReactNode }) {
   return (
@@ -22,10 +21,6 @@ function Row({ label, hint, children }: { label: React.ReactNode; hint?: string;
     </div>
   )
 }
-
-// Segmented toggle: borderless stone track, each option a full pill, the active one solid yellow.
-const SEG = 'inline-flex gap-0.5 rounded-full bg-subtle p-[3px]'
-const segItem = (on: boolean) => cn('cursor-pointer rounded-full px-3 py-1 text-xs font-semibold transition-colors', on ? 'bg-primary text-primary-foreground' : 'text-[var(--ink-2)] hover:bg-muted hover:text-foreground')
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (

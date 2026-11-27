@@ -6,7 +6,8 @@ import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { cn, formatBytes, formatMs, formatNumber } from '@/lib/utils'
 import { buildIndex, cancelIndexing, indexCompatibility, pendingRebuild, previewChunking, retryFailedBatches } from '@/state/actions'
-import { setSettings, setUi, useStore, type IndexJob, type IndexStep, type StageStatus } from '@/state/store'
+import { setSettings, useStore, type IndexJob, type IndexStep, type StageStatus } from '@/state/store'
+import { goTo } from '@/state/nav'
 import { CHUNK_LIMITS } from '@/rag/chunker'
 import { labelKey } from '@/rag/chunkHeader'
 import { useT } from '@/i18n'
@@ -352,10 +353,10 @@ export function IndexOverview({ compact }: { compact?: boolean }) {
     )
   const actions = (
     <>
-      <Button size="sm" variant="accent" onClick={() => setUi({ centerTab: 'map' })}>
+      <Button size="sm" variant="accent" onClick={() => goTo('vectors')}>
         <Map /> {tx.exploreMap}
       </Button>
-      <Button size="sm" variant="outline" onClick={() => setUi({ mobileTab: 'chat' })} className="lg:hidden">
+      <Button size="sm" variant="outline" onClick={() => goTo('case')}>
         {tx.ask}
       </Button>
     </>

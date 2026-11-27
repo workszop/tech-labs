@@ -4,10 +4,12 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { setUi, useStore } from '@/state/store'
+import { goTo } from '@/state/nav'
 import { showActivation } from '@/state/actions'
 import { useT } from '@/i18n'
 import { Logo } from './Logo'
 import { LangSwitch } from './LangSwitch'
+import { ViewSwitch } from './ViewSwitch'
 import { fmtNumber, fmtUsd } from './common'
 
 /** edulab top menu, adapted to the workbench: solid white full-bleed bar, ink mark + wordmark, then the app name. */
@@ -60,9 +62,10 @@ export function Header() {
           </Button>
         )}
         <LangSwitch />
+        <ViewSwitch />
         <div className="flex items-center">
           <Tooltip content={tx.guideTooltip}>
-            <Button variant="ghost" size="icon" className="hover:bg-muted" onClick={() => setUi({ centerTab: 'guide', mobileTab: 'lab' })} aria-label={tx.guideAria}>
+            <Button variant="ghost" size="icon" className="hover:bg-muted" onClick={() => goTo('case')} aria-label={tx.guideAria}>
               <GraduationCap />
             </Button>
           </Tooltip>

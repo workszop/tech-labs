@@ -122,7 +122,8 @@ export interface ChatEntry {
 }
 
 
-export type CenterTab = 'guide' | 'pipeline' | 'build' | 'map' | 'retrieval'
+export type Part = 'case' | 'data' | 'vectors' | 'generator' | 'benchmark'
+export type View = 'students' | 'tech'
 export type PipelineNodeId =
   | 'docs'
   | 'selection'
@@ -138,6 +139,8 @@ export type PipelineNodeId =
 
 export interface Settings {
   lang: Lang
+  /** Students or Tech face of every part; only the user's click on the switch changes it. */
+  view: View
   chunkSize: number
   overlap: number
   labelSection: boolean
@@ -169,8 +172,7 @@ export interface AppState {
   activeRunId: string | null
   settings: Settings
   ui: {
-    centerTab: CenterTab
-    mobileTab: 'docs' | 'lab' | 'chat'
+    part: Part
     pipelineNode: PipelineNodeId | null
     previewDocId: string | null
     previewHighlight: { start: number; end: number; chunkId: string } | null
@@ -187,6 +189,7 @@ export interface AppState {
 
 export const DEFAULT_SETTINGS: Settings = {
   lang: 'pl',
+  view: 'students',
   chunkSize: 400,
   overlap: 60,
   labelSection: false,
@@ -208,18 +211,35 @@ export const DEFAULT_SETTINGS: Settings = {
 
 const PREFS_KEY = 'rag-lab-prefs-v1'
 
-function loadPrefs(): { settings: Settings; selection: string[] } {
+const VIEWS: View[] = ['students', 'tech']
+
+/** Parse the stored preferences; anything unreadable falls back to the defaults. */
+export function loadPrefsFrom(raw: string | null): { settings: Settings; selection: string[] } {
   try {
-    const raw = localStorage.getItem(PREFS_KEY)
     if (raw) {
       const p = JSON.parse(raw)
+      const stored = p && typeof p.settings === 'object' && p.settings ? p.settings : {}
+      const view: View = VIEWS.includes(stored.view) ? stored.view : DEFAULT_SETTINGS.view
       // The map always opens on the question-centred view; an older stored '2d' would hide it.
-      return { settings: { ...DEFAULT_SETTINGS, ...p.settings, vizMode: DEFAULT_SETTINGS.vizMode }, selection: Array.isArray(p.selection) ? p.selection : [] }
+      return {
+        settings: { ...DEFAULT_SETTINGS, ...stored, view, vizMode: DEFAULT_SETTINGS.vizMode },
+        selection: Array.isArray(p?.selection) ? p.selection : [],
+      }
     }
+  } catch {
+    /* broken JSON: use defaults */
+  }
+  return { settings: DEFAULT_SETTINGS, selection: [] }
+}
+
+function loadPrefs(): { settings: Settings; selection: string[] } {
+  let raw: string | null = null
+  try {
+    raw = localStorage.getItem(PREFS_KEY)
   } catch {
     /* storage blocked: use defaults */
   }
-  return { settings: DEFAULT_SETTINGS, selection: [] }
+  return loadPrefsFrom(raw)
 }
 
 const prefs = typeof window === 'undefined' ? { settings: DEFAULT_SETTINGS, selection: [] } : loadPrefs()
@@ -236,8 +256,7 @@ let state: AppState = {
   activeRunId: null,
   settings: prefs.settings,
   ui: {
-    centerTab: 'guide',
-    mobileTab: 'docs',
+    part: 'case',
     pipelineNode: null,
     previewDocId: null,
     previewHighlight: null,

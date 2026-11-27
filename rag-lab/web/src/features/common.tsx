@@ -295,6 +295,10 @@ export function Stat({ label, value, hint }: { label: string; value: React.React
   )
 }
 
+// Segmented toggle: borderless stone track, each option a full pill, the active one solid yellow.
+export const SEG = 'inline-flex gap-0.5 rounded-full bg-subtle p-[3px]'
+export const segItem = (on: boolean) => cn('cursor-pointer rounded-full px-3 py-1 text-xs font-semibold transition-colors', on ? 'bg-primary text-primary-foreground' : 'text-[var(--ink-2)] hover:bg-muted hover:text-foreground')
+
 export function EmptyState({ icon, title, children, action }: { icon: React.ReactNode; title: string; children?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-10 text-center">

@@ -16,10 +16,21 @@ export const shell = {
     notPersistent: 'IndexedDB is unavailable in this browser window — your index is kept in memory and will be lost when you reload.',
     narrowNotice: 'RAG Lab is built for a desktop screen. In a narrow window you see one panel at a time; widen it to at least 1024 px to get documents, lab and chat side by side.',
     dismiss: 'Dismiss',
-    sections: 'Sections',
-    tabDocs: 'Documents',
-    tabLab: 'Lab',
-    tabChat: 'Chat',
+  },
+
+  partsAria: 'App parts',
+  parts: {
+    case: 'Case',
+    data: 'Data',
+    vectors: 'Vector database',
+    generator: 'Generator',
+    benchmark: 'Benchmark',
+  },
+
+  view: {
+    students: 'Students',
+    tech: 'Tech',
+    aria: 'View',
   },
 
   header: {
@@ -165,12 +176,9 @@ export const shell = {
     cosineNote: 'Same direction = 1. At right angles = 0. Real embeddings have 1,536 directions instead of 2.',
   },
 
-  centerTabs: {
-    guide: 'Guide',
-    pipeline: 'Pipeline',
-    build: 'Build index',
-    map: 'Vector map',
+  techTabs: {
     retrieval: 'Retrieval',
+    pipeline: 'Pipeline',
   },
 
   guide: {

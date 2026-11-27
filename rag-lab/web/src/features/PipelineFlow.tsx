@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { getCorpus, useCorpus } from '@/data/corpus'
 import { t, useT } from '@/i18n'
 import { setUi, useStore, type AppState, type PipelineNodeId, type StageStatus } from '@/state/store'
+import { goTo } from '@/state/nav'
 import { EmptyState, Explain, IconBadge, QuestionQuote, SectionCard, StatusBadge, VectorPreview, folderColor, type Tone } from './common'
 import { ContextSection, EmbedSection, GenerationSection, SearchSection } from './RetrievalView'
 import { IndexOverview } from './IndexBuilder'
@@ -255,7 +256,7 @@ function StageDetails({ node }: { node: PipelineNodeId | null }) {
           {job.chunking.chunks.slice(0, 4).map((c) => (
             <div key={c.id} className="rounded-lg border border-hairline bg-subtle p-2.5 text-[12px]"><span className="font-mono text-[11px] text-muted-foreground">{tx.chunkMeta(c.id, c.tokens)}</span><p className="line-clamp-3 text-[var(--ink-2)]">{c.text}</p></div>
           ))}
-          <Button size="sm" variant="outline" onClick={() => setUi({ centerTab: 'build' })}>{tx.seeAllChunks}</Button>
+          <Button size="sm" variant="outline" onClick={() => goTo('vectors')}>{tx.seeAllChunks}</Button>
         </div>
       ) : <p className="text-sm text-muted-foreground">{tx.noChunks}</p>)
     case 'embedModel': {

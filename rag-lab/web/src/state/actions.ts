@@ -21,6 +21,7 @@ import type { ContextChunk, Lang, SessionInfo } from '@shared/api-types'
 import { uid } from '@/lib/utils'
 import { buildTestLogCsv } from './testLog'
 import { getState, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
+import { goTo } from './nav'
 
 /** A document of the current-language corpus (ids are the same in every language). */
 export function docById(id: string): CompanyDocument | undefined {
@@ -271,7 +272,8 @@ export async function buildIndex() {
     },
   }
   setState({ job })
-  setUi({ centerTab: 'build', pipelineNode: 'selection' })
+  setUi({ pipelineNode: 'selection' })
+  goTo('vectors')
   if (!caps) {
     updateJob((j) => ({ ...j, status: 'error', error: t().lab.actions.needCodeForEmbeddings }))
   }
@@ -334,7 +336,7 @@ export async function previewChunking() {
       },
     },
   })
-  setUi({ centerTab: 'build' })
+  goTo('vectors')
   await runChunking()
 }
 

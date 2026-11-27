@@ -359,13 +359,8 @@
   /* running step: a crisp full-contour yellow band that breathes (no blur, no glow) */
   @keyframes rl-pulse { 0%,100% { box-shadow: 0 0 0 2px var(--yellow); } 50% { box-shadow: 0 0 0 5px var(--yellow); } }
   .rl-processing { animation: rl-pulse 1.4s ease-in-out infinite; }
-  /* panel spotlight (lib/reveal.ts): full contour for ~2 s, ink band with a yellow band inside */
-  @keyframes rl-spot { 0%,70% { opacity: 1; } 100% { opacity: 0; } }
-  .rl-spotlight { position: relative; }
-  .rl-spotlight::after { content: ''; position: absolute; inset: 0; z-index: 20; pointer-events: none; border: 2px solid var(--ink); outline: 4px solid var(--yellow); outline-offset: -6px; animation: rl-spot 1.8s ease-out forwards; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-  .rl-spotlight::after { animation: none !important; }
 }

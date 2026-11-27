@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
 import { ask, downloadTestLog, previewChunking, removeFromIndex, selectFolder, toggleSelect } from '@/state/actions'
-import { revealPanel } from '@/lib/reveal'
+import { goTo } from '@/state/nav'
 import { t, useT, type Dict } from '@/i18n'
 import { Badge } from '@/components/ui/badge'
 import { IconBadge, LearnCard, SectionCard } from './common'
@@ -40,8 +40,7 @@ const STEPS: GuideStep[] = [
     done: (s) => ragRuns(s).some((r) => r.index!.docIds.includes(OUTDATED)),
     run: () => {
       selectFolder('complaints')
-      setUi({ centerTab: 'build', mobileTab: 'lab' })
-      revealPanel('docs')
+      goTo('data')
     },
     askGuiding: true,
     topic: 'failures',
@@ -65,7 +64,7 @@ const STEPS: GuideStep[] = [
     run: async () => {
       setSettings({ chunkSize: 400, overlap: 60 })
       toggleSelect([CURRENT], true)
-      setUi({ centerTab: 'build', mobileTab: 'lab' })
+      goTo('vectors')
       await previewChunking()
     },
     topic: 'chunking',
@@ -74,7 +73,7 @@ const STEPS: GuideStep[] = [
     id: 'size',
     icon: <FileSearch />,
     done: (s) => new Set(ragRuns(s).filter((r) => r.index!.docIds.includes(CURRENT)).map((r) => `${r.index!.chunkSize}/${r.index!.overlap}/${r.index!.labels}`)).size >= 2,
-    run: () => setUi({ centerTab: 'retrieval', mobileTab: 'lab' }),
+    run: () => goTo('case'),
     askGuiding: true,
     topic: 'cosine',
   },
@@ -84,7 +83,7 @@ const STEPS: GuideStep[] = [
     done: (s) => ragRuns(s).some((r) => r.index!.labels !== 'none'),
     run: () => {
       setSettings({ labelSection: true, labelMeta: true })
-      setUi({ centerTab: 'build', mobileTab: 'lab' })
+      goTo('vectors')
     },
     askGuiding: true,
   },
@@ -110,8 +109,8 @@ const EXTRAS: GuideStep[] = [
   {
     id: 'map',
     icon: <MapIcon />,
-    done: (s) => s.ui.centerTab === 'map' && s.index.chunks.length > 0,
-    run: () => setUi({ centerTab: 'map', mobileTab: 'lab' }),
+    done: (s) => s.ui.part === 'vectors' && s.index.chunks.length > 0,
+    run: () => goTo('vectors'),
     topic: 'embedding',
   },
   {
@@ -120,14 +119,22 @@ const EXTRAS: GuideStep[] = [
     done: (s) => Object.values(s.runs).some((r) => r.baseline?.status === 'completed'),
     run: () => {
       setSettings({ compareMode: true, ragEnabled: true })
-      revealPanel('chat')
+      goToChat()
     },
     topic: 'compare',
   },
 ]
 
+/** Open the Case part and put the cursor in the chat box. */
+function goToChat() {
+  goTo('case')
+  // Wait for the part to render: an element that is not on screen yet cannot take focus.
+  // Focus scrolls the box into view, which matters below 1024 px where the chat sits under the guide.
+  requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-panel="chat"] textarea')?.focus())
+}
+
 function askFromGuide(q: string) {
-  revealPanel('chat')
+  goToChat()
   void ask(q)
 }
 

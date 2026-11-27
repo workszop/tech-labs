@@ -10,6 +10,7 @@ import { useT, type Dict } from '@/i18n'
 import { cn, formatMs } from '@/lib/utils'
 import { ask, cancelQuery, clearConversation, downloadTestLog, indexCompatibility, openChunkInDocument, showActivation } from '@/state/actions'
 import { setSettings, setUi, useStore, type GenerationResult, type QueryRun } from '@/state/store'
+import { goTo } from '@/state/nav'
 import { Alert, Explain, IconBadge, ScoreBar, StatusIcon, docFlag, isOutdatedDoc } from './common'
 
 import { PromptView } from './RetrievalView'
@@ -196,7 +197,7 @@ function AssistantMessage({ run }: { run: QueryRun }) {
                   <ScoreBar score={r.score} highlight={run.context.included.includes(r.chunkId)} />
                 </button>
               ))}
-              <Button size="xs" variant="outline" onClick={() => setUi({ centerTab: 'retrieval', mobileTab: 'lab' })}>
+              <Button size="xs" variant="outline" onClick={() => goTo('case')}>
                 <FileSearch /> {tx.fullDetails}
               </Button>
             </div>

@@ -33,10 +33,21 @@ export const shell = {
     notPersistent: 'IndexedDB nie działa w tym oknie przeglądarki. Indeks jest trzymany w pamięci i zniknie po odświeżeniu strony.',
     narrowNotice: 'RAG Lab jest zaprojektowany na ekran komputera. W wąskim oknie widzisz jeden panel naraz. Poszerz okno do co najmniej 1024 px, żeby mieć dokumenty, laboratorium i czat obok siebie.',
     dismiss: 'Zamknij',
-    sections: 'Sekcje',
-    tabDocs: 'Dokumenty',
-    tabLab: 'Laboratorium',
-    tabChat: 'Czat',
+  },
+
+  partsAria: 'Części aplikacji',
+  parts: {
+    case: 'Przypadek',
+    data: 'Dane',
+    vectors: 'Baza wektorowa',
+    generator: 'Generator',
+    benchmark: 'Benchmark',
+  },
+
+  view: {
+    students: 'Uczestnicy',
+    tech: 'Technika',
+    aria: 'Widok',
   },
 
   header: {
@@ -185,12 +196,9 @@ export const shell = {
     cosineNote: 'Ten sam kierunek = 1. Kąt prosty = 0. Prawdziwe wektory mają 1536 kierunków zamiast 2.',
   },
 
-  centerTabs: {
-    guide: 'Przewodnik',
-    pipeline: 'Przebieg',
-    build: 'Budowa indeksu',
-    map: 'Mapa wektorów',
+  techTabs: {
     retrieval: 'Wyszukiwanie',
+    pipeline: 'Przebieg',
   },
 
   guide: {
