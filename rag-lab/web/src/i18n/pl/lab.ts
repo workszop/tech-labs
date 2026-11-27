@@ -9,6 +9,8 @@ const wektory = (n: number) => plural(n, 'wektor', 'wektory', 'wektorów')
 export const lab: Dict['lab'] = {
   common: {
     quote: (s) => `„${s}”`,
+    decisionsTitle: 'Bieżące decyzje',
+    decidedInStudents: 'Tylko do odczytu. Decyzje zapadają w widoku Uczestnicy tej części.',
   },
 
   indexBuilder: {
@@ -166,6 +168,7 @@ export const lab: Dict['lab'] = {
     thresholdHint: 'Odrzuć fragmenty z niższym wynikiem cosinusowym',
     thresholdEnableAria: 'Włącz próg',
     thresholdAria: 'Próg',
+    thresholdOff: 'wyłączony',
     previewTitle: 'Zobacz, jak zostanie pocięty jeden dokument',
     previewDocAria: 'Dokument do podglądu',
     previewRun: 'Pokaż podział',
@@ -405,6 +408,8 @@ export const lab: Dict['lab'] = {
     modeLine: 'Odpowiedzi:',
     changeInGenerator: 'Zmień w części Generator',
     changeInVectors: 'Zmień w części Baza wektorowa',
+    seeInGenerator: 'Zobacz w części Generator',
+    seeInVectors: 'Zobacz w części Baza wektorowa',
     topK: 'top-k',
     enterCode: 'Wpisz kod dostępu, żeby zadawać pytania',
     placeholderRag: 'Zapytaj o procedury Rybex…',

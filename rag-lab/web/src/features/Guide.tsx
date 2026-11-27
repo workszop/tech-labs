@@ -6,6 +6,7 @@ import { getState, setSettings, setUi, useStore, type AppState, type QueryRun } 
 import { ask, downloadTestLog, previewChunking, selectFolder, toggleSelect } from '@/state/actions'
 import { goTo } from '@/state/nav'
 import { answerModePatch } from '@/state/answerMode'
+import { previewShows } from '@/state/membership'
 import { t, useT, type Dict } from '@/i18n'
 import { Badge } from '@/components/ui/badge'
 import { IconBadge, LearnCard, SectionCard } from './common'
@@ -63,8 +64,8 @@ const STEPS: GuideStep[] = [
   {
     id: 'split',
     icon: <Scissors />,
-    // Only the chunk preview (a job with status 'cancelled', no embeddings) counts: building the index also chunks.
-    done: (s) => !!s.job?.chunking && s.job.status === 'cancelled' && s.job.selection.docs.some((d) => d.id === CURRENT),
+    // Only the split preview counts (building the index also chunks, but into `job`).
+    done: (s) => previewShows(s.preview, CURRENT),
     run: async () => {
       setSettings({ chunkSize: 400, overlap: 60 })
       goTo('vectors')

@@ -1,10 +1,14 @@
 /** Navigation between the five parts of the app. */
-import { setState, setUi, type AppState, type Part } from './store'
+import { getState, setState, setUi, type AppState, type Part } from './store'
 
 export const PARTS: Part[] = ['case', 'data', 'vectors', 'generator', 'benchmark']
 
-/** Open a part and bring its container back to the top. */
+/**
+ * Open a part and bring its container back to the top. Already in that part (an action such as a
+ * split preview or a build calls goTo too), nothing scrolls: the user keeps their place.
+ */
 export function goTo(part: Part): void {
+  if (getState().ui.part === part) return
   setUi({ part })
   if (typeof document === 'undefined') return
   document.querySelector<HTMLElement>('[data-part-scroll]')?.scrollTo({ top: 0 })

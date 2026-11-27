@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initialSelection, isStale, migrateSelection, planBuild } from './membership'
+import { initialSelection, isStale, migrateSelection, planBuild, previewShows } from './membership'
 import { loadPrefsFrom } from './store'
 
 const H = { a: 'h1', b: 'h2', c: 'h3' }
@@ -49,5 +49,18 @@ describe('membership marker in the stored preferences', () => {
     expect(loadPrefsFrom(JSON.stringify({ settings: {}, selection: ['a'] })).selectionIsMembership).toBe(false)
     expect(loadPrefsFrom(JSON.stringify({ settings: {}, selection: ['a'], selectionIsMembership: true })).selectionIsMembership).toBe(true)
     expect(loadPrefsFrom(null).selectionIsMembership).toBe(false)
+  })
+})
+
+describe('split preview (guide step "split")', () => {
+  const preview = (docIds: string[], chunked: boolean) => ({
+    selection: { docs: docIds.map((id) => ({ id })) },
+    chunking: chunked ? { chunks: [] } : undefined,
+  })
+  it('counts only a finished preview that covers the document', () => {
+    expect(previewShows(null, 'proces-04')).toBe(false)
+    expect(previewShows(preview(['proces-04'], false), 'proces-04')).toBe(false)
+    expect(previewShows(preview(['regal-01'], true), 'proces-04')).toBe(false)
+    expect(previewShows(preview(['proces-04'], true), 'proces-04')).toBe(true)
   })
 })

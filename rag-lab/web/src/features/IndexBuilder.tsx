@@ -107,8 +107,6 @@ export function BuildControls() {
   const td = useT().lab.data
   const running = job?.status === 'running'
   const e = job?.embedding
-  // A split preview is a job too ('cancelled', no embeddings); its own card shows it.
-  const build = job && !(job.status === 'cancelled' && !job.embedding) ? job : null
   return (
     <SectionCard
       as="h2"
@@ -139,10 +137,10 @@ export function BuildControls() {
             {td.stale(plan.add.length, plan.remove.length)}
           </Alert>
         )}
-        {build && running && (
+        {job && running && (
           <div className="space-y-1.5" data-testid="build-progress">
             <div className="flex items-center gap-2 text-[13px]">
-              <Loader2 className="size-4 animate-spin" /> {tv.building(tx.steps[build.step])}
+              <Loader2 className="size-4 animate-spin" /> {tv.building(tx.steps[job.step])}
             </div>
             {e && (
               <>
@@ -154,22 +152,22 @@ export function BuildControls() {
             )}
           </div>
         )}
-        {build?.notes.map((n, i) => (
+        {job?.notes.map((n, i) => (
           <Alert key={i} tone="doc">{n}</Alert>
         ))}
-        {build?.error && (
+        {job?.error && (
           <Alert
-            tone={build.status === 'partial' ? 'warn' : 'danger'}
-            title={build.status === 'partial' ? tx.partialTitle : tx.stoppedTitle}
+            tone={job.status === 'partial' ? 'warn' : 'danger'}
+            title={job.status === 'partial' ? tx.partialTitle : tx.stoppedTitle}
             action={
-              build.embedding?.batches.some((b) => b.status === 'failed' || b.status === 'pending') && authed ? (
+              job.embedding?.batches.some((b) => b.status === 'failed' || b.status === 'pending') && authed ? (
                 <Button size="xs" variant="outline" onClick={() => retryFailedBatches()}>
                   <RefreshCw /> {tx.retry}
                 </Button>
               ) : undefined
             }
           >
-            {build.error}
+            {job.error}
           </Alert>
         )}
       </div>
@@ -177,7 +175,7 @@ export function BuildControls() {
   )
 }
 
-/** Vector database, Tech: every step of the last build (or split preview) with its details: chunks, batches, timings, a sample vector. */
+/** Vector database, Tech: every step of the last build with its details: chunks, batches, timings, a sample vector. */
 export function JobSteps() {
   const job = useStore((s) => s.job)
   const [open, setOpen] = useState<IndexStep | 'none' | null>(null)

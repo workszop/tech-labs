@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
-import { Cpu, Hammer, Loader2 } from 'lucide-react'
+import { Cpu, Hammer, ListChecks, Loader2 } from 'lucide-react'
+import { labelKey } from '@/rag/chunkHeader'
 import { Badge } from '@/components/ui/badge'
 import { formatNumber } from '@/lib/utils'
 import { useStore } from '@/state/store'
@@ -37,6 +38,7 @@ export function VectorsPart() {
       ) : (
         <>
           <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-5">
+            <Decisions />
             <Embedder />
             <IndexOverview />
             <JobSteps />
@@ -48,6 +50,27 @@ export function VectorsPart() {
         </>
       )}
     </div>
+  )
+}
+
+/** Tech face: the decisions of this part, read-only (they are made in the Students face; the app never flips the view). */
+function Decisions() {
+  const s = useStore((st) => st.settings)
+  const dict = useT().lab
+  const tx = dict.vectors
+  const ib = dict.indexBuilder
+  const labels = labelKey({ section: s.labelSection, meta: s.labelMeta })
+  return (
+    <SectionCard as="h2" icon={<ListChecks />} title={dict.common.decisionsTitle} data-testid="tech-decisions">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <Stat label={ib.chunkSize} value={ib.tokens(s.chunkSize)} />
+        <Stat label={ib.overlap} value={ib.tokens(s.overlap)} />
+        <Stat label={ib.labelsTitle} value={<span className="text-sm">{dict.chat.labelNames[labels] ?? labels}</span>} />
+        <Stat label={tx.topK} value={s.topK} />
+        <Stat label={tx.threshold} value={s.threshold === null ? tx.thresholdOff : s.threshold.toFixed(2)} />
+      </div>
+      <p className="mt-2 text-[12px] text-muted-foreground">{dict.common.decidedInStudents}</p>
+    </SectionCard>
   )
 }
 

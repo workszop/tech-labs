@@ -1,4 +1,4 @@
-import { Bot, Cpu, FileCode2, Gauge, MessageSquareText, SlidersHorizontal } from 'lucide-react'
+import { Bot, Cpu, FileCode2, Gauge, ListChecks, MessageSquareText, SlidersHorizontal } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
@@ -92,9 +92,16 @@ function TechFace() {
     mode: 'rag',
     lang,
   }).find((m) => m.role === 'user')?.content ?? ''
+  const tc = useT().lab.common
   return (
     <>
-      <SectionCard as="h2" icon={<FileCode2 />} title={tx.promptsTitle} right={<span>{tx.promptVersion}: {PROMPT_VERSION}</span>} data-testid="system-prompts">
+      <SectionCard as="h2" icon={<ListChecks />} title={tc.decisionsTitle} data-testid="tech-decisions">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Stat label={tx.answerModeAria} value={tx.modes[answerMode(s)]} />
+        </div>
+        <p className="mt-2 text-[12px] text-muted-foreground">{tc.decidedInStudents}</p>
+      </SectionCard>
+      <SectionCard icon={<FileCode2 />} title={tx.promptsTitle} right={<span>{tx.promptVersion}: {PROMPT_VERSION}</span>} data-testid="system-prompts">
         <div className="space-y-3">
           {(['rag', 'no-rag'] as const).map((m) => (
             <div key={m}>

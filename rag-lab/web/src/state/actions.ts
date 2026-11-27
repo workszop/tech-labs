@@ -244,7 +244,7 @@ export async function resetKnowledgeBase() {
   jobAbort?.abort()
   if (store) await store.clear()
   jobVectors.clear()
-  setState({ job: null, runs: {}, chat: [], activeRunId: null })
+  setState({ job: null, preview: null, runs: {}, chat: [], activeRunId: null })
   await reloadIndex()
 }
 
@@ -322,6 +322,12 @@ async function runChunking(hashes?: string[]) {
   const job = getState().job
   if (!job) return
   updateJob((j) => ({ ...j, step: 'chunking' }))
+  const chunking = await chunkJob(job, hashes)
+  updateJob((j) => ({ ...j, chunking }))
+}
+
+/** Cut the documents of a build or a preview with its size, overlap and label; local, no API calls. */
+async function chunkJob(job: IndexJob, hashes?: string[]): Promise<NonNullable<IndexJob['chunking']>> {
   const t0 = performance.now()
   const corpus = getCorpus()
   const docs = job.selection.docs.map((d) => corpus.docById[d.id])
@@ -344,7 +350,7 @@ async function runChunking(hashes?: string[]) {
     const counts = await compute.countTokens(labelled.map((c) => c.text)).catch(() => labelled.map((c) => Math.round(c.text.length / 4)))
     labelled.forEach((c, i) => (c.tokens = counts[i]))
   }
-  updateJob((j) => ({ ...j, chunking: { chunks, ms: performance.now() - t0, tokenizer: TOKENIZER_NAME } }))
+  return { chunks, ms: performance.now() - t0, tokenizer: TOKENIZER_NAME }
 }
 
 /** Preview chunking without an access code or API calls: the given documents, or the ticked ones. */
@@ -355,25 +361,27 @@ export async function previewChunking(docIds?: string[]) {
   const config = normalizeConfig({ chunkSize: s.settings.chunkSize, overlap: s.settings.overlap })
   const docs = getCorpus().documents.filter((d) => ids.includes(d.id))
   const tokens = await compute.countTokens(docs.map(docText))
-  setState({
-    job: {
-      id: uid('job'),
-      status: 'cancelled',
-      step: 'chunking',
-      startedAt: Date.now(),
-      config,
-      labels: labelOptions(),
-      fullRebuild: false,
-      notes: [t().lab.actions.previewOnly],
-      selection: {
-        docs: docs.map((d, i) => ({ id: d.id, title: d.title, folder: d.folder, chars: docText(d).length, tokens: tokens[i], reused: false })),
-        totalChars: docs.reduce((n, d) => n + docText(d).length, 0),
-        totalTokens: tokens.reduce((a, b) => a + b, 0),
-      },
+  // Kept in `preview`, not `job`: a preview must not replace a failed build's error and Retry.
+  const preview: IndexJob = {
+    id: uid('preview'),
+    status: 'cancelled',
+    step: 'chunking',
+    startedAt: Date.now(),
+    config,
+    labels: labelOptions(),
+    fullRebuild: false,
+    notes: [t().lab.actions.previewOnly],
+    selection: {
+      docs: docs.map((d, i) => ({ id: d.id, title: d.title, folder: d.folder, chars: docText(d).length, tokens: tokens[i], reused: false })),
+      totalChars: docs.reduce((n, d) => n + docText(d).length, 0),
+      totalTokens: tokens.reduce((a, b) => a + b, 0),
     },
-  })
+  }
+  setState({ preview })
   goTo('vectors')
-  await runChunking()
+  const chunking = await chunkJob(preview)
+  // A newer preview (or a reset) may have replaced this one meanwhile.
+  setState((s) => (s.preview?.id === preview.id ? { preview: { ...s.preview, chunking } } : {}))
 }
 
 const MAX_BATCH_TOKENS = 7000
@@ -740,7 +748,8 @@ export function openDocument(docId: string, highlight?: { start: number; end: nu
 }
 
 export function openChunkInDocument(chunkId: string) {
-  const c = getState().index.chunks.find((x) => x.id === chunkId) ?? getState().job?.chunking?.chunks.find((x) => x.id === chunkId)
+  const s = getState()
+  const c = s.index.chunks.find((x) => x.id === chunkId) ?? s.job?.chunking?.chunks.find((x) => x.id === chunkId) ?? s.preview?.chunking?.chunks.find((x) => x.id === chunkId)
   if (!c) return
   openDocument(c.docId, { start: c.start, end: c.end, chunkId })
 }

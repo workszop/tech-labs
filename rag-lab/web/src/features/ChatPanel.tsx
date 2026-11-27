@@ -26,6 +26,8 @@ export function ChatPanel() {
   const tx = useT().lab.chat
   const modes = useT().lab.generator.modes
   const mode = answerMode(settings)
+  // The Tech faces of Generator and Vector database show these decisions read-only: there the links say "see".
+  const tech = settings.view === 'tech'
   const { suggestedQuestions } = useCorpus()
   const [text, setText] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -103,11 +105,11 @@ export function ChatPanel() {
         {/* Read-only: the answer mode is decided in Generator, top-k in Vector database. */}
         <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]" data-testid="chat-decisions" data-mode={mode}>
           <span className="text-muted-foreground">{tx.modeLine}</span>
-          <button type="button" className="rounded-full border border-input bg-card px-2 py-0.5 font-semibold transition-colors hover:bg-muted cursor-pointer" onClick={() => goTo('generator')} title={tx.changeInGenerator} data-testid="chat-mode-link">
+          <button type="button" className="rounded-full border border-input bg-card px-2 py-0.5 font-semibold transition-colors hover:bg-muted cursor-pointer" onClick={() => goTo('generator')} title={tech ? tx.seeInGenerator : tx.changeInGenerator} aria-label={`${modes[mode]}. ${tech ? tx.seeInGenerator : tx.changeInGenerator}`} data-testid="chat-mode-link">
             {modes[mode]}
           </button>
           {settings.ragEnabled && (
-            <button type="button" className="rounded-full border border-input bg-card px-2 py-0.5 font-mono transition-colors hover:bg-muted cursor-pointer" onClick={() => goTo('vectors')} title={tx.changeInVectors} data-testid="chat-topk-link">
+            <button type="button" className="rounded-full border border-input bg-card px-2 py-0.5 font-mono transition-colors hover:bg-muted cursor-pointer" onClick={() => goTo('vectors')} title={tech ? tx.seeInVectors : tx.changeInVectors} aria-label={`${tx.topK} ${settings.topK}. ${tech ? tx.seeInVectors : tx.changeInVectors}`} data-testid="chat-topk-link">
               {tx.topK} {settings.topK}
             </button>
           )}

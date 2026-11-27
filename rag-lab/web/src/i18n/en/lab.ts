@@ -8,6 +8,8 @@ type ErrorCode = ApiErrorCode | 'network' | 'aborted'
 export const lab = {
   common: {
     quote: (s: string) => `“${s}”`,
+    decisionsTitle: 'Current decisions',
+    decidedInStudents: 'Read-only. Decisions are made in the Students view of this part.',
   },
 
   indexBuilder: {
@@ -166,6 +168,7 @@ export const lab = {
     thresholdHint: 'Drop chunks below this cosine score',
     thresholdEnableAria: 'Enable threshold',
     thresholdAria: 'Threshold',
+    thresholdOff: 'off',
     previewTitle: 'See how one document is cut',
     previewDocAria: 'Document to preview',
     previewRun: 'Show the split',
@@ -406,6 +409,8 @@ export const lab = {
     modeLine: 'Answers:',
     changeInGenerator: 'Change in the Generator part',
     changeInVectors: 'Change in the Vector database part',
+    seeInGenerator: 'See in the Generator part',
+    seeInVectors: 'See in the Vector database part',
     topK: 'top-k',
     enterCode: 'Enter access code to ask questions',
     placeholderRag: 'Ask about Rybex procedures…',

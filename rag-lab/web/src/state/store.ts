@@ -165,7 +165,10 @@ export interface AppState {
   storage: { ready: boolean; persistent: boolean; bytes: number | null; error: string | null }
   index: { meta: IndexMeta | null; chunks: ChunkRecord[]; documents: Record<string, IndexedDocRecord> }
   selection: string[]
+  /** The last build (or null). */
   job: IndexJob | null
+  /** The last split preview: chunking only, no embeddings, no access code. Kept apart from `job`. */
+  preview: IndexJob | null
   runs: Record<string, QueryRun>
   chat: ChatEntry[]
   activeRunId: string | null
@@ -266,6 +269,7 @@ let state: AppState = {
   index: { meta: null, chunks: [], documents: {} },
   selection: prefs.selection,
   job: null,
+  preview: null,
   runs: {},
   chat: [],
   activeRunId: null,

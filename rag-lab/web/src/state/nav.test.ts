@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SETTINGS, loadPrefsFrom, getState } from './store'
-import { PARTS, partMark, showRunDetails } from './nav'
+import { goTo, PARTS, partMark, showRunDetails } from './nav'
 
 describe('stored preferences', () => {
   it('opens with the Students face when the stored prefs come from the old version', () => {
@@ -46,5 +46,22 @@ describe('full details of an answer', () => {
     expect(getState().ui.caseTechTab).toBe('retrieval')
     expect(getState().activeRunId).toBe('run-1')
     expect(getState().settings.view).toBe(view)
+  })
+})
+
+describe('goTo keeps the place', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+  it('scrolls to the top only when the part changes', () => {
+    const scrollTo = vi.fn()
+    vi.stubGlobal('document', { querySelector: () => ({ scrollTo }) })
+    goTo('data')
+    expect(scrollTo).toHaveBeenCalledTimes(1)
+    goTo('data') // an action inside the part (preview, build) must not throw the user to the top
+    expect(scrollTo).toHaveBeenCalledTimes(1)
+    goTo('vectors')
+    expect(scrollTo).toHaveBeenCalledTimes(2)
+    expect(getState().ui.part).toBe('vectors')
   })
 })

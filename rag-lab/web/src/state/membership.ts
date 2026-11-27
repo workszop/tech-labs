@@ -49,3 +49,11 @@ export function initialSelection(stored: string[], hasMarker: boolean, indexedId
   const ticked = new Set(hasMarker ? stored : migrateSelection(stored, indexedIds))
   return corpusOrder.filter((id) => ticked.has(id))
 }
+
+/**
+ * Did a finished split preview cut this document? (The guide's "split" step.) The preview lives in
+ * `state.preview`, apart from the last build, so it never hides a build's error or progress.
+ */
+export function previewShows(preview: { selection: { docs: { id: string }[] }; chunking?: unknown } | null, docId: string): boolean {
+  return !!preview?.chunking && preview.selection.docs.some((d) => d.id === docId)
+}
