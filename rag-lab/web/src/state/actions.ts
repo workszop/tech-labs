@@ -20,8 +20,8 @@ import { buildChatMessages } from '@shared/prompt'
 import type { ContextChunk, Lang, SessionInfo } from '@shared/api-types'
 import { uid } from '@/lib/utils'
 import { buildTestLogCsv } from './testLog'
-import { migrateSelection, planBuild, type BuildPlan } from './membership'
-import { getState, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
+import { initialSelection, planBuild, type BuildPlan } from './membership'
+import { getState, loadedSelectionIsMembership, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
 import { goTo } from './nav'
 
 /** A document of the current-language corpus (ids are the same in every language). */
@@ -60,11 +60,11 @@ export async function initApp() {
   // An index built from the other language version of the documents cannot be mixed with this one.
   if (getState().index.chunks.length > 0 && readIndexLang() !== getState().settings.lang) await resetKnowledgeBase()
   writeIndexLang(getState().settings.lang)
-  // A tick means membership: whatever the database holds is ticked (earlier versions cleared those ticks).
-  setState((s) => {
-    const ticked = new Set(migrateSelection(s.selection, Object.keys(s.index.documents)))
-    return { selection: getCorpus().documents.map((d) => d.id).filter((id) => ticked.has(id)) }
-  })
+  // A tick means membership. Prefs from before that (no marker) get the indexed documents ticked, once:
+  // saving the prefs writes the marker, so afterwards the stored ticks are the truth.
+  setState((s) => ({
+    selection: initialSelection(s.selection, loadedSelectionIsMembership, Object.keys(s.index.documents), getCorpus().documents.map((d) => d.id)),
+  }))
   await refreshDocHashes()
 }
 

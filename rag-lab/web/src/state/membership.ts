@@ -39,3 +39,13 @@ export function isStale(plan: BuildPlan): boolean {
 export function migrateSelection(stored: string[], indexedIds: string[]): string[] {
   return [...new Set([...stored, ...indexedIds])]
 }
+
+/**
+ * The ticks to start with. Prefs saved before ticks meant membership (no marker) are migrated once:
+ * the indexed documents are ticked. After that the stored ticks are the truth, so an untick that was
+ * not built yet survives a reload. Always in corpus order, without ids the corpus does not know.
+ */
+export function initialSelection(stored: string[], hasMarker: boolean, indexedIds: string[], corpusOrder: string[]): string[] {
+  const ticked = new Set(hasMarker ? stored : migrateSelection(stored, indexedIds))
+  return corpusOrder.filter((id) => ticked.has(id))
+}

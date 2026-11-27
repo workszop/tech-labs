@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { isStale, migrateSelection, planBuild } from './membership'
+import { initialSelection, isStale, migrateSelection, planBuild } from './membership'
+import { loadPrefsFrom } from './store'
 
 const H = { a: 'h1', b: 'h2', c: 'h3' }
 describe('planBuild', () => {
@@ -26,5 +27,27 @@ describe('migrateSelection', () => {
   it('ticks what the old version had already indexed', () => {
     expect(migrateSelection(['c'], ['a', 'b'])).toEqual(expect.arrayContaining(['a', 'b', 'c']))
     expect(migrateSelection([], [])).toEqual([])
+  })
+})
+
+describe('initialSelection (the migration runs once per browser)', () => {
+  const order = ['a', 'b', 'c']
+  it('without the marker, ticks the indexed documents too', () => {
+    expect(initialSelection(['c'], false, ['a', 'b'], order)).toEqual(['a', 'b', 'c'])
+  })
+  it('with the marker, an unticked indexed document stays unticked and is planned for removal', () => {
+    const sel = initialSelection(['a'], true, ['a', 'b'], order)
+    expect(sel).toEqual(['a'])
+    expect(planBuild(sel, { a: 'h1', b: 'h2' }, H, false).remove).toEqual(['b'])
+  })
+  it('keeps corpus order and drops ids that are not in the corpus', () => {
+    expect(initialSelection(['c', 'x', 'a'], true, [], order)).toEqual(['a', 'c'])
+  })
+})
+describe('membership marker in the stored preferences', () => {
+  it('is false for prefs saved by an older version and true when present', () => {
+    expect(loadPrefsFrom(JSON.stringify({ settings: {}, selection: ['a'] })).selectionIsMembership).toBe(false)
+    expect(loadPrefsFrom(JSON.stringify({ settings: {}, selection: ['a'], selectionIsMembership: true })).selectionIsMembership).toBe(true)
+    expect(loadPrefsFrom(null).selectionIsMembership).toBe(false)
   })
 })

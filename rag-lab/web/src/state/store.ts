@@ -214,7 +214,17 @@ const PREFS_KEY = 'rag-lab-prefs-v1'
 const VIEWS: View[] = ['students', 'tech']
 
 /** Parse the stored preferences; anything unreadable falls back to the defaults. */
-export function loadPrefsFrom(raw: string | null): { settings: Settings; selection: string[] } {
+/**
+ * Stored preferences. `selectionIsMembership` marks prefs written by a version where a tick means
+ * "belongs to the knowledge base"; without it the ticks still need the one-time migration (see initApp).
+ */
+export interface StoredPrefs {
+  settings: Settings
+  selection: string[]
+  selectionIsMembership: boolean
+}
+
+export function loadPrefsFrom(raw: string | null): StoredPrefs {
   try {
     if (raw) {
       const p = JSON.parse(raw)
@@ -224,15 +234,16 @@ export function loadPrefsFrom(raw: string | null): { settings: Settings; selecti
       return {
         settings: { ...DEFAULT_SETTINGS, ...stored, view, vizMode: DEFAULT_SETTINGS.vizMode },
         selection: Array.isArray(p?.selection) ? p.selection : [],
+        selectionIsMembership: p?.selectionIsMembership === true,
       }
     }
   } catch {
     /* broken JSON: use defaults */
   }
-  return { settings: DEFAULT_SETTINGS, selection: [] }
+  return { settings: DEFAULT_SETTINGS, selection: [], selectionIsMembership: false }
 }
 
-function loadPrefs(): { settings: Settings; selection: string[] } {
+function loadPrefs(): StoredPrefs {
   let raw: string | null = null
   try {
     raw = localStorage.getItem(PREFS_KEY)
@@ -242,7 +253,9 @@ function loadPrefs(): { settings: Settings; selection: string[] } {
   return loadPrefsFrom(raw)
 }
 
-const prefs = typeof window === 'undefined' ? { settings: DEFAULT_SETTINGS, selection: [] } : loadPrefs()
+const prefs: StoredPrefs = typeof window === 'undefined' ? { settings: DEFAULT_SETTINGS, selection: [], selectionIsMembership: false } : loadPrefs()
+/** Did the prefs found at start-up already carry the membership marker? Read once by initApp. */
+export const loadedSelectionIsMembership = prefs.selectionIsMembership
 
 let state: AppState = {
   auth: { status: 'locked', session: null, notice: null },
@@ -282,7 +295,7 @@ export function setState(update: Partial<AppState> | ((s: AppState) => Partial<A
   state = { ...state, ...patch }
   if (prev.settings !== state.settings || prev.selection !== state.selection) {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ settings: state.settings, selection: state.selection }))
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ settings: state.settings, selection: state.selection, selectionIsMembership: true }))
     } catch {
       /* ignore */
     }
