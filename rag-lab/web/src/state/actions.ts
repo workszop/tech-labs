@@ -20,6 +20,7 @@ import { buildChatMessages } from '@shared/prompt'
 import type { ContextChunk, Lang, SessionInfo } from '@shared/api-types'
 import { uid } from '@/lib/utils'
 import { buildTestLogCsv } from './testLog'
+import { migrateSelection, planBuild, type BuildPlan } from './membership'
 import { getState, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
 import { goTo } from './nav'
 
@@ -59,6 +60,21 @@ export async function initApp() {
   // An index built from the other language version of the documents cannot be mixed with this one.
   if (getState().index.chunks.length > 0 && readIndexLang() !== getState().settings.lang) await resetKnowledgeBase()
   writeIndexLang(getState().settings.lang)
+  // A tick means membership: whatever the database holds is ticked (earlier versions cleared those ticks).
+  setState((s) => {
+    const ticked = new Set(migrateSelection(s.selection, Object.keys(s.index.documents)))
+    return { selection: getCorpus().documents.map((d) => d.id).filter((id) => ticked.has(id)) }
+  })
+  await refreshDocHashes()
+}
+
+/** Content hash of every document of the current corpus (the same hash the index stores per document). */
+let docHashes: Record<string, string> = {}
+async function refreshDocHashes() {
+  const docs = getCorpus().documents
+  const list = await Promise.all(docs.map((d) => sha256Hex(`${d.version}\n${docText(d)}`)))
+  docHashes = Object.fromEntries(docs.map((d, i) => [d.id, list[i]]))
+  setState({}) // let views that read the build plan update
 }
 
 // ---------------------------------------------------------------- language
@@ -94,6 +110,7 @@ export async function setLang(lang: Lang) {
   setSettings({ lang })
   writeIndexLang(lang)
   document.documentElement.lang = lang
+  await refreshDocHashes()
 }
 
 async function reloadIndex() {
@@ -160,20 +177,33 @@ export function toggleSelect(ids: string[], on: boolean) {
   })
 }
 
-/**
- * How many indexed documents a build would re-split because the chunk settings
- * (size, overlap, label) differ from the index. 0 = the index matches the settings.
- * Lets the team rebuild after changing one setting without selecting anything again.
- */
-export function pendingRebuild(s: AppState): number {
+/** Do the chunk settings or the embedding model differ from the ones the index was built with? */
+function spaceDiffers(s: AppState): boolean {
   const meta = s.index.meta
-  if (!meta) return 0
+  if (!meta) return false
+  const caps = s.auth.session?.capabilities
   const cfg = normalizeConfig({ chunkSize: s.settings.chunkSize, overlap: s.settings.overlap })
-  const differs =
+  return (
     meta.chunkSize !== cfg.chunkSize ||
     meta.overlap !== cfg.overlap ||
-    (meta.labels ?? 'none') !== labelKey({ section: s.settings.labelSection, meta: s.settings.labelMeta })
-  return differs ? Object.keys(s.index.documents).length : 0
+    (meta.labels ?? 'none') !== labelKey({ section: s.settings.labelSection, meta: s.settings.labelMeta }) ||
+    (!!caps && (meta.model !== caps.embeddingModel || meta.dimensions !== caps.embeddingDimensions))
+  )
+}
+
+let lastPlan: { key: unknown[]; plan: BuildPlan } | null = null
+/**
+ * What a build would do now: add ticked documents that are missing or changed, remove unticked ones,
+ * re-split the rest when the settings changed. The result is memoised so it can be a store selector.
+ */
+export function currentBuildPlan(s: AppState): BuildPlan {
+  const key = [s.selection, s.index, s.settings, s.auth.session, docHashes]
+  if (lastPlan && lastPlan.key.every((k, i) => k === key[i])) return lastPlan.plan
+  const indexed = Object.fromEntries(Object.values(s.index.documents).map((d) => [d.docId, d.docHash]))
+  // Until the hashes are computed, an indexed document counts as unchanged.
+  const plan = planBuild(s.selection, indexed, { ...indexed, ...docHashes }, spaceDiffers(s))
+  lastPlan = { key, plan }
+  return plan
 }
 
 /** Select every document of one folder (guide shortcut). */
@@ -199,7 +229,7 @@ export function downloadTestLog() {
   setUi({ logExported: true })
 }
 
-export async function removeFromIndex(docIds: string[]) {
+async function removeFromIndex(docIds: string[]) {
   if (!store) return
   await store.removeDocuments(docIds)
   await reloadIndex()
@@ -225,21 +255,21 @@ export async function buildIndex() {
   const config = normalizeConfig({ chunkSize: s.settings.chunkSize, overlap: s.settings.overlap })
   const labels = labelOptions()
   const meta = s.index.meta
-  const spaceChanged =
-    !!meta &&
-    (meta.chunkSize !== config.chunkSize ||
-      meta.overlap !== config.overlap ||
-      (meta.labels ?? 'none') !== labelKey(labels) ||
-      (caps && (meta.model !== caps.embeddingModel || meta.dimensions !== caps.embeddingDimensions)))
-  const notes: string[] = []
-  // The set of documents this build covers.
-  let docIds = [...s.selection]
-  if (spaceChanged) {
-    const already = Object.keys(s.index.documents)
-    if (already.length) notes.push(t().lab.actions.settingsChanged(already.length))
-    docIds = [...new Set([...already, ...docIds])]
+  const spaceChanged = spaceDiffers(s)
+  const plan = currentBuildPlan(s)
+  // Unticked documents leave the database first; nothing else is needed when that is all that changed.
+  if (plan.remove.length) {
+    await removeFromIndex(plan.remove)
+    if (!plan.add.length && !plan.resplit.length) {
+      setState({ job: null })
+      return
+    }
   }
-  const docs = getCorpus().documents.filter((d) => docIds.includes(d.id))
+  const notes: string[] = []
+  if (plan.resplit.length) notes.push(t().lab.actions.settingsChanged(plan.resplit.length))
+  // The set of documents this build covers.
+  const docIds = new Set([...plan.add, ...plan.resplit])
+  const docs = getCorpus().documents.filter((d) => docIds.has(d.id))
   if (docs.length === 0) return
 
   jobAbort?.abort()
@@ -312,12 +342,13 @@ async function runChunking(hashes?: string[]) {
   updateJob((j) => ({ ...j, chunking: { chunks, ms: performance.now() - t0, tokenizer: TOKENIZER_NAME } }))
 }
 
-/** Preview chunking for the current selection without an access code or API calls. */
-export async function previewChunking() {
+/** Preview chunking without an access code or API calls: the given documents, or the ticked ones. */
+export async function previewChunking(docIds?: string[]) {
   const s = getState()
-  if (s.selection.length === 0) return
+  const ids = docIds ?? s.selection
+  if (ids.length === 0) return
   const config = normalizeConfig({ chunkSize: s.settings.chunkSize, overlap: s.settings.overlap })
-  const docs = getCorpus().documents.filter((d) => s.selection.includes(d.id))
+  const docs = getCorpus().documents.filter((d) => ids.includes(d.id))
   const tokens = await compute.countTokens(docs.map(docText))
   setState({
     job: {
@@ -534,8 +565,6 @@ async function runStoring() {
       status: incomplete.length ? 'partial' : 'done',
       storing: { status: 'completed', storedChunks: records.length, storedDocs: docs.length, incompleteDocs: incomplete, ms: performance.now() - t0 },
     }))
-    // Indexed documents leave the "selected" list: selection and indexing are separate.
-    if (docs.length) setState((st) => ({ selection: st.selection.filter((id) => !docs.some((d) => d.docId === id)) }))
   } catch (e) {
     updateJob((j) => ({ ...j, status: 'error', error: (e as Error).message, storing: { status: 'error', storedChunks: 0, storedDocs: 0, incompleteDocs: incomplete } }))
   }

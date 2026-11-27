@@ -36,9 +36,10 @@ export const lab = {
       `Your index uses ${size}/${overlap}. Building with new settings re-chunks every indexed document (cached embeddings are reused when a chunk’s text is unchanged).`,
     title: 'Build your vector index',
     previewOnly: 'Preview chunks only',
-    build: (n: number) => `Build Vector Index (${n})`,
-    rebuild: (n: number) => `Rebuild index with the new settings (${n})`,
-    selectHint: 'Select documents in the file explorer to start. Three or four documents from different folders make a good first index.',
+    buildPlan: (add: number, remove: number, resplit: number) =>
+      `Build Vector Index (${[add && `add ${add}`, remove && `remove ${remove}`, resplit && `re-split ${resplit}`].filter(Boolean).join(', ')})`,
+    upToDate: 'Vector database matches your decisions',
+    selectHint: 'Tick documents in the Data part to start. Three or four documents from different folders make a good first index.',
     partialTitle: 'Some embeddings are missing',
     stoppedTitle: 'Indexing stopped',
     retry: 'Retry failed batches',
@@ -104,7 +105,7 @@ export const lab = {
     },
     overview: {
       emptyTitle: 'Your knowledge base is empty',
-      emptyBefore: 'Select documents on the left, then click ',
+      emptyBefore: 'Tick documents in the Data part, then click ',
       emptyBold: 'Build Vector Index',
       emptyAfter: '. You will watch each step: chunking, embedding and storage.',
       current: 'Current index',
@@ -123,6 +124,35 @@ export const lab = {
       exploreMap: 'Explore the vector map',
       ask: 'Ask a question',
       storedNote: 'Stored in this browser profile only. Clearing site data or using another browser starts from an empty index.',
+    },
+  },
+
+  data: {
+    decision: 'Which documents may the assistant use?',
+    hint: 'A ticked document belongs to the knowledge base. The vector database follows your ticks at the next build.',
+    /** One line per marked document: why to think twice before ticking it. Filled with the content. */
+    reasons: {} as Record<string, string>,
+    personalDataTooltip: 'Contains personal data of customers.',
+    staleTitle: 'Your decisions changed',
+    stale: (add: number, remove: number) => {
+      const docs = (n: number) => `${n} ${n === 1 ? 'document' : 'documents'}`
+      const parts = [add && `add ${docs(add)}`, remove && `remove ${docs(remove)}`].filter(Boolean)
+      return parts.length
+        ? `The vector database does not match your ticks yet. A build will ${parts.join(' and ')}.`
+        : 'The chunk settings changed. A build will split the documents again.'
+    },
+    toVectors: 'Go to the vector database',
+    tech: {
+      title: 'Files and their parameters',
+      version: 'version',
+      date: 'date',
+      chars: 'characters',
+      tokens: 'tokens',
+      hash: 'hash',
+      inDb: 'in database',
+      inDbYes: (chunks: number) => `yes, ${chunks} ${chunks === 1 ? 'chunk' : 'chunks'}`,
+      inDbNo: 'no',
+      counting: '…',
     },
   },
 
@@ -291,7 +321,7 @@ export const lab = {
     activateToChat: 'Activate to chat',
     clear: 'Clear conversation',
     buildFirstTitle: 'Build a knowledge base first',
-    buildFirstBefore: 'There is nothing to retrieve yet. Select documents on the left and click ',
+    buildFirstBefore: 'There is nothing to retrieve yet. Tick documents in the Data part, then in the Vector database part click ',
     buildFirstBold: 'Build Vector Index',
     buildFirstAfter: '. (You can also switch RAG off below to see the model answer without any company documents.)',
     intro: 'Each question runs the full pipeline: embed → search → assemble context → generate. Try one of these:',
@@ -358,7 +388,7 @@ export const lab = {
     needCodeToAsk: 'Activate RAG Lab with your access code to ask questions.',
     emptyKnowledgeBase: 'The knowledge base is empty.',
     emptyKnowledgeBaseLong:
-      'Your knowledge base is empty, so there is nothing to retrieve. Select a few documents on the left and click “Build Vector Index” first — or switch RAG off to see how the model answers without your documents.',
+      'Your knowledge base is empty, so there is nothing to retrieve. Tick a few documents in the Data part and click “Build Vector Index” in the Vector database part first, or switch RAG off to see how the model answers without your documents.',
     /** `detail` is the English message of DimensionMismatchError. */
     dimensionMismatch: (detail: string, _indexDims: number, _queryDims: number) => `${detail} Rebuild the index with the current model.`,
     stopped: 'Stopped.',

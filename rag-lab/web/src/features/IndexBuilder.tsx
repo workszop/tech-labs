@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { cn, formatBytes, formatMs, formatNumber } from '@/lib/utils'
-import { buildIndex, cancelIndexing, indexCompatibility, pendingRebuild, previewChunking, retryFailedBatches } from '@/state/actions'
+import { buildIndex, cancelIndexing, currentBuildPlan, indexCompatibility, previewChunking, retryFailedBatches } from '@/state/actions'
+import { isStale } from '@/state/membership'
 import { setSettings, useStore, type IndexJob, type IndexStep, type StageStatus } from '@/state/store'
 import { goTo } from '@/state/nav'
 import { CHUNK_LIMITS } from '@/rag/chunker'
@@ -91,7 +92,10 @@ export function IndexBuilder() {
   const job = useStore((s) => s.job)
   const selection = useStore((s) => s.selection)
   const authed = useStore((s) => s.auth.status === 'active')
-  const rebuild = useStore(pendingRebuild)
+  const plan = useStore(currentBuildPlan)
+  const stale = isStale(plan)
+  // Removing documents is local; adding or re-splitting needs embeddings, so an access code.
+  const needsEmbeddings = plan.add.length > 0 || plan.resplit.length > 0
   const [open, setOpen] = useState<IndexStep | 'none' | null>(null)
   const tx = useT().lab.indexBuilder
 
@@ -104,13 +108,13 @@ export function IndexBuilder() {
         explain="rag"
         foot={
           <>
-            {selection.length === 0 && !rebuild && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground">{tx.selectHint}</p>}
+            {selection.length === 0 && !stale && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground">{tx.selectHint}</p>}
             <div className="ml-auto flex flex-wrap gap-2">
               <Button variant="outline" size="sm" disabled={selection.length === 0 || job?.status === 'running'} onClick={() => previewChunking()}>
                 <Scissors /> {tx.previewOnly}
               </Button>
-              <Button variant="accent" size="sm" disabled={(selection.length === 0 && !rebuild) || job?.status === 'running' || !authed} onClick={() => buildIndex()} data-testid="rebuild-index">
-                <Hammer /> {selection.length === 0 && rebuild ? tx.rebuild(rebuild) : tx.build(selection.length)}
+              <Button variant="accent" size="sm" disabled={!stale || job?.status === 'running' || (needsEmbeddings && !authed)} onClick={() => buildIndex()} data-testid="rebuild-index">
+                <Hammer /> {stale ? tx.buildPlan(plan.add.length, plan.remove.length, plan.resplit.length) : tx.upToDate}
               </Button>
             </div>
           </>

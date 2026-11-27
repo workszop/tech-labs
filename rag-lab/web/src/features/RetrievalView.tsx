@@ -9,7 +9,7 @@ import { setSettings, setUi, useStore, type QueryRun } from '@/state/store'
 import type { ChunkRecord } from '@/rag/db'
 import type { ChatMessage } from '@shared/api-types'
 import { useT } from '@/i18n'
-import { Alert, ChunkLabelLine, EmptyState, Explain, FolderDot, docFlag, LearnCard, QuestionQuote, ScoreBar, SectionCard, StatusBadge, VectorPreview, type Tone } from './common'
+import { Alert, ChunkLabelLine, EmptyState, Explain, FolderDot, docFlag, isOutdatedDoc, LearnCard, QuestionQuote, ScoreBar, SectionCard, StatusBadge, VectorPreview, type Tone } from './common'
 
 export function RetrievalView() {
   const run = useStore((s) => (s.activeRunId ? s.runs[s.activeRunId] : null))
@@ -128,7 +128,7 @@ export function SearchSection({ run }: { run: QueryRun }) {
                       <FolderDot folder={c.folder} />
                       <button className="truncate font-semibold hover:underline cursor-pointer" onClick={() => setUi({ inspectChunkId: c.id })}>{c.docTitle}</button>
                       <span className="font-mono text-[11px] text-muted-foreground" title={c.id}>{tx.chunkNo(c.chunkIndex + 1)}</span>
-                      {docFlag(c.docId) && <Badge variant="warn">{docFlag(c.docId) === 'draft' ? tx.draft : tx.outdated}</Badge>}
+                      {isOutdatedDoc(c.docId) && <Badge variant="warn">{docFlag(c.docId) === 'draft' ? tx.draft : tx.outdated}</Badge>}
                       {hit && <Badge variant="ok">{tx.inContext}</Badge>}
                     </div>
                     <ScoreBar score={r.score} highlight={hit} className="my-1" />
@@ -164,7 +164,7 @@ export function ContextSection({ run }: { run: QueryRun }) {
                 <Badge variant="ok">[{i + 1}]</Badge>
                 <span className="min-w-0 truncate font-semibold">{c.docTitle}</span>
                 <span className="shrink-0 font-mono text-[11px] text-muted-foreground" title={c.id}>{tx.chunkNo(c.chunkIndex + 1)}</span>
-                {docFlag(c.docId) && <Badge variant="warn">{docFlag(c.docId) === 'draft' ? tx.draft : tx.outdated}</Badge>}
+                {isOutdatedDoc(c.docId) && <Badge variant="warn">{docFlag(c.docId) === 'draft' ? tx.draft : tx.outdated}</Badge>}
                 <button className="ml-auto shrink-0 font-medium text-doc underline underline-offset-2 cursor-pointer" onClick={() => openChunkInDocument(c.id)}>{tx.openInDocument}</button>
               </div>
               <p className="line-clamp-4 whitespace-pre-wrap text-[12px] leading-relaxed text-[var(--ink-2)]">{c.text}</p>

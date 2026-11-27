@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, CheckSquare, Database, History, Square, User } from 'lucide-react'
+import { CalendarDays, CheckSquare, Database, History, ShieldAlert, Square, User } from 'lucide-react'
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { docText, toggleSelect } from '@/state/actions'
 import { useCorpus } from '@/data/corpus'
 import { useT } from '@/i18n'
 import { setUi, useStore } from '@/state/store'
-import { FolderDot } from './common'
+import { FolderDot, docFlag } from './common'
 import { cn } from '@/lib/utils'
 
 export function DocumentDialog() {
@@ -20,6 +20,7 @@ export function DocumentDialog() {
   const markRef = useRef<HTMLElement>(null)
   const { docById, folders } = useCorpus()
   const tx = useT().shell.documentDialog
+  const td = useT().lab.data
   const doc = docId ? docById[docId] : null
   const chunks = useMemo(() => allChunks.filter((c) => c.docId === docId).sort((a, b) => a.chunkIndex - b.chunkIndex), [allChunks, docId])
 
@@ -58,12 +59,13 @@ export function DocumentDialog() {
             <span>·</span> <CalendarDays className="size-3" /> {tx.effective(doc.effectiveDate)}
             {doc.status === 'outdated' && <Badge variant="warn"><History /> {tx.outdated}</Badge>}
             {doc.status === 'draft' && <Badge variant="warn"><History /> {tx.draft}</Badge>}
+            {docFlag(doc.id) === 'personal-data' && <Badge variant="warn"><ShieldAlert /> {td.personalDataTooltip}</Badge>}
             {chunks.length > 0 && <Badge variant="ok"><Database /> {tx.chunksIndexed(chunks.length)}</Badge>}
           </div>
           <DialogTitle className="text-[22px]">{doc.title}</DialogTitle>
           <DialogDescription>{doc.summary}</DialogDescription>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <Button size="xs" variant={selected ? 'secondary' : 'outline'} onClick={() => toggleSelect([doc.id], !selected)}>
+            <Button size="xs" variant={selected ? 'secondary' : 'outline'} onClick={() => toggleSelect([doc.id], !selected)} aria-pressed={selected} data-testid="dialog-membership">
               {selected ? <CheckSquare /> : <Square />} {selected ? tx.selected : tx.select}
             </Button>
             {chunks.length > 0 && (

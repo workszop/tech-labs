@@ -37,9 +37,10 @@ export const lab: Dict['lab'] = {
       `Twój indeks ma ustawienia ${size}/${overlap}. Budowa z nowymi ustawieniami podzieli od nowa wszystkie zaindeksowane dokumenty (fragmenty o niezmienionym tekście dostaną wektory z pamięci podręcznej).`,
     title: 'Zbuduj indeks wektorowy',
     previewOnly: 'Pokaż sam podział',
-    build: (n) => `Zbuduj indeks wektorowy (${n})`,
-    rebuild: (n) => `Przebuduj indeks z nowymi ustawieniami (${n})`,
-    selectHint: 'Zacznij od zaznaczenia dokumentów w eksploratorze plików. Na pierwszy indeks wystarczą trzy lub cztery dokumenty z różnych folderów.',
+    buildPlan: (add, remove, resplit) =>
+      `Zbuduj indeks wektorowy (${[add && `dodaj ${add}`, remove && `usuń ${remove}`, resplit && `podziel od nowa ${resplit}`].filter(Boolean).join(', ')})`,
+    upToDate: 'Baza wektorowa zgadza się z decyzjami',
+    selectHint: 'Zacznij od zaznaczenia dokumentów w części Dane. Na pierwszy indeks wystarczą trzy lub cztery dokumenty z różnych folderów.',
     partialTitle: 'Brakuje części wektorów',
     stoppedTitle: 'Indeksowanie przerwane',
     retry: 'Ponów nieudane partie',
@@ -105,7 +106,7 @@ export const lab: Dict['lab'] = {
     },
     overview: {
       emptyTitle: 'Twoja baza wiedzy jest pusta',
-      emptyBefore: 'Zaznacz dokumenty po lewej i kliknij ',
+      emptyBefore: 'Zaznacz dokumenty w części Dane i kliknij ',
       emptyBold: 'Zbuduj indeks wektorowy',
       emptyAfter: '. Zobaczysz kolejne kroki: podział na fragmenty, tworzenie wektorów i zapis.',
       current: 'Obecny indeks',
@@ -124,6 +125,34 @@ export const lab: Dict['lab'] = {
       exploreMap: 'Zobacz mapę wektorów',
       ask: 'Zadaj pytanie',
       storedNote: 'Indeks jest zapisany tylko w tym profilu przeglądarki. Po wyczyszczeniu danych witryny albo w innej przeglądarce zaczynasz od pustego indeksu.',
+    },
+  },
+
+  data: {
+    decision: 'Z których dokumentów asystent może korzystać?',
+    hint: 'Zaznaczony dokument należy do bazy wiedzy. Baza wektorowa dopasuje się do zaznaczeń przy następnej budowie.',
+    reasons: {},
+    personalDataTooltip: 'Zawiera dane osobowe klientów.',
+    staleTitle: 'Decyzje się zmieniły',
+    stale: (add, remove) => {
+      const docs = (n: number) => `${n} ${plural(n, 'dokument', 'dokumenty', 'dokumentów')}`
+      const parts = [add && `doda ${docs(add)}`, remove && `usunie ${docs(remove)}`].filter(Boolean)
+      return parts.length
+        ? `Baza wektorowa nie zgadza się jeszcze z zaznaczeniami. Budowa ${parts.join(' i ')}.`
+        : 'Zmieniły się ustawienia podziału. Budowa podzieli dokumenty od nowa.'
+    },
+    toVectors: 'Przejdź do bazy wektorowej',
+    tech: {
+      title: 'Pliki i ich parametry',
+      version: 'wersja',
+      date: 'data',
+      chars: 'znaki',
+      tokens: 'tokeny',
+      hash: 'skrót',
+      inDb: 'w bazie',
+      inDbYes: (chunks) => `tak, ${chunks} ${fragmenty(chunks)}`,
+      inDbNo: 'nie',
+      counting: '…',
     },
   },
 
@@ -291,7 +320,7 @@ export const lab: Dict['lab'] = {
     activateToChat: 'Aktywuj, żeby rozmawiać',
     clear: 'Wyczyść rozmowę',
     buildFirstTitle: 'Najpierw zbuduj bazę wiedzy',
-    buildFirstBefore: 'Nie ma jeszcze czego przeszukiwać. Zaznacz dokumenty po lewej i kliknij ',
+    buildFirstBefore: 'Nie ma jeszcze czego przeszukiwać. Zaznacz dokumenty w części Dane, a potem w części Baza wektorowa kliknij ',
     buildFirstBold: 'Zbuduj indeks wektorowy',
     buildFirstAfter: '. (Możesz też wyłączyć RAG poniżej i zobaczyć, jak model odpowiada bez dokumentów firmy.)',
     intro: 'Każde pytanie przechodzi cały potok: wektor pytania → wyszukiwanie → składanie kontekstu → generowanie. Spróbuj jednego z tych:',
@@ -358,7 +387,7 @@ export const lab: Dict['lab'] = {
     needCodeToAsk: 'Żeby zadawać pytania, aktywuj RAG Lab kodem dostępu.',
     emptyKnowledgeBase: 'Baza wiedzy jest pusta.',
     emptyKnowledgeBaseLong:
-      'Twoja baza wiedzy jest pusta, więc nie ma czego przeszukiwać. Zaznacz kilka dokumentów po lewej i kliknij „Zbuduj indeks wektorowy” albo wyłącz RAG, żeby zobaczyć, jak model odpowiada bez twoich dokumentów.',
+      'Twoja baza wiedzy jest pusta, więc nie ma czego przeszukiwać. Zaznacz kilka dokumentów w części Dane i kliknij „Zbuduj indeks wektorowy” w części Baza wektorowa albo wyłącz RAG, żeby zobaczyć, jak model odpowiada bez twoich dokumentów.',
     dimensionMismatch: (_detail, indexDims, queryDims) =>
       `Wektory w indeksie mają ${indexDims} wymiarów, a wektor pytania ${queryDims}. Zbuduj indeks od nowa z obecnym modelem.`,
     stopped: 'Zatrzymano.',

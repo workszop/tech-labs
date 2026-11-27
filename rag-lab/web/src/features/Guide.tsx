@@ -3,7 +3,7 @@ import { ArrowRight, BookOpen, Check, Download, FileSearch, FlaskConical, Folder
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
-import { ask, downloadTestLog, previewChunking, removeFromIndex, selectFolder, toggleSelect } from '@/state/actions'
+import { ask, downloadTestLog, previewChunking, selectFolder, toggleSelect } from '@/state/actions'
 import { goTo } from '@/state/nav'
 import { t, useT, type Dict } from '@/i18n'
 import { Badge } from '@/components/ui/badge'
@@ -53,7 +53,10 @@ const STEPS: GuideStep[] = [
       const firstWith = runs.find((r) => r.index!.docIds.includes(OUTDATED))
       return !!firstWith && runs.some((r) => r.createdAt > firstWith.createdAt && !r.index!.docIds.includes(OUTDATED) && r.index!.docIds.includes(CURRENT))
     },
-    run: () => removeFromIndex([OUTDATED]),
+    run: () => {
+      toggleSelect([OUTDATED], false)
+      goTo('vectors')
+    },
     askGuiding: true,
   },
   {
@@ -63,9 +66,9 @@ const STEPS: GuideStep[] = [
     done: (s) => !!s.job?.chunking && s.job.status === 'cancelled' && s.job.selection.docs.some((d) => d.id === CURRENT),
     run: async () => {
       setSettings({ chunkSize: 400, overlap: 60 })
-      toggleSelect([CURRENT], true)
       goTo('vectors')
-      await previewChunking()
+      // Preview the procedure alone; the tick (membership) stays the team's decision.
+      await previewChunking([CURRENT])
     },
     topic: 'chunking',
   },
