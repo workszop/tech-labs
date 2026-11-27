@@ -90,13 +90,13 @@ describe('POST /api/chat', () => {
     await expectError(await chat(token, { ...ragReq, maxTokens: '5' as never }), 400, 'invalid_request')
   })
 
-  it('no-rag mode: says it has no access to Northstar documents; context must be empty', async () => {
+  it('no-rag mode: says it has no access to Rybex documents; context must be empty', async () => {
     const { token } = await newSession()
-    const res = await chat(token, { question: 'What is the Northstar remote work policy?', context: [], mode: 'no-rag', stream: false })
+    const res = await chat(token, { question: 'What is the Rybex complaints procedure?', context: [], mode: 'no-rag', stream: false })
     const body = (await res.json()) as ChatResponse
-    expect(body.prompt.messages).toEqual(buildChatMessages({ question: 'What is the Northstar remote work policy?', context: [], mode: 'no-rag' }))
+    expect(body.prompt.messages).toEqual(buildChatMessages({ question: 'What is the Rybex complaints procedure?', context: [], mode: 'no-rag' }))
     expect(body.answer).toMatch(/^\(Mock model — offline demo\) /)
-    expect(body.answer).toMatch(/no access to Northstar|don't have access to Northstar/)
+    expect(body.answer).toMatch(/no access to Rybex|don't have access to Rybex/)
     await expectError(await chat(token, { ...ragReq, mode: 'no-rag' }), 400, 'invalid_request')
   })
 
@@ -133,10 +133,10 @@ describe('POST /api/chat', () => {
     expect(answer).toBe(body.answer)
 
     const noRag = (await (
-      await chat(token, { question: 'Jakie są zasady pracy zdalnej w Northstar?', context: [], mode: 'no-rag', lang: 'pl', stream: false })
+      await chat(token, { question: 'Jakie są procedury reklamacji w Rybex?', context: [], mode: 'no-rag', lang: 'pl', stream: false })
     ).json()) as ChatResponse
-    expect(noRag.prompt.messages).toEqual(buildChatMessages({ question: 'Jakie są zasady pracy zdalnej w Northstar?', context: [], mode: 'no-rag', lang: 'pl' }))
-    expect(noRag.answer).toContain('Nie mam dostępu do wewnętrznych dokumentów Northstar')
+    expect(noRag.prompt.messages).toEqual(buildChatMessages({ question: 'Jakie są procedury reklamacji w Rybex?', context: [], mode: 'no-rag', lang: 'pl' }))
+    expect(noRag.answer).toContain('Nie mam dostępu do wewnętrznych dokumentów Rybex')
   })
 
   it('lang defaults to "en"; anything but "pl" | "en" is invalid_request', async () => {

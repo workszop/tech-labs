@@ -269,11 +269,11 @@ export function ScoreBar({ score, highlight, className }: { score: number; highl
  * Grape is left out on purpose (it is the colour of the user's question), red means risk.
  */
 export const FOLDER_COLORS: Record<string, string> = {
-  sales: '#177AA8', // --blue-600
-  hr: '#078342', // --green-600
-  products: '#C6478B', // --play-berry
-  support: '#9A7B00', // ochre: a deep step of --yellow
-  finance: '#625B53', // --ink-3
+  complaints: '#177AA8', // --blue-600
+  quality: '#078342', // --green-600
+  production: '#C6478B', // --play-berry
+  hygiene: '#9A7B00', // ochre: a deep step of --yellow
+  staff: '#625B53', // --ink-3
 }
 export function folderColor(id: string) {
   return FOLDER_COLORS[id] ?? '#44403C' // --ink-2
@@ -329,7 +329,13 @@ export function ChunkText({ text, labelChars = 0, overlapPrevChars = 0, overlapN
   )
 }
 
-/** Is this document marked as outdated in the corpus? */
+/** Is this document superseded ('outdated') or newer but not approved ('draft')? null = in force. */
+export type DocFlag = 'outdated' | 'draft' | null
+export function docFlag(docId: string): DocFlag {
+  const s = getCorpus().docById[docId]?.status
+  return s === 'outdated' || s === 'draft' ? s : null
+}
+/** True for documents that should not be relied on: outdated or draft. */
 export function isOutdatedDoc(docId: string): boolean {
-  return getCorpus().docById[docId]?.status === 'outdated'
+  return docFlag(docId) !== null
 }

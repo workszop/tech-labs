@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Building2, ChevronRight, Database, Eye, FileText, Folder, FolderOpen, Hammer, History, Loader2, RotateCcw, Trash2 } from 'lucide-react'
+import { Building2, ChevronRight, Database, Eye, FilePen, FileText, Folder, FolderOpen, Hammer, History, Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -74,11 +74,16 @@ export function FileExplorer() {
                         <Checkbox checked={sel.has(d.id)} onCheckedChange={(v) => toggleSelect([d.id], v === true)} aria-label={tx.select(d.title)} />
                         <button className="flex min-w-0 flex-1 items-center gap-1.5 text-left cursor-pointer" onClick={() => openDocument(d.id)} title={d.summary}>
                           <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className={cn('truncate text-[13px]', d.status === 'outdated' && 'text-muted-foreground line-through decoration-muted-foreground')}>{d.title}</span>
+                          <span className={cn('truncate text-[13px]', d.status === 'outdated' && 'text-muted-foreground line-through decoration-muted-foreground', d.status === 'draft' && 'italic text-muted-foreground')}>{d.title}</span>
                         </button>
                         {d.status === 'outdated' && (
                           <Tooltip content={tx.outdatedTooltip}>
                             <span><Badge variant="warn" className="px-1.5"><History /></Badge></span>
+                          </Tooltip>
+                        )}
+                        {d.status === 'draft' && (
+                          <Tooltip content={tx.draftTooltip}>
+                            <span><Badge variant="warn" className="px-1.5"><FilePen /></Badge></span>
                           </Tooltip>
                         )}
                         {ix && (

@@ -82,7 +82,7 @@ export const shell = {
   },
 
   explorer: {
-    company: 'Northstar Technologies',
+    company: 'Rybex',
     subtitle: (n: number) => `Dokumenty firmy · ${n} ${plural(n, 'plik', 'pliki', 'plików')}`,
     selected: (n: number) => `zaznaczone: ${n}`,
     indexed: (n: number) => `w indeksie: ${n}`,
@@ -91,7 +91,8 @@ export const shell = {
     collapse: (folder: string) => `Zwiń ${folder}`,
     selectAllIn: (folder: string) => `Zaznacz wszystko w folderze ${folder}`,
     select: (title: string) => `Zaznacz ${title}`,
-    outdatedTooltip: 'Zastąpiona wersja zasad. Zostawiliśmy ją celowo, żeby pokazać, że wyszukiwanie potrafi wyciągnąć nieaktualne informacje.',
+    outdatedTooltip: 'Zastąpiona wersja. Zostawiliśmy ją celowo, żeby pokazać, że wyszukiwanie potrafi wyciągnąć nieaktualne informacje.',
+    draftTooltip: 'Projekt nowszej wersji, niezatwierdzony. Zostawiony celowo: nowszy nie znaczy obowiązujący.',
     inIndexTooltip: (chunks: number) => `W indeksie wektorowym: ${chunks} ${fragmenty(chunks)}`,
     preview: 'Podgląd',
     previewAria: (title: string) => `Podgląd: ${title}`,
@@ -116,6 +117,7 @@ export const shell = {
     version: (v: string) => `v${v}`,
     effective: (isoDate: string) => `obowiązuje od ${longDate(isoDate)}`,
     outdated: 'Nieaktualny',
+    draft: 'Projekt, niezatwierdzony',
     chunksIndexed: (n: number) => `w indeksie: ${n} ${fragmenty(n)}`,
     selected: 'Zaznaczony do indeksowania',
     select: 'Zaznacz do indeksowania',
@@ -173,7 +175,7 @@ export const shell = {
   },
 
   learn: {
-    tokenSample: 'Pracownicy Northstar mogą pracować zdalnie do czterech dni w tygodniu.',
+    tokenSample: 'Na każdą reklamację Rybex odpowiada w ciągu 14 dni.',
     tokenInputAria: 'Tekst do podziału na tokeny',
     tokenId: (id: number) => `identyfikator tokenu: ${id}`,
     tokenStats: (tokens: number, chars: number) => `${tokens} ${tokeny(tokens)} · ${chars} ${plural(chars, 'znak', 'znaki', 'znaków')}`,
@@ -192,13 +194,13 @@ export const shell = {
   },
 
   guide: {
-    title: 'Asystent kadrowy Northstar: od dokumentów do decyzji o pilotażu',
+    title: 'Asystent reklamacji Rybex: od dokumentów do decyzji o pilotażu',
     // Układ: {introBefore}<b>{introCompany}</b>{introAfter}
-    introBefore: 'Projektujecie asystenta, który odpowiada pracownikom firmy ',
-    introCompany: 'Northstar Technologies',
-    introAfter: ' z zasad kadrowych. Kroki poniżej idą w kolejności warsztatu: najpierw źródła, potem podział dokumentów, testy i dowody. Każdy krok sam się odhacza, gdy naprawdę go zrobicie.',
+    introBefore: 'Projektujecie asystenta, który pomaga obsłudze reklamacji firmy ',
+    introCompany: 'Rybex',
+    introAfter: ' (fikcyjny producent konserw rybnych). Do sklepu dotarła dostawa ze zgniecionymi kartonami i wybrzuszoną puszką. Kroki poniżej idą w kolejności warsztatu: najpierw źródła, potem podział dokumentów, testy i dowody. Każdy krok sam się odhacza, gdy naprawdę go zrobicie.',
     introQuestion: 'Pytanie przewodnie:',
-    homeOffice: 'Ile wynosi dodatek na biuro domowe?',
+    guiding: 'Klient zgłasza wybrzuszoną puszkę i zgnieciony karton w dostawie. Co robimy i w jakim terminie?',
     quote: (s: string) => `„${s}”`,
     ask: 'Zapytaj',
     needCode: 'Pytania wymagają kodu dostępu.',
@@ -206,46 +208,46 @@ export const shell = {
     concepts: 'Pojęcia',
     extrasTitle: 'Dla chętnych',
     tests: [
-      { kind: 'Zwykłe', question: 'Ile dni urlopu przysługuje pracownikowi ze stażem krótszym niż 3 lata?' },
-      { kind: 'Z wyjątkiem', question: 'Do kiedy muszę wykorzystać dodatek na biuro, jeśli przechodzę na pracę w pełni zdalną?' },
-      { kind: 'Bez odpowiedzi w dokumentach', question: 'Czy mój wniosek o pracę w pełni zdalną został już zatwierdzony?' },
-      { kind: 'Zastrzeżone', question: 'Kto z mojego zespołu pracuje w pełni zdalnie?' },
+      { kind: 'Zwykłe', question: 'Do jakiej kwoty mogę sama zatwierdzić zwrot?' },
+      { kind: 'Z wyjątkiem', question: 'Co dzieje się z partią po zgłoszeniu wybrzuszonej puszki?' },
+      { kind: 'Bez odpowiedzi w procedurach', question: 'Czy dostawa partii RYB-261031-L2 dotarła już do sklepu?' },
+      { kind: 'Zastrzeżone', question: 'Jaki jest telefon klienta, który zgłosił reklamację R-2026-311?' },
     ],
     steps: {
       sources: {
         module: 'Moduł 3 · Źródła',
-        title: 'Która wersja zasad obowiązuje?',
-        body: 'Zaznaczcie cały folder Kadry, także „Zasady pracy zdalnej (2022, nieaktualne)”, zbudujcie indeks wektorowy i zadajcie pytanie przewodnie. Zapiszcie, jakie kwoty podał asystent i z których dokumentów.',
-        action: 'Zaznacz folder Kadry',
+        title: 'Który dokument rozstrzyga reklamację?',
+        body: 'Zaznaczcie cały folder „Reklamacje i klient”: obowiązującą procedurę PROCES-04, jej niezatwierdzony projekt wersji 6, eksport rejestru reklamacji i rekord przesyłki. Zbudujcie indeks wektorowy i zadajcie pytanie przewodnie. Zapiszcie terminy, które podał asystent, i dokumenty, z których je wziął.',
+        action: 'Zaznacz folder „Reklamacje i klient”',
       },
       outdated: {
         module: 'Moduł 3 · Jedna zmiana',
-        title: 'Usuńcie nieaktualną wersję i zapytajcie jeszcze raz',
-        body: 'Zmieńcie tylko jedną rzecz: usuńcie z indeksu wersję z 2022 r. (ikona kosza przy dokumencie albo przycisk poniżej) i zadajcie to samo pytanie. Co się zmieniło w odpowiedzi i w źródłach?',
-        action: 'Usuń wersję z 2022 r. z indeksu',
+        title: 'Usuńcie projekt wersji 6 i zapytajcie jeszcze raz',
+        body: 'Zmieńcie tylko jedną rzecz: usuńcie z indeksu projekt wersji 6 (ikona kosza przy dokumencie albo przycisk poniżej) i zadajcie to samo pytanie. Co się zmieniło w odpowiedzi i w źródłach? Potem zdecydujcie, czy rejestr z danymi osobowymi i rekord przesyłki w ogóle powinny być w bazie.',
+        action: 'Usuń projekt wersji 6 z indeksu',
       },
       split: {
         module: 'Moduł 4 · Przygotowanie dokumentów',
-        title: 'Gdzie aplikacja tnie dokument?',
-        body: 'Ustawcie rozmiar fragmentu 120 tokenów i obejrzyjcie sam podział „Zasad pracy zdalnej” (działa bez kodu). Znajdźcie sekcję „Dodatek na biuro domowe”: w którym fragmencie jest nagłówek, a w którym kwota 750 USD? Potem sprawdźcie rozmiar 400.',
-        action: 'Pokaż podział przy 120 tokenach',
+        title: 'Gdzie aplikacja tnie procedurę?',
+        body: 'Obejrzyjcie sam podział PROCES-04 przy domyślnym ustawieniu 400 tokenów (działa bez kodu). Znajdźcie regułę „traktuje się jako potencjalne zagrożenie” i akapit „W takim przypadku… w ciągu 24 godzin”. Czy są w tym samym fragmencie? Co wie fragment, który zaczyna się od „W takim przypadku”?',
+        action: 'Pokaż podział PROCES-04',
       },
       size: {
         module: 'Moduł 5 · Podział i diagnoza',
-        title: 'Czy dzielimy na mniejsze kawałki?',
-        body: 'Zbudujcie indeks przy dwóch rozmiarach fragmentu (np. 120 i 400) i przy każdym zadajcie pytanie przewodnie. W karcie „Wyszukiwanie” sprawdźcie, które fragmenty weszły do kontekstu.\nZły fragment czy zła odpowiedź? Jeśli w kontekście nie ma słów z odpowiedzią, zawiodło wyszukiwanie. Jeśli są, a odpowiedź ich nie podaje, zawiodło generowanie.',
+        title: 'Jedna zmiana w podziale',
+        body: 'Wybierzcie jedną zmianę: rozmiar fragmentu 200, nakładanie 120 albo etykietę fragmentu. Zbudujcie indeks jeszcze raz i zadajcie pytanie przewodnie. W karcie „Wyszukiwanie” sprawdźcie, które fragmenty weszły do kontekstu.\nZły fragment czy zła odpowiedź? Jeśli w kontekście nie ma słów z odpowiedzią, zawiodło wyszukiwanie. Jeśli są, a odpowiedź ich nie podaje, zawiodło generowanie.',
         action: 'Otwórz wyszukiwanie',
       },
       label: {
         module: 'Moduł 5 · Poprawka',
         title: 'Dołóżcie etykietę fragmentu',
-        body: 'Włączcie etykietę fragmentu (nagłówek sekcji oraz wersja, data i status), zbudujcie indeks jeszcze raz i zadajcie pytanie przewodnie. Każdy fragment niesie teraz informację, skąd pochodzi i czy obowiązuje.',
+        body: 'Włączcie etykietę fragmentu (nagłówek sekcji oraz wersja, data i status), zbudujcie indeks jeszcze raz i zadajcie pytanie przewodnie. Fragment „W takim przypadku…” dostaje teraz nagłówek „Zagrożenie bezpieczeństwa żywności”, a projekt wersji 6, jeśli został w bazie, ma w każdym fragmencie „PROJEKT, NIEZATWIERDZONY”.',
         action: 'Włącz etykietę fragmentu',
       },
       tests: {
         module: 'Moduł 6 · Ocena',
         title: 'Czy asystent przejdzie cztery testy?',
-        body: 'Zadajcie cztery pytania testowe przy wybranym ustawieniu. Przy każdym oceńcie: poprawna, niepełna, błędna albo powinna być odmowa, i zapiszcie dowód z karty „Wyszukiwanie”. Potem zmieńcie jedną rzecz i zadajcie je ponownie.',
+        body: 'Zadajcie cztery pytania testowe przy wybranym ustawieniu. Przy każdym oceńcie: poprawna, niepełna, błędna albo powinna być odmowa, i zapiszcie dowód z karty „Wyszukiwanie”. Pytanie o dostawę rozstrzyga tylko system wysyłek, a telefon klienta to dane osobowe. Potem zmieńcie jedną rzecz i zadajcie je ponownie.',
       },
       log: {
         module: 'Moduł 6–7 · Dowody',
@@ -260,7 +262,7 @@ export const shell = {
       },
       compare: {
         title: 'Porównaj odpowiedzi z RAG i bez RAG',
-        body: 'Włącz w czacie „Porównaj” i zadaj pytanie jeszcze raz. Ten sam model odpowie raz z twoimi dokumentami, a raz bez nich.',
+        body: 'Włącz w czacie „Porównaj” i zadaj pytanie jeszcze raz. Ten sam model odpowie raz z dokumentami Rybex, a raz bez nich.',
         action: 'Włącz tryb porównania',
       },
     },
@@ -291,7 +293,7 @@ export const shell = {
       title: 'Co to jest RAG?',
       short: 'Retrieval-Augmented Generation, czyli generowanie wspomagane wyszukiwaniem: najpierw znajdź pasujące fragmenty we własnych dokumentach, potem pozwól modelowi AI napisać z nich odpowiedź.',
       body: [
-        'Model językowy wie tylko to, co było w jego danych treningowych. Wewnętrznych zasad Northstar nigdy nie widział.',
+        'Model językowy wie tylko to, co było w jego danych treningowych. Wewnętrznych procedur Rybex nigdy nie widział.',
         'RAG rozwiązuje to w dwóch fazach. Indeksowanie (raz): podziel dokumenty na fragmenty, zamień każdy fragment na wektor i zapisz go. Odpowiadanie (przy każdym pytaniu): zamień pytanie na wektor, znajdź fragmenty o najbardziej podobnych wektorach i wklej je do promptu jako kontekst.',
         'Model pozostaje ten sam, dostaje tylko otwartą książkę. Dlatego o jakości odpowiedzi decyduje jakość wyszukiwania.',
       ],
@@ -308,7 +310,7 @@ export const shell = {
       title: 'Po co dzielić dokumenty?',
       short: 'Jeden wektor dla całego dokumentu zlewa wiele tematów w jeden. Mniejsze fragmenty dają wyraźniejsze wektory i mieszczą się w oknie kontekstu modelu.',
       body: [
-        'Wektor streszcza swój tekst do jednego punktu. Dokument na 600 słów, który opisuje uprawnienia, dodatki i podróże, staje się „średnią” wszystkich trzech tematów i do żadnego nie pasuje mocno.',
+        'Wektor streszcza swój tekst do jednego punktu. Procedura na 600 słów, która opisuje terminy, bezpieczeństwo żywności i zwroty, staje się „średnią” wszystkich trzech tematów i do żadnego nie pasuje mocno.',
         'Za małe fragmenty też szkodzą: fragment na 20 tokenów gubi kontekst („limit wynosi 50%”, ale limit czego?). Wypróbuj różne rozmiary i obserwuj, jak zmieniają się wyniki wyszukiwania.',
         'Nakładanie (ang. overlap) powtarza ostatnie zdanie lub zdania fragmentu na początku następnego. Dzięki temu fakt leżący na granicy jest w całości przynajmniej w jednym fragmencie.',
       ],
@@ -326,7 +328,7 @@ export const shell = {
       short: 'Lista liczb (wektor), która oddaje znaczenie tekstu. Teksty o podobnym znaczeniu dostają podobne wektory.',
       body: [
         'Model tworzący wektory zamienia dowolny tekst na wektor o stałej długości. Dla text-embedding-3-small jest to 1536 liczb. Pojedyncza liczba nic nie znaczy, znaczenie niesie kierunek całego wektora.',
-        '„Czy mogę pracować z domu?” i „kto może pracować zdalnie” nie mają prawie żadnych wspólnych słów, a ich wektory wskazują podobne kierunki. Na tym polega wyszukiwanie semantyczne: dopasowuje teksty po znaczeniu, nawet gdy słowa są inne.',
+        '„Puszka spuchła i syczy” i „wybrzuszona puszka” nie mają prawie żadnych wspólnych słów, a ich wektory wskazują podobne kierunki. Na tym polega wyszukiwanie semantyczne: dopasowuje teksty po znaczeniu, nawet gdy słowa są inne.',
         'Pytanie i dokumenty musi zamienić na wektory ten sam model. Wektory z różnych modeli leżą w różnych przestrzeniach i nie da się ich porównać.',
       ],
     },
@@ -386,7 +388,7 @@ export const shell = {
       short: 'Wyszukiwanie może pominąć właściwy fragment albo zwrócić nieaktualny, a model może źle odczytać dobry kontekst.',
       body: [
         'Brak wiedzy: jeśli dokumentu nie ma w indeksie, żadne wyszukiwanie go nie znajdzie.',
-        'Wygrywa zły fragment: podobne sformułowania (np. „eskalacja” w obsłudze klienta i „eskalacja” w kadrach) albo nieaktualne zasady mogą wyprzedzić obowiązujące.',
+        'Wygrywa zły fragment: podobne sformułowania (np. „partia” w procedurze reklamacji i „partia” w procedurze etykietowania) albo nieaktualne zasady mogą wyprzedzić obowiązujące.',
         'Podział na fragmenty: fakt rozcięty między fragmenty albo ukryty w długim fragmencie o czymś innym dostaje słaby wynik.',
         'Generowanie: model nadal może za bardzo uogólnić albo pominąć zastrzeżenie. Cytaty pozwalają sprawdzić każde twierdzenie.',
         'Niezaufany tekst: dokumenty mogą zawierać tekst, który wygląda jak polecenia (zajrzyj do dokumentu „Rozwiązywanie problemów”). RAG Lab każe modelowi traktować fragmenty jako dane, nie jako polecenia.',
@@ -403,9 +405,9 @@ export const shell = {
     },
     compare: {
       title: 'RAG włączony i wyłączony',
-      short: 'Ten sam model odpowiada dwa razy: raz z wyszukanymi fragmentami dokumentów Northstar, raz bez żadnych dokumentów.',
+      short: 'Ten sam model odpowiada dwa razy: raz z wyszukanymi fragmentami dokumentów Rybex, raz bez żadnych dokumentów.',
       body: [
-        'Bez wyszukiwania model może tylko zgadywać, jak postępuje typowa firma, bo zasad Northstar nigdy nie widział.',
+        'Bez wyszukiwania model może tylko zgadywać, jak postępuje typowa firma, bo procedur Rybex nigdy nie widział.',
         'Z wyszukiwaniem może podać prawdziwe liczby i wskazać ich źródło. Po to właśnie jest RAG.',
       ],
     },

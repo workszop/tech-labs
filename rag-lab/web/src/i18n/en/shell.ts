@@ -62,7 +62,7 @@ export const shell = {
   },
 
   explorer: {
-    company: 'Northstar Technologies',
+    company: 'Rybex',
     subtitle: (n: number) => `Company documents · ${n} files`,
     selected: (n: number) => `${n} selected`,
     indexed: (n: number) => `${n} indexed`,
@@ -71,7 +71,8 @@ export const shell = {
     collapse: (folder: string) => `Collapse ${folder}`,
     selectAllIn: (folder: string) => `Select all in ${folder}`,
     select: (title: string) => `Select ${title}`,
-    outdatedTooltip: 'Superseded policy — kept on purpose to show how retrieval can surface outdated information.',
+    outdatedTooltip: 'Superseded version, kept on purpose to show how retrieval can surface outdated information.',
+    draftTooltip: 'Draft of a newer version, not approved. Kept on purpose: newer is not the same as in force.',
     inIndexTooltip: (chunks: number) => `In the vector index: ${chunks} chunks`,
     preview: 'Preview',
     previewAria: (title: string) => `Preview ${title}`,
@@ -96,6 +97,7 @@ export const shell = {
     version: (v: string) => `v${v}`,
     effective: (isoDate: string) => `effective ${isoDate}`,
     outdated: 'Outdated',
+    draft: 'Draft, not approved',
     chunksIndexed: (n: number) => `${n} chunks indexed`,
     selected: 'Selected for indexing',
     select: 'Select for indexing',
@@ -153,7 +155,7 @@ export const shell = {
   },
 
   learn: {
-    tokenSample: 'Northstar employees may work remotely up to four days a week.',
+    tokenSample: 'Every complaint at Rybex is answered within 14 days.',
     tokenInputAria: 'Text to tokenize',
     tokenId: (id: number) => `token id ${id}`,
     tokenStats: (tokens: number, chars: number) => `${tokens} tokens · ${chars} characters`,
@@ -172,13 +174,13 @@ export const shell = {
   },
 
   guide: {
-    title: 'Northstar HR assistant: from documents to a pilot decision',
+    title: 'Rybex complaints assistant: from documents to a pilot decision',
     // Layout: {introBefore}<b>{introCompany}</b>{introAfter}
-    introBefore: 'You are designing an assistant that answers employees of ',
-    introCompany: 'Northstar Technologies',
-    introAfter: ' from the HR policies. The steps follow the workshop: sources first, then splitting the documents, tests and evidence. Each step ticks itself once you have really done it.',
+    introBefore: 'You are designing an assistant for the complaints team of ',
+    introCompany: 'Rybex',
+    introAfter: ' (a fictional canned-fish producer). A shop received a delivery with crushed cartons and a bulging can. The steps follow the workshop: sources first, then splitting the documents, tests and evidence. Each step ticks itself once you have really done it.',
     introQuestion: 'Guiding question:',
-    homeOffice: 'How much is the home office stipend?',
+    guiding: 'A customer reports a bulging can and a crushed carton in a delivery. What do we do and by when?',
     quote: (s: string) => `“${s}”`,
     ask: 'Ask',
     needCode: 'Questions need an access code.',
@@ -186,46 +188,46 @@ export const shell = {
     concepts: 'Concepts',
     extrasTitle: 'If you have time',
     tests: [
-      { kind: 'Ordinary', question: 'How many vacation days does an employee with less than 3 years of service get?' },
-      { kind: 'Exception', question: 'By when must I use the home office stipend if I switch to fully remote work?' },
-      { kind: 'Not in the documents', question: 'Has my request for fully remote work been approved yet?' },
-      { kind: 'Restricted', question: 'Who on my team works fully remotely?' },
+      { kind: 'Ordinary', question: 'Up to what amount can I approve a refund myself?' },
+      { kind: 'Exception', question: 'What happens to the batch after a bulging can is reported?' },
+      { kind: 'Not in the procedures', question: 'Has the delivery of batch RYB-261031-L2 reached the shop yet?' },
+      { kind: 'Restricted', question: 'What is the phone number of the customer who filed complaint R-2026-311?' },
     ],
     steps: {
       sources: {
         module: 'Module 3 · Sources',
-        title: 'Which version of the policy applies?',
-        body: 'Select the whole Human Resources folder, including “Remote Work Policy (2022, superseded)”, build the vector index and ask the guiding question. Note which amounts the assistant gave and from which documents.',
-        action: 'Select the Human Resources folder',
+        title: 'Which document settles the complaint?',
+        body: 'Select the whole “Complaints and customers” folder: the procedure in force PROCES-04, its unapproved draft version 6, the complaints register export and the shipment record. Build the vector index and ask the guiding question. Note the deadlines the assistant gave and the documents it took them from.',
+        action: 'Select the “Complaints and customers” folder',
       },
       outdated: {
         module: 'Module 3 · One change',
-        title: 'Remove the outdated version and ask again',
-        body: 'Change only one thing: remove the 2022 version from the index (bin icon next to the document, or the button below) and ask the same question. What changed in the answer and in the sources?',
-        action: 'Remove the 2022 version from the index',
+        title: 'Remove draft version 6 and ask again',
+        body: 'Change only one thing: remove draft version 6 from the index (bin icon next to the document, or the button below) and ask the same question. What changed in the answer and in the sources? Then decide whether the register with personal data and the shipment record belong in the knowledge base at all.',
+        action: 'Remove draft version 6 from the index',
       },
       split: {
         module: 'Module 4 · Preparing documents',
-        title: 'Where does the app cut the document?',
-        body: 'Set the chunk size to 120 tokens and look at the split of the “Remote Work Policy” (works without a code). Find the home office section: which chunk holds the heading and which one the $750 amount? Then check size 400.',
-        action: 'Show the split at 120 tokens',
+        title: 'Where does the app cut the procedure?',
+        body: 'Look at the split of PROCES-04 at the default 400 tokens (works without a code). Find the rule “treated as a potential food safety hazard” and the paragraph “In that case… within 24 hours”. Are they in the same chunk? What does a chunk that starts with “In that case” know?',
+        action: 'Show the split of PROCES-04',
       },
       size: {
         module: 'Module 5 · Splitting and diagnosis',
-        title: 'Do we cut it into smaller pieces?',
-        body: 'Build the index at two chunk sizes (e.g. 120 and 400) and ask the guiding question at each. In the “Retrieval” tab check which chunks went into the context.\nWrong chunk or wrong answer? If the context lacks the words that answer the question, retrieval failed. If they are there but the answer misses them, generation failed.',
+        title: 'One change to the split',
+        body: 'Pick one change: chunk size 200, overlap 120 or the chunk label. Build the index again and ask the guiding question. In the “Retrieval” tab check which chunks went into the context.\nWrong chunk or wrong answer? If the context lacks the words that answer the question, retrieval failed. If they are there but the answer misses them, generation failed.',
         action: 'Open retrieval',
       },
       label: {
         module: 'Module 5 · The fix',
         title: 'Add a chunk label',
-        body: 'Turn on the chunk label (section heading plus version, date and status), build the index again and ask the guiding question. Every chunk now says where it comes from and whether it still applies.',
+        body: 'Turn on the chunk label (section heading plus version, date and status), build the index again and ask the guiding question. The chunk “In that case…” now carries the heading “Food safety hazard”, and draft version 6, if it is still indexed, says “DRAFT, NOT APPROVED” in every chunk.',
         action: 'Turn on the chunk label',
       },
       tests: {
         module: 'Module 6 · Evaluation',
         title: 'Will the assistant pass four tests?',
-        body: 'Ask the four test questions at your chosen settings. Mark each one: correct, incomplete, wrong or should have refused, and note the evidence from the “Retrieval” tab. Then change one thing and ask them again.',
+        body: 'Ask the four test questions at your chosen settings. Mark each one: correct, incomplete, wrong or should have refused, and note the evidence from the “Retrieval” tab. Only the dispatch system can answer the delivery question, and the customer’s phone is personal data. Then change one thing and ask them again.',
       },
       log: {
         module: 'Modules 6–7 · Evidence',
@@ -240,7 +242,7 @@ export const shell = {
       },
       compare: {
         title: 'Compare answers with and without RAG',
-        body: 'Turn on “Compare” in the chat and ask again. The same model answers once with your documents and once without them.',
+        body: 'Turn on “Compare” in the chat and ask again. The same model answers once with the Rybex documents and once without them.',
         action: 'Turn on compare mode',
       },
     },
@@ -271,7 +273,7 @@ export const shell = {
       title: 'What is RAG?',
       short: 'Retrieval-Augmented Generation: first look up relevant passages in your own documents, then let the AI model write an answer from them.',
       body: [
-        'A language model only knows what was in its training data. It has never seen Northstar’s internal policies.',
+        'A language model only knows what was in its training data. It has never seen Rybex’s internal procedures.',
         'RAG fixes this in two phases. Indexing (once): split documents into chunks, turn each chunk into an embedding vector and store it. Answering (every question): embed the question, find the chunks whose vectors are most similar, and paste those chunks into the prompt as context.',
         'The model is still the same model — it is just given an open book. That is why the quality of retrieval decides the quality of the answer.',
       ],
@@ -288,7 +290,7 @@ export const shell = {
       title: 'Why split documents?',
       short: 'One vector per whole document blurs many topics together. Smaller chunks give sharper vectors and fit into the model’s context window.',
       body: [
-        'An embedding summarises its text as a single point. A 600-word policy covering eligibility, stipends and travel becomes an “average” of all three — and matches none of them strongly.',
+        'An embedding summarises its text as a single point. A 600-word procedure covering deadlines, food safety and refunds becomes an “average” of all three — and matches none of them strongly.',
         'Too small is also bad: a 20-token chunk loses context (“it is capped at 50%” — what is?). Try different sizes and watch the retrieval scores change.',
         'Overlap repeats the last sentence(s) of one chunk at the start of the next, so a fact that straddles a boundary is still complete in at least one chunk.',
       ],
@@ -306,7 +308,7 @@ export const shell = {
       short: 'A list of numbers (a vector) that captures the meaning of a text. Texts with similar meaning get similar vectors.',
       body: [
         'An embedding model turns any text into a fixed-length vector — for text-embedding-3-small, 1,536 numbers. No single number means anything on its own; meaning is in the direction of the whole vector.',
-        '“Can I work from home?” and “remote work eligibility” share almost no words, yet their vectors point in similar directions. That is semantic search: matching meaning, not keywords.',
+        '“The can puffed up and hisses” and “bulging can” share almost no words, yet their vectors point in similar directions. That is semantic search: matching meaning, not keywords.',
         'The question and the documents must be embedded by the same model. Vectors from different models live in different spaces and cannot be compared.',
       ],
     },
@@ -366,7 +368,7 @@ export const shell = {
       short: 'Retrieval can miss the right chunk, return an outdated one, or the model can misread good context.',
       body: [
         'Missing knowledge: if the document was never indexed, no retrieval can find it.',
-        'Wrong chunk wins: similar wording (e.g. support “escalation” vs HR “escalation”) or an outdated policy can outrank the current one.',
+        'Wrong chunk wins: similar wording (e.g. “batch” in the complaints procedure and “batch” in the labelling procedure) or an outdated policy can outrank the current one.',
         'Chunking: a fact split across chunks, or buried in a long chunk about something else, scores poorly.',
         'Generation: the model can still over-generalise or ignore a caveat. Citations let you check every claim.',
         'Untrusted text: documents can contain text that looks like instructions (try the Troubleshooting Guide). RAG Lab tells the model to treat excerpts as data, not commands.',
@@ -383,9 +385,9 @@ export const shell = {
     },
     compare: {
       title: 'RAG on vs. RAG off',
-      short: 'The same model answers twice: once with retrieved Northstar excerpts, once with no documents at all.',
+      short: 'The same model answers twice: once with retrieved Rybex excerpts, once with no documents at all.',
       body: [
-        'Without retrieval the model can only guess what a typical company does — it has never seen Northstar’s policies.',
+        'Without retrieval the model can only guess what a typical company does — it has never seen Rybex’s procedures.',
         'With retrieval it can quote real numbers and cite them. The difference is the whole point of RAG.',
       ],
     },

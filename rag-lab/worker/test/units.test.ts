@@ -79,10 +79,10 @@ describe('prompt template languages', () => {
     const m = buildChatMessages({ question: '  How many days?  ', context: sampleContext.slice(0, 1), mode: 'rag' })
     expect(m).toEqual(buildChatMessages({ question: 'How many days?', context: sampleContext.slice(0, 1), mode: 'rag', lang: 'en' }))
     expect(m[0]).toEqual({ role: 'system', content: RAG_SYSTEM_PROMPT })
-    expect(RAG_SYSTEM_PROMPT.startsWith('You are the Northstar Technologies knowledge assistant inside RAG Lab, a teaching tool.\n\nAnswer the user')).toBe(true)
+    expect(RAG_SYSTEM_PROMPT.startsWith('You are the knowledge assistant of Rybex, a canned-fish producer, inside RAG Lab, a teaching tool.\n\nAnswer the user')).toBe(true)
     expect(RAG_SYSTEM_PROMPT.endsWith('6. Keep the answer short and clear: a few sentences or a short list.')).toBe(true)
-    expect(RAG_SYSTEM_PROMPT).toHaveLength(1027)
-    expect(NO_RAG_SYSTEM_PROMPT).toHaveLength(493)
+    expect(RAG_SYSTEM_PROMPT).toHaveLength(1150)
+    expect(NO_RAG_SYSTEM_PROMPT).toHaveLength(485)
     expect(m[1]!.content).toBe(
       'Document excerpts:\n\n' +
         '[1] Source: Remote Work Policy — HR (chunk hr-remote-work#1)\n' +
@@ -216,8 +216,8 @@ describe('Polish text in the mock provider', () => {
   })
 
   it('fixed Polish sentences: no documents, no answer', () => {
-    const noRag = mockAnswer(buildChatMessages({ question: 'Jakie są zasady pracy zdalnej w Northstar?', context: [], mode: 'no-rag', lang: 'pl' }))
-    expect(noRag).toMatch(/^\(Model testowy – demo offline\) Nie mam dostępu do wewnętrznych dokumentów Northstar Technologies/)
+    const noRag = mockAnswer(buildChatMessages({ question: 'Jakie są procedury reklamacji w Rybex?', context: [], mode: 'no-rag', lang: 'pl' }))
+    expect(noRag).toMatch(/^\(Model testowy – demo offline\) Nie mam dostępu do wewnętrznych dokumentów Rybex/)
     const empty = mockAnswer(buildChatMessages({ question: 'Ile kosztuje parking?', context: [], mode: 'rag', lang: 'pl' }))
     expect(empty).toBe('(Model testowy – demo offline) W znalezionych dokumentach nie ma odpowiedzi na to pytanie.')
     const miss = mockAnswer(buildChatMessages({ question: 'Chromodynamika kwantowa?', context: sampleContextPl, mode: 'rag', lang: 'pl' }))

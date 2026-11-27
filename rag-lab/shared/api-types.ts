@@ -125,7 +125,7 @@ export interface EmbeddingsResponse {
 // ---------------------------------------------------------------- chat
 
 export interface ContextChunk {
-  /** Chunk id from the browser index, e.g. "hr-remote-work#2". */
+  /** Chunk id from the browser index, e.g. "proces-04#2". */
   chunkId: string
   documentTitle: string
   folder: string

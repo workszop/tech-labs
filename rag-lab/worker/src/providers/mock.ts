@@ -23,14 +23,14 @@ const MOCK_TEXT: Record<Lang, { prefix: string; noAccess: string; noAnswer: stri
   en: {
     prefix: MOCK_PREFIX,
     noAccess:
-      "I don't have access to Northstar Technologies' internal documents, so I can't answer questions about Northstar's own policies, prices or people. " +
+      "I don't have access to Rybex's internal documents, so I can't answer questions about Rybex's own procedures, deadlines or people. " +
       'Switch to RAG mode so that relevant excerpts are retrieved and sent along with your question.',
     noAnswer: "The retrieved documents don't contain the answer to this question.",
   },
   pl: {
     prefix: MOCK_PREFIX_PL,
     noAccess:
-      'Nie mam dostępu do wewnętrznych dokumentów Northstar Technologies, więc nie odpowiem na pytania o zasady, ceny ani pracowników tej firmy. ' +
+      'Nie mam dostępu do wewnętrznych dokumentów Rybex, więc nie odpowiem na pytania o procedury, terminy ani pracowników tej firmy. ' +
       'Przełącz na tryb RAG, żeby aplikacja wyszukała pasujące fragmenty i wysłała je razem z pytaniem.',
     noAnswer: 'W znalezionych dokumentach nie ma odpowiedzi na to pytanie.',
   },

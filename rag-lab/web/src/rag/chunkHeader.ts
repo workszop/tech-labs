@@ -22,7 +22,7 @@ export interface ChunkLabelDoc {
   title: string
   version: string
   effectiveDate: string
-  status: 'current' | 'outdated'
+  status: 'current' | 'outdated' | 'draft'
   owner: string
 }
 
@@ -31,6 +31,7 @@ export interface ChunkLabelWords {
   effectiveFrom: string
   current: string
   outdated: string
+  draft: string
   owner: string
 }
 
@@ -97,7 +98,7 @@ export function chunkLabel(doc: ChunkLabelDoc, sections: Section[], chunkStart: 
   if (o.meta) {
     parts.push(`${w.version} ${doc.version}`)
     parts.push(`${w.effectiveFrom} ${doc.effectiveDate}`)
-    parts.push(doc.status === 'outdated' ? w.outdated : w.current)
+    parts.push(doc.status === 'outdated' ? w.outdated : doc.status === 'draft' ? w.draft : w.current)
     parts.push(`${w.owner}: ${doc.owner}`)
   }
   return `[${parts.join(' · ')}]`

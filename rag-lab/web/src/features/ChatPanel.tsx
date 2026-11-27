@@ -10,7 +10,7 @@ import { useT, type Dict } from '@/i18n'
 import { cn, formatMs } from '@/lib/utils'
 import { ask, cancelQuery, clearConversation, downloadTestLog, indexCompatibility, openChunkInDocument, showActivation } from '@/state/actions'
 import { setSettings, setUi, useStore, type GenerationResult, type QueryRun } from '@/state/store'
-import { Alert, Explain, IconBadge, ScoreBar, StatusIcon, isOutdatedDoc } from './common'
+import { Alert, Explain, IconBadge, ScoreBar, StatusIcon, docFlag, isOutdatedDoc } from './common'
 
 import { PromptView } from './RetrievalView'
 
@@ -255,7 +255,7 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
                 title={cited.has(s.n) ? tx.cited : tx.notCited}
               >
                 <span className="font-mono font-medium">[{s.n}]</span> <span className="truncate">{s.title}</span>
-                {s.docId && isOutdatedDoc(s.docId) && <span className="rounded bg-warn px-1 text-[10px] font-semibold text-white">{tx.outdated}</span>}
+                {s.docId && isOutdatedDoc(s.docId) && <span className="rounded bg-warn px-1 text-[10px] font-semibold text-white">{docFlag(s.docId) === 'draft' ? tx.draft : tx.outdated}</span>}
               </button>
             ))}
           </div>

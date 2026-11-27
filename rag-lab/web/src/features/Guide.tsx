@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { ArrowRight, BookOpen, Check, Download, FileSearch, FlaskConical, FolderTree, GitCompare, Map as MapIcon, Scissors, Tag, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { getState, setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
+import { setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
 import { ask, downloadTestLog, previewChunking, removeFromIndex, selectFolder, toggleSelect } from '@/state/actions'
 import { revealPanel } from '@/lib/reveal'
 import { t, useT, type Dict } from '@/i18n'
@@ -13,8 +13,8 @@ import { useExplainers } from './explainers'
 type StepId = keyof Dict['shell']['guide']['steps']
 
 /**
- * The guide follows the workshop flow "RAG w organizacji" (Northstar, HR assistant):
- * sources → outdated version out → where the app cuts a document → chunk size →
+ * The guide follows the workshop flow "RAG w organizacji" (Rybex, complaints assistant):
+ * sources → unapproved draft out → where the app cuts a procedure → one change to the split →
  * chunk label → four tests → test log. Each step checks the app state, so it ticks
  * itself when the team has really done it; a ticked step stays ticked.
  * Step logic only; texts come from the dictionary (`shell.guide.steps[id]`).
@@ -25,12 +25,12 @@ interface GuideStep {
   done: (s: AppState) => boolean
   run?: () => void | Promise<void>
   /** Show the guiding question as a one-click chip under the step. */
-  askHomeOffice?: boolean
+  askGuiding?: boolean
   topic?: string
 }
 
-const OUTDATED = 'hr-remote-work-2022'
-const CURRENT = 'hr-remote-work'
+const OUTDATED = 'proces-04-v6' // the unapproved draft that competes with the procedure in force
+const CURRENT = 'proces-04'
 const ragRuns = (s: AppState): QueryRun[] => Object.values(s.runs).filter((r) => r.ragEnabled && r.generate.status === 'completed' && !!r.index)
 
 const STEPS: GuideStep[] = [
@@ -39,11 +39,11 @@ const STEPS: GuideStep[] = [
     icon: <FolderTree />,
     done: (s) => ragRuns(s).some((r) => r.index!.docIds.includes(OUTDATED)),
     run: () => {
-      selectFolder('hr')
+      selectFolder('complaints')
       setUi({ centerTab: 'build', mobileTab: 'lab' })
       revealPanel('docs')
     },
-    askHomeOffice: true,
+    askGuiding: true,
     topic: 'failures',
   },
   {
@@ -55,14 +55,15 @@ const STEPS: GuideStep[] = [
       return !!firstWith && runs.some((r) => r.createdAt > firstWith.createdAt && !r.index!.docIds.includes(OUTDATED) && r.index!.docIds.includes(CURRENT))
     },
     run: () => removeFromIndex([OUTDATED]),
-    askHomeOffice: true,
+    askGuiding: true,
   },
   {
     id: 'split',
     icon: <Scissors />,
-    done: (s) => !!s.job?.chunking && s.job.config.chunkSize === 120 && s.job.selection.docs.some((d) => d.id === CURRENT),
+    // Only the chunk preview (a job with status 'cancelled', no embeddings) counts: building the index also chunks.
+    done: (s) => !!s.job?.chunking && s.job.status === 'cancelled' && s.job.selection.docs.some((d) => d.id === CURRENT),
     run: async () => {
-      setSettings({ chunkSize: 120, overlap: Math.min(getState().settings.overlap, 60) })
+      setSettings({ chunkSize: 400, overlap: 60 })
       toggleSelect([CURRENT], true)
       setUi({ centerTab: 'build', mobileTab: 'lab' })
       await previewChunking()
@@ -72,9 +73,9 @@ const STEPS: GuideStep[] = [
   {
     id: 'size',
     icon: <FileSearch />,
-    done: (s) => new Set(ragRuns(s).map((r) => r.index!.chunkSize)).size >= 2,
+    done: (s) => new Set(ragRuns(s).filter((r) => r.index!.docIds.includes(CURRENT)).map((r) => `${r.index!.chunkSize}/${r.index!.overlap}/${r.index!.labels}`)).size >= 2,
     run: () => setUi({ centerTab: 'retrieval', mobileTab: 'lab' }),
-    askHomeOffice: true,
+    askGuiding: true,
     topic: 'cosine',
   },
   {
@@ -85,7 +86,7 @@ const STEPS: GuideStep[] = [
       setSettings({ labelSection: true, labelMeta: true })
       setUi({ centerTab: 'build', mobileTab: 'lab' })
     },
-    askHomeOffice: true,
+    askGuiding: true,
   },
   {
     id: 'tests',
@@ -163,8 +164,8 @@ export function Guide() {
     const chips =
       st.id === 'tests'
         ? tx.tests.map((q) => chip(q.question, <><span className="font-semibold">{q.kind}:</span> {q.question}</>, q.question))
-        : st.askHomeOffice
-          ? [chip('home', <>{tx.ask}: {tx.homeOffice}</>, tx.homeOffice)]
+        : st.askGuiding
+          ? [chip('home', <>{tx.ask}: {tx.guiding}</>, tx.guiding)]
           : []
     return (
       <li
@@ -214,7 +215,7 @@ export function Guide() {
         <p className="mt-2.5 text-[15.5px] leading-relaxed text-[var(--ink-2)]">
           {tx.introBefore}<b className="font-semibold text-foreground">{tx.introCompany}</b>{tx.introAfter}
         </p>
-        <p className="mt-2 text-[14px] leading-relaxed text-[var(--ink-2)]">{tx.introQuestion} <b className="font-semibold text-foreground">{tx.quote(tx.homeOffice)}</b></p>
+        <p className="mt-2 text-[14px] leading-relaxed text-[var(--ink-2)]">{tx.introQuestion} <b className="font-semibold text-foreground">{tx.quote(tx.guiding)}</b></p>
       </div>
       <LearnCard topic="rag" />
       <div className="flex items-center gap-3">

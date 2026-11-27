@@ -57,6 +57,7 @@ export function DocumentDialog() {
             <span>·</span> {tx.version(doc.version)}
             <span>·</span> <CalendarDays className="size-3" /> {tx.effective(doc.effectiveDate)}
             {doc.status === 'outdated' && <Badge variant="warn"><History /> {tx.outdated}</Badge>}
+            {doc.status === 'draft' && <Badge variant="warn"><History /> {tx.draft}</Badge>}
             {chunks.length > 0 && <Badge variant="ok"><Database /> {tx.chunksIndexed(chunks.length)}</Badge>}
           </div>
           <DialogTitle className="text-[22px]">{doc.title}</DialogTitle>
