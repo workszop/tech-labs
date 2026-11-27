@@ -64,6 +64,23 @@ describe('runQuery', () => {
     await ask('q')
     expect(getState().chat.length).toBe(before + 2)
   })
+  it('resolves with an error run for an empty question without calling the API', async () => {
+    const { api } = await import('@/api/client')
+    vi.mocked(api.embed).mockClear()
+    vi.mocked(api.chat).mockClear()
+    const run = await runQuery('   ', opts())
+    expect(run.generate.status).toBe('error')
+    expect(api.embed).not.toHaveBeenCalled()
+    expect(api.chat).not.toHaveBeenCalled()
+  })
+  it('is not aborted by a later chat question when it has its own signal', async () => {
+    const own = new AbortController()
+    const pending = runQuery('q', { ...opts(), signal: own.signal })
+    await ask('another')
+    const run = await pending
+    expect(own.signal.aborted).toBe(false)
+    expect(run.generate.status).toBe('completed')
+  })
   it('resolves with an error run when the knowledge base is empty', async () => {
     setState({ index: { meta: null, chunks: [], documents: {} } })
     const run = await runQuery('q', opts())

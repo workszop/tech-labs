@@ -471,6 +471,7 @@ export const lab = {
     indexingCancelled: 'Indexing was cancelled. Finished batches are kept in the cache; building again will not re-embed them.',
     batchesFailed: (n: number) => `${n} batch(es) failed. Documents with missing chunks were not added to the index. Use “Retry failed batches”.`,
     needCodeToAsk: 'Activate RAG Lab with your access code to ask questions.',
+    emptyQuestion: 'The question is empty.',
     emptyKnowledgeBase: 'The knowledge base is empty.',
     emptyKnowledgeBaseLong:
       'Your knowledge base is empty, so there is nothing to retrieve. Tick a few documents in the Data part and click “Build Vector Index” in the Vector database part first, or switch RAG off to see how the model answers without your documents.',

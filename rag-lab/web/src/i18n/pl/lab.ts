@@ -470,6 +470,7 @@ export const lab: Dict['lab'] = {
     indexingCancelled: 'Indeksowanie anulowano. Ukończone partie zostają w pamięci podręcznej, więc przy kolejnej budowie nie będą liczone ponownie.',
     batchesFailed: (n) => `Liczba partii, których nie udało się przetworzyć: ${n}. Dokumenty z brakującymi fragmentami nie trafiły do indeksu. Kliknij „Ponów nieudane partie”.`,
     needCodeToAsk: 'Żeby zadawać pytania, aktywuj RAG Lab kodem dostępu.',
+    emptyQuestion: 'Pytanie jest puste.',
     emptyKnowledgeBase: 'Baza wiedzy jest pusta.',
     emptyKnowledgeBaseLong:
       'Twoja baza wiedzy jest pusta, więc nie ma czego przeszukiwać. Zaznacz kilka dokumentów w części Dane i kliknij „Zbuduj indeks wektorowy” w części Baza wektorowa albo wyłącz RAG, żeby zobaczyć, jak model odpowiada bez twoich dokumentów.',

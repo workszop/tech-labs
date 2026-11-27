@@ -77,19 +77,37 @@ export function scoreRetrieval(input: {
   return { applicable: true, expected, share, pass: found === expected.length, warnings }
 }
 
+const WORD_CHAR = /[\p{L}\p{N}]/u
+const DIGIT = /\p{N}/u
+
+/**
+ * Is `term` in `text` (both normalised here) as a whole token? The characters around a match must not be
+ * letters or digits, and a term starting with a digit does not count after "<digit><space>" (thousands
+ * grouping: "300 zł" is not in "1 300 zł").
+ */
+export function containsTerm(text: string, term: string): boolean {
+  const s = normalizeText(text)
+  const n = normalizeText(term)
+  if (n === '') return false
+  const leadingDigit = DIGIT.test(n[0])
+  for (let i = s.indexOf(n); i !== -1; i = s.indexOf(n, i + 1)) {
+    const before = i > 0 ? s[i - 1] : ''
+    const after = s[i + n.length] ?? ''
+    if (before && WORD_CHAR.test(before)) continue
+    if (after && WORD_CHAR.test(after)) continue
+    if (leadingDigit && before === ' ' && i > 1 && DIGIT.test(s[i - 2])) continue
+    return true
+  }
+  return false
+}
+
 export function scoreAnswer(answer: string, keyFacts: string[][], mustNotContain: string[]): AnswerScore {
   const text = normalizeText(answer)
   const facts = keyFacts.map((group) => ({
     group,
-    found: group.some((spelling) => {
-      const n = normalizeText(spelling)
-      return n !== '' && text.includes(n)
-    }),
+    found: group.some((spelling) => containsTerm(text, spelling)),
   }))
-  const forbidden = mustNotContain.filter((s) => {
-    const n = normalizeText(s)
-    return n !== '' && text.includes(n)
-  })
+  const forbidden = mustNotContain.filter((s) => containsTerm(text, s))
   if (text === '') return { facts, forbidden, pass: false }
   if (keyFacts.length === 0 && mustNotContain.length === 0) return { facts, forbidden, pass: null }
   return { facts, forbidden, pass: facts.every((f) => f.found) && forbidden.length === 0 }

@@ -674,8 +674,9 @@ export async function runQuery(question: string, opts: QueryOptions): Promise<Qu
       ? { chat: [...st.chat, { id: uid('m'), role: 'user' as const, runId: run.id }, { id: uid('m'), role: 'assistant' as const, runId: run.id }], activeRunId: run.id }
       : {}),
   }))
-  if (!caps) {
-    updateRun(run.id, (r) => ({ ...r, generate: { ...r.generate, status: 'error', error: t().lab.actions.needCodeToAsk } }))
+  if (!q || !caps) {
+    const error = !q ? t().lab.actions.emptyQuestion : t().lab.actions.needCodeToAsk
+    updateRun(run.id, (r) => ({ ...r, generate: { ...r.generate, status: 'error', error } }))
     return getState().runs[run.id] ?? run
   }
   let context: ContextChunk[] = []

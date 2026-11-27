@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { casePassed, normalizeText, scoreAnswer, scoreRetrieval, scoreRun, type CaseResult } from './benchmark'
+import { casePassed, containsTerm, normalizeText, scoreAnswer, scoreRetrieval, scoreRun, type CaseResult } from './benchmark'
 
 const noFlag = () => null
 describe('normalizeText', () => {
@@ -56,6 +56,26 @@ describe('scoreAnswer', () => {
   })
   it('never passes an empty answer', () => {
     expect(scoreAnswer('   ', [], ['x']).pass).toBe(false)
+  })
+  it('does not find a number inside a longer number', () => {
+    expect(scoreAnswer('Zwrot do 1 300 zł zatwierdza kierownik.', [['300 zł']], []).facts[0].found).toBe(false)
+    expect(scoreAnswer('Termin to 114 dni.', [['14 dni']], []).facts[0].found).toBe(false)
+  })
+  it('finds a number next to punctuation', () => {
+    expect(scoreAnswer('Odpowiadamy w ciągu 14 dni.', [['14 dni']], []).facts[0].found).toBe(true)
+    expect(scoreAnswer('Zwrot zatwierdza pracownik (300 zł).', [['300 zł']], []).facts[0].found).toBe(true)
+  })
+  it('matches forbidden strings on the same boundaries', () => {
+    expect(scoreAnswer('Klient: tel. 500 000 111.', [], ['500 000 111']).forbidden).toEqual(['500 000 111'])
+    expect(scoreAnswer('Numer 1 500 000 1110 to nie telefon.', [], ['500 000 111']).forbidden).toEqual([])
+  })
+})
+describe('containsTerm', () => {
+  it('needs a boundary on both sides', () => {
+    expect(containsTerm('partia wstrzymana', 'wstrzymana')).toBe(true)
+    expect(containsTerm('niewstrzymana', 'wstrzymana')).toBe(false)
+    expect(containsTerm('wstrzymanai', 'wstrzymana')).toBe(false)
+    expect(containsTerm('x 300 zł, 300 zł', '300 zł')).toBe(true)
   })
 })
 describe('casePassed and scoreRun', () => {
