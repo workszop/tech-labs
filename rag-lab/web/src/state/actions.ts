@@ -20,7 +20,7 @@ import { buildChatMessages } from '@shared/prompt'
 import type { ContextChunk, Lang, SessionInfo } from '@shared/api-types'
 import { uid } from '@/lib/utils'
 import { buildTestLogCsv } from './testLog'
-import { getState, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
+import { getState, resetProgressState, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
 
 /** A document of the current-language corpus (ids are the same in every language). */
 export function docById(id: string): CompanyDocument | undefined {
@@ -210,6 +210,12 @@ export async function resetKnowledgeBase() {
   jobVectors.clear()
   setState({ job: null, runs: {}, chat: [], activeRunId: null })
   await reloadIndex()
+}
+
+/** "Start again" for the whole app: the vector database and every bit of progress (see resetProgressState). */
+export async function resetAllProgress() {
+  await resetKnowledgeBase()
+  resetProgressState()
 }
 
 // ---------------------------------------------------------------- indexing

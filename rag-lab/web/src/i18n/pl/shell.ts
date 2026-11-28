@@ -52,6 +52,14 @@ export const shell = {
     guideAria: 'Otwórz przewodnik po laboratorium',
     settingsTooltip: 'Ustawienia i zużycie',
     settingsAria: 'Ustawienia',
+    resetAllTooltip: 'Zacznij od nowa',
+    resetAllAria: 'Zacznij od nowa: wyczyść cały postęp',
+    resetAllTitle: 'Zacząć wszystko od nowa?',
+    resetAllBody: 'Aplikacja wróci do stanu początkowego. Usuniemy:',
+    resetAllItems: ['bazę wektorową (wszystkie fragmenty i wektory)', 'rozmowę i wszystkie odpowiedzi', 'postęp w Przewodniku', 'oceny z testów z użytkownikami', 'zaznaczone dokumenty', 'ustawienia (wrócą do domyślnych)'],
+    resetAllKeeps: 'Zostaną: język i kod dostępu. Tego nie da się cofnąć.',
+    resetAllCancel: 'Anuluj',
+    resetAllConfirm: 'Tak, wyczyść wszystko',
   },
 
   activation: {

@@ -35,6 +35,14 @@ export const shell = {
     guideAria: 'Open the lab guide',
     settingsTooltip: 'Settings & usage',
     settingsAria: 'Settings',
+    resetAllTooltip: 'Start again',
+    resetAllAria: 'Start again: clear all progress',
+    resetAllTitle: 'Start everything again?',
+    resetAllBody: 'The app goes back to its starting state. We will delete:',
+    resetAllItems: ['the vector database (all chunks and vectors)', 'the conversation and every answer', 'progress in the Guide', 'ratings from user testing', 'selected documents', 'settings (back to defaults)'],
+    resetAllKeeps: 'Kept: the language and the access code. This cannot be undone.',
+    resetAllCancel: 'Cancel',
+    resetAllConfirm: 'Yes, clear everything',
   },
 
   activation: {

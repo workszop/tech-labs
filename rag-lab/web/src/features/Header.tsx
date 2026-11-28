@@ -1,10 +1,12 @@
-import { Gauge, GraduationCap, KeyRound, Settings } from 'lucide-react'
+import { useState } from 'react'
+import { Gauge, GraduationCap, KeyRound, RotateCcw, Settings, Trash2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Tooltip } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { setUi, useStore } from '@/state/store'
-import { showActivation } from '@/state/actions'
+import { resetAllProgress, showActivation } from '@/state/actions'
 import { useT } from '@/i18n'
 import { Logo } from './Logo'
 import { LangSwitch } from './LangSwitch'
@@ -66,6 +68,7 @@ export function Header() {
               <GraduationCap />
             </Button>
           </Tooltip>
+          <ResetAll />
           <Tooltip content={tx.settingsTooltip}>
             <Button variant="ghost" size="icon" className="hover:bg-muted" onClick={() => setUi({ settingsOpen: true })} aria-label={tx.settingsAria}>
               <Settings />
@@ -74,5 +77,58 @@ export function Header() {
         </div>
       </div>
     </header>
+  )
+}
+
+/** Header button that clears all progress, after an explicit confirmation listing what goes. */
+function ResetAll() {
+  const tx = useT().shell.header
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  return (
+    <>
+      <Tooltip content={tx.resetAllTooltip}>
+        <Button variant="ghost" size="icon" className="hover:bg-muted" onClick={() => setOpen(true)} aria-label={tx.resetAllAria} data-testid="reset-all">
+          <RotateCcw />
+        </Button>
+      </Tooltip>
+      <Dialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
+        <DialogContent data-testid="reset-all-dialog">
+          <DialogHeader>
+            <DialogTitle>{tx.resetAllTitle}</DialogTitle>
+            <DialogDescription>{tx.resetAllBody}</DialogDescription>
+          </DialogHeader>
+          <div className="px-5 pb-3 text-[13.5px] leading-relaxed text-[var(--ink-2)]">
+            <ul className="list-disc space-y-0.5 pl-5">
+              {tx.resetAllItems.map((it) => (
+                <li key={it}>{it}</li>
+              ))}
+            </ul>
+            <p className="mt-2 font-medium text-foreground">{tx.resetAllKeeps}</p>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-dashed px-5 py-3">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
+              {tx.resetAllCancel}
+            </Button>
+            <Button
+              variant="danger"
+              disabled={busy}
+              data-testid="reset-all-confirm"
+              onClick={async () => {
+                setBusy(true)
+                try {
+                  await resetAllProgress()
+                } finally {
+                  setBusy(false)
+                  setOpen(false)
+                }
+              }}
+            >
+              <Trash2 /> {tx.resetAllConfirm}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

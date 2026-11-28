@@ -228,18 +228,8 @@ function loadPrefs(): { settings: Settings; selection: string[] } {
 
 const prefs = typeof window === 'undefined' ? { settings: DEFAULT_SETTINGS, selection: [] } : loadPrefs()
 
-let state: AppState = {
-  auth: { status: 'locked', session: null, notice: null },
-  usage: null,
-  storage: { ready: false, persistent: true, bytes: null, error: null },
-  index: { meta: null, chunks: [], documents: {} },
-  selection: prefs.selection,
-  job: null,
-  runs: {},
-  chat: [],
-  activeRunId: null,
-  settings: prefs.settings,
-  ui: {
+function initialUi(): AppState['ui'] {
+  return {
     centerTab: 'guide',
     mobileTab: 'docs',
     pipelineNode: null,
@@ -253,7 +243,21 @@ let state: AppState = {
     guideDone: [],
     logExported: false,
     userTesting: INITIAL_USER_TESTING,
-  },
+  }
+}
+
+let state: AppState = {
+  auth: { status: 'locked', session: null, notice: null },
+  usage: null,
+  storage: { ready: false, persistent: true, bytes: null, error: null },
+  index: { meta: null, chunks: [], documents: {} },
+  selection: prefs.selection,
+  job: null,
+  runs: {},
+  chat: [],
+  activeRunId: null,
+  settings: prefs.settings,
+  ui: initialUi(),
 }
 
 const listeners = new Set<() => void>()
@@ -294,6 +298,21 @@ export function advanceUserTesting() {
     const guideDone = round === 3 && !s.ui.guideDone.includes('usertest') ? [...s.ui.guideDone, 'usertest'] : s.ui.guideDone
     return { ui: { ...s.ui, guideDone, userTesting: { ...u, round } } }
   })
+}
+/**
+ * "Start again": everything the team did goes back to the start, except the language and the access
+ * session. The vector database itself is cleared by `resetAllProgress` (actions), which calls this.
+ */
+export function resetProgressState() {
+  setState((s) => ({
+    selection: [],
+    job: null,
+    runs: {},
+    chat: [],
+    activeRunId: null,
+    settings: { ...DEFAULT_SETTINGS, lang: s.settings.lang },
+    ui: initialUi(),
+  }))
 }
 export function setSettings(patch: Partial<Settings>) {
   setState((s) => ({ settings: { ...s.settings, ...patch } }))
