@@ -7,6 +7,7 @@ import { ask, previewChunking, selectFolder, toggleSelect } from '@/state/action
 import { goTo } from '@/state/nav'
 import { answerModePatch } from '@/state/answerMode'
 import { previewShows } from '@/state/membership'
+import { hasFullRun } from '@/state/benchmark'
 import { useT, type Dict } from '@/i18n'
 import { Badge } from '@/components/ui/badge'
 import { IconBadge, LearnCard, SectionCard } from './common'
@@ -95,8 +96,8 @@ const STEPS: GuideStep[] = [
   {
     id: 'tests',
     icon: <FlaskConical />,
-    // One full run: every active case planned and the run finished.
-    done: (s) => s.bench.runs.some((r) => r.status === 'done' && r.caseIds.length === r.totalActive),
+    // One full run, by the same definition the benchmark screens use.
+    done: (s) => hasFullRun(s.bench.runs),
     run: () => goTo('benchmark'),
     topic: 'failures',
   },

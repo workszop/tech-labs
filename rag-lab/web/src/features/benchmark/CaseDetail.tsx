@@ -5,6 +5,7 @@ import type { BenchmarkCase, CaseResult } from '@/rag/benchmark'
 import { useStore, type BenchCaseInfo } from '@/state/store'
 import { useT } from '@/i18n'
 import { ContextList } from '../ContextList'
+import { decidedByDocuments } from './verdict'
 import { RunDetails } from '../RetrievalView'
 import { Alert, QuestionQuote } from '../common'
 
@@ -44,7 +45,7 @@ export function CaseDetail({ c, info, result, tech }: { c?: BenchmarkCase; info?
         <div>
           <div className={H}>{tx.keyFacts}</div>
           {result.answer.facts.length === 0 ? (
-            <p className="text-[12.5px] text-muted-foreground">{result.answer.pass === null ? tx.noKeyFacts : tx.noFactsListed}</p>
+            <p className="text-[12.5px] text-muted-foreground">{decidedByDocuments(result) ? tx.decidedByDocuments : result.answer.pass === null ? tx.noKeyFacts : tx.noFactsListed}</p>
           ) : (
             <ul className="flex flex-wrap gap-1.5" data-testid="bench-facts">
               {result.answer.facts.map((f, i) => (

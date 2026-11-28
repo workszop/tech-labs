@@ -4,23 +4,32 @@ import { Button } from '@/components/ui/button'
 import { CASE_KINDS, type CaseKind } from '@/rag/benchmark'
 import { canRun, cancelBenchmark, plannedCases, runBenchmark, type RunFilter } from '@/state/benchmark'
 import { goTo } from '@/state/nav'
-import { useStore } from '@/state/store'
+import { useStore, type AppState } from '@/state/store'
 import { useT } from '@/i18n'
 import { SEG, SectionCard, segItem } from '../common'
+
+const runningRun = (st: AppState) => (st.bench.currentRunId ? st.bench.runs.find((r) => r.id === st.bench.currentRunId) : undefined)
 
 type Scope = 'all' | 'kind' | 'ticked'
 const SCOPES: Scope[] = ['all', 'kind', 'ticked']
 
 /** Scope, cost and the run button; while a run is in progress, its progress and a stop button. */
 export function RunBar({ onStart }: { onStart: () => void }) {
-  const s = useStore((st) => st)
   const tx = useT().lab.benchmark
   const [scope, setScope] = useState<Scope>('all')
   const [kind, setKind] = useState<CaseKind>('ordinary')
-  const filter: RunFilter = scope === 'kind' ? { kind } : scope === 'ticked' ? { ids: s.bench.ticked } : {}
-  const check = canRun(filter, s)
-  const current = s.bench.currentRunId ? s.bench.runs.find((r) => r.id === s.bench.currentRunId) : null
-  const cases = plannedCases(filter, s).length
+  const ticked = useStore((st) => st.bench.ticked)
+  const filter: RunFilter = scope === 'kind' ? { kind } : scope === 'ticked' ? { ids: ticked } : {}
+  // Selected as one string, so the bar re-renders only when the check itself changes (not on every token).
+  const checkKey = useStore((st) => {
+    const c = canRun(filter, st)
+    return JSON.stringify([c.ok, c.reason ?? null, c.requests, c.left, plannedCases(filter, st).length])
+  })
+  const [ok, reason, requests, left, cases] = JSON.parse(checkKey) as [boolean, ReturnType<typeof canRun>['reason'] | null, number, number | null, number]
+  const check = { ok, reason: reason ?? undefined, requests, left }
+  const done = useStore((st) => runningRun(st)?.results.length ?? null)
+  const total = useStore((st) => runningRun(st)?.caseIds.length ?? null)
+  const current = done !== null && total !== null ? { done, total } : null
   return (
     <SectionCard as="h2" icon={<Play />} title={tx.runBarTitle} data-testid="bench-runbar" data-scope={scope}>
       <div className="space-y-3">
@@ -45,7 +54,7 @@ export function RunBar({ onStart }: { onStart: () => void }) {
         {current ? (
           <div className="flex flex-wrap items-center gap-3" data-testid="bench-progress">
             <span className="flex items-center gap-2 text-[13px]">
-              <Loader2 className="size-4 animate-spin" /> {tx.progress(current.results.length, current.caseIds.length)}
+              <Loader2 className="size-4 animate-spin" /> {tx.progress(current.done, current.total)}
             </span>
             <Button variant="outline" size="sm" onClick={cancelBenchmark} data-testid="bench-cancel">
               <Square /> {tx.cancel}

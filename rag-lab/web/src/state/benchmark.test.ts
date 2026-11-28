@@ -20,7 +20,7 @@ import { getCorpus } from '@/data/corpus'
 import { CASE_KINDS, containsTerm, type BenchmarkCase } from '@/rag/benchmark'
 import { openVectorStore, type ChunkRecord, type IndexedDocRecord } from '@/rag/db'
 import { benchmarkRunning, buildIndex, docHash, docText, initApp, resetKnowledgeBase, setLang, toggleSelect } from './actions'
-import { activeCases, allCases, canRun, cancelBenchmark, deleteCase, plannedCases, runBenchmark, runCost, saveCase, setOverride, toggleCase } from './benchmark'
+import { activeCases, allCases, canRun, cancelBenchmark, deleteCase, hasFullRun, plannedCases, runBenchmark, runCost, saveCase, setOverride, setTicked, toggleCase } from './benchmark'
 import { partMark } from './nav'
 import { DEFAULT_SETTINGS, getState, setState, type BenchmarkRun } from './store'
 
@@ -281,6 +281,34 @@ describe('benchmark traces', () => {
     const traces = (r: BenchmarkRun) => r.results.map((x) => x.queryRunId!)
     expect(Object.keys(getState().runs).sort()).toEqual([chatRun, ...traces(second), ...traces(third)].sort())
     expect(traces(first).some((id) => getState().runs[id])).toBe(false)
+  })
+})
+
+describe('a full run (guide step 6)', () => {
+  it('a run that ended done with one case in error is not full', async () => {
+    vi.mocked(api.chat).mockImplementationOnce(chatOk as never).mockRejectedValueOnce(new ApiError('upstream_unavailable', 'Model down.', 502))
+    await runBenchmark()
+    const run = getState().bench.runs.at(-1)!
+    expect(run.status).toBe('done')
+    expect(hasFullRun(getState().bench.runs)).toBe(false)
+  })
+  it('a run of one kind is not full', async () => {
+    await runBenchmark({ kind: 'restricted' })
+    expect(hasFullRun(getState().bench.runs)).toBe(false)
+  })
+  it('a run where every active case finished is full', async () => {
+    await runBenchmark()
+    expect(hasFullRun(getState().bench.runs)).toBe(true)
+  })
+})
+
+describe('ticked cases', () => {
+  it('ticks and unticks a case once', () => {
+    setTicked('b-ordinary-1', true)
+    setTicked('b-ordinary-1', true)
+    expect(getState().bench.ticked).toEqual(['b-ordinary-1'])
+    setTicked('b-ordinary-1', false)
+    expect(getState().bench.ticked).toEqual([])
   })
 })
 

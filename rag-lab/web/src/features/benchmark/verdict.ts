@@ -14,6 +14,14 @@ export function caseVerdict(r: CaseResult): CaseVerdict {
   return casePassed(r) ? 'pass' : 'fail'
 }
 
+/**
+ * A finished case that failed on its documents while its answer had nothing to check automatically:
+ * the documents decided it, the answer was not checked (and it does not wait for the student's verdict).
+ */
+export function decidedByDocuments(r: CaseResult): boolean {
+  return r.status === 'done' && !r.override && r.answer?.pass === null && r.retrieval?.pass === false
+}
+
 export interface RunSummary extends RunScore {
   /** Finished cases that wait for the student's verdict. */
   waiting: number
@@ -36,9 +44,9 @@ export type VerdictLine = { key: 'goodEnough' } | { key: 'partial' } | { key: 'n
 /** The verdict line under the score: good enough only for a full run where every case passed. */
 export function verdictLines(s: RunSummary): VerdictLine[] {
   if (s.goodEnough) return [{ key: 'goodEnough' }]
-  if (!s.full) return [{ key: 'partial' }]
   const lines: VerdictLine[] = []
-  if (s.failedKinds.length) lines.push({ key: 'notYet', kinds: s.failedKinds })
+  if (!s.full) lines.push({ key: 'partial' })
+  else if (s.failedKinds.length) lines.push({ key: 'notYet', kinds: s.failedKinds })
   if (s.waiting) lines.push({ key: 'waiting', n: s.waiting })
   return lines
 }

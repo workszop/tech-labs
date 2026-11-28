@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AnswerScore, CaseKind, CaseResult, RetrievalScore } from '@/rag/benchmark'
-import { caseVerdict, runSummary, verdictLines } from './verdict'
+import { caseVerdict, decidedByDocuments, runSummary, verdictLines } from './verdict'
 
 const retr = (pass: boolean, applicable = true): RetrievalScore => ({ applicable, expected: [], share: pass ? 1 : 0, pass, warnings: [] })
 const ans = (pass: boolean | null): AnswerScore => ({ facts: [], forbidden: [], pass })
@@ -58,9 +58,25 @@ describe('run summary', () => {
     expect(s).toMatchObject({ passed: 1, done: 1, totalActive: 4, full: false, goodEnough: false })
     expect(verdictLines(s)).toEqual([{ key: 'partial' }])
   })
+  it('a partial run also says how many of its cases wait for a verdict', () => {
+    const s = runSummary([done('m', true, null), done('r', true, true)], kindOf, 2, 4)
+    expect(verdictLines(s)).toEqual([{ key: 'partial' }, { key: 'waiting', n: 1 }])
+  })
   it('a full plan cut short by an error is partial', () => {
     const s = runSummary([done('o', true, true), other('e', 'error'), other('m', 'skipped'), other('r', 'skipped')], kindOf, 4, 4)
     expect(s.full).toBe(false)
     expect(verdictLines(s)).toEqual([{ key: 'partial' }])
+  })
+})
+
+describe('documents decided the case', () => {
+  it('when retrieval failed and the answer had nothing to check', () => {
+    expect(decidedByDocuments(done('m', false, null))).toBe(true)
+  })
+  it('not when the answer was checked, retrieval passed, an override exists or the case did not finish', () => {
+    expect(decidedByDocuments(done('o', false, false))).toBe(false)
+    expect(decidedByDocuments(done('m', true, null))).toBe(false)
+    expect(decidedByDocuments(done('m', false, null, 'pass'))).toBe(false)
+    expect(decidedByDocuments(other('m', 'error'))).toBe(false)
   })
 })

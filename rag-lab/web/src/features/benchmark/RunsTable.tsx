@@ -1,8 +1,9 @@
+import { useMemo } from 'react'
 import { Download, History } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { downloadRunsCsv } from '@/state/benchmark'
-import { useStore } from '@/state/store'
+import { getState, useStore } from '@/state/store'
 import { useT } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { SectionCard, fmtDateTime } from '../common'
@@ -14,10 +15,16 @@ const TD = 'whitespace-nowrap px-2.5 py-2 tabular-nums'
 
 /** One row per run, newest first, with its settings and score. A row shows that run in the case table. */
 export function RunsTable({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) {
-  const s = useStore((st) => st)
+  const allRuns = useStore((st) => st.bench.runs)
+  const lang = useStore((st) => st.settings.lang)
+  const customCases = useStore((st) => st.bench.customCases)
   const dict = useT().lab
   const tx = dict.benchmark
-  const runs = [...s.bench.runs].reverse()
+  // Newest first, each with its score; recomputed only when the runs (or the cases behind their kinds) change.
+  const runs = useMemo(
+    () => [...allRuns].reverse().map((r) => ({ r, sum: runSummary(r.results, kindLookup(r, getState()), r.caseIds.length, r.totalActive) })),
+    [allRuns, lang, customCases],
+  )
   return (
     <SectionCard
       icon={<History />}
@@ -44,8 +51,7 @@ export function RunsTable({ selectedId, onSelect }: { selectedId: string | null;
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
-              {runs.map((r) => {
-                const sum = runSummary(r.results, kindLookup(r, s), r.caseIds.length, r.totalActive)
+              {runs.map(({ r, sum }) => {
                 const selected = r.id === selectedId
                 const time = fmtDateTime(r.createdAt)
                 return (

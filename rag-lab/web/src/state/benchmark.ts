@@ -9,7 +9,7 @@ import { getCorpus } from '@/data/corpus'
 import { docFlag } from '@/data/docFlag'
 import { t } from '@/i18n'
 import { uid } from '@/lib/utils'
-import { scoreAnswer, scoreRetrieval, type BenchmarkCase, type CaseKind, type CaseResult } from '@/rag/benchmark'
+import { scoreAnswer, scoreRetrieval, scoreRun, type BenchmarkCase, type CaseKind, type CaseResult } from '@/rag/benchmark'
 import { abortBenchmark, benchmarkSignal, currentBuildPlan, indexSnapshot, runQuery, vectorStore } from './actions'
 import { buildRunsCsv } from './benchLog'
 import { pruneBenchTraces } from './benchTraces'
@@ -203,6 +203,19 @@ export async function deleteCase(id: string): Promise<void> {
   setState((s) => ({ bench: { ...s.bench, customCases: s.bench.customCases.filter((c) => c.id !== id), ticked: s.bench.ticked.filter((x) => x !== id) } }))
   if (getState().settings.benchOff.includes(id)) setSettings({ benchOff: getState().settings.benchOff.filter((x) => x !== id) })
   await vectorStore()?.deleteBenchCase(id).catch(() => undefined)
+}
+
+/** Tick or untick a case for a run of the ticked cases. */
+export function setTicked(id: string, on: boolean): void {
+  setState((s) => ({ bench: { ...s.bench, ticked: on ? [...new Set([...s.bench.ticked, id])] : s.bench.ticked.filter((x) => x !== id) } }))
+}
+
+/**
+ * Has any run asked every active case to the end? The same "full" the screens use (scoreRun): every
+ * active case planned and finished; a case in error makes the run partial even when it ended 'done'.
+ */
+export function hasFullRun(runs: BenchmarkRun[]): boolean {
+  return runs.some((r) => r.status === 'done' && scoreRun(r.results, () => 'ordinary', r.caseIds.length, r.totalActive).full)
 }
 
 export function toggleCase(id: string, active: boolean): void {

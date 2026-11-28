@@ -1,34 +1,35 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, ClipboardList, Clock, Eye, Pencil, Undo2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import type { BenchmarkCase, CaseResult } from '@/rag/benchmark'
-import { allCases, setOverride, toggleCase } from '@/state/benchmark'
-import { setState, useStore, type BenchmarkRun } from '@/state/store'
+import { allCases, setOverride, setTicked, toggleCase } from '@/state/benchmark'
+import { getState, useStore, type BenchmarkRun } from '@/state/store'
 import { useT } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { SectionCard, fmtDateTime } from '../common'
 import { CaseDetail } from './CaseDetail'
 import { KindBadge, VerdictMark, kindLookup } from './shared'
-import { caseVerdict, runSummary, verdictLines } from './verdict'
-
-function setTicked(id: string, on: boolean) {
-  setState((s) => ({ bench: { ...s.bench, ticked: on ? [...new Set([...s.bench.ticked, id])] : s.bench.ticked.filter((x) => x !== id) } }))
-}
+import { caseVerdict, decidedByDocuments, runSummary, verdictLines } from './verdict'
 
 /** One row per case; the marks come from `run` (the latest run, or the one picked in the runs table). */
 export function CaseTable({ run, onOpenCase }: { run: BenchmarkRun | null; onOpenCase: (c: BenchmarkCase) => void }) {
-  const s = useStore((st) => st)
-  const tech = s.settings.view === 'tech'
+  // Only what the table shows: a streamed token of a running question must not re-render it.
+  const tech = useStore((st) => st.settings.view === 'tech')
+  const lang = useStore((st) => st.settings.lang)
+  const customCases = useStore((st) => st.bench.customCases)
+  const benchOff = useStore((st) => st.settings.benchOff)
+  const tickedIds = useStore((st) => st.bench.ticked)
   const tx = useT().lab.benchmark
   const [open, setOpen] = useState<string[]>([])
-  const cases = allCases(s)
-  const off = new Set(s.settings.benchOff)
-  const ticked = new Set(s.bench.ticked)
-  const byCase = new Map((run?.results ?? []).map((r) => [r.caseId, r]))
-  const summary = run ? runSummary(run.results, kindLookup(run, s), run.caseIds.length, run.totalActive) : null
+  // allCases and kindLookup read only the language and the custom cases (the deps).
+  const cases = useMemo(() => allCases(getState()), [lang, customCases])
+  const off = useMemo(() => new Set(benchOff), [benchOff])
+  const ticked = useMemo(() => new Set(tickedIds), [tickedIds])
+  const byCase = useMemo(() => new Map((run?.results ?? []).map((r) => [r.caseId, r])), [run])
+  const summary = useMemo(() => (run ? runSummary(run.results, kindLookup(run, getState()), run.caseIds.length, run.totalActive) : null), [run, lang, customCases])
   const lines = summary && run?.status !== 'running' ? verdictLines(summary) : []
   return (
     <SectionCard
@@ -116,9 +117,13 @@ function Marks({ r }: { r?: CaseResult }) {
           </span>
           <span className="flex items-center gap-1 text-[11.5px] text-muted-foreground" title={tx.cols.answer}>
             {tx.cols.answer}:
-            <Badge variant={r.answer?.pass === true ? 'ok' : r.answer?.pass === false ? 'danger' : 'warn'} data-testid="bench-answer" data-pass={String(r.answer?.pass ?? null)}>
-              {r.answer?.pass === true ? tx.mark.pass : r.answer?.pass === false ? tx.mark.fail : <><Clock /> {tx.mark.yourVerdict}</>}
-            </Badge>
+            {decidedByDocuments(r) ? (
+              <Badge data-testid="bench-answer" data-pass="null" data-decided="documents">{tx.mark.byDocuments}</Badge>
+            ) : (
+              <Badge variant={r.answer?.pass === true ? 'ok' : r.answer?.pass === false ? 'danger' : 'warn'} data-testid="bench-answer" data-pass={String(r.answer?.pass ?? null)}>
+                {r.answer?.pass === true ? tx.mark.pass : r.answer?.pass === false ? tx.mark.fail : <><Clock /> {tx.mark.yourVerdict}</>}
+              </Badge>
+            )}
           </span>
         </>
       )}
