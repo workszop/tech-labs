@@ -85,7 +85,7 @@ await step('A: valid code activates the app', async () => {
 
 await step('C: select three documents and build a real vector index', async () => {
   for (const f of ['Complaints and customers', 'Quality and batches', 'Production and seamers']) await page.getByLabel(`Expand ${f}`).click()
-  for (const d of ['Select PROCES-04 Complaint handling', 'Select PROCES-06 Batch hold and release', 'Select PROCES-01 Can seam inspection']) await page.getByLabel(d, { exact: true }).click()
+  for (const d of ['Select Complaint handling', 'Select Batch hold and release', 'Select Can seam inspection']) await page.getByLabel(d, { exact: true }).click()
   await page.getByTestId('build-index').click()
   await page.getByText('Index summary').waitFor()
   await page.waitForFunction(() => document.body.innerText.includes('3 indexed'), null, { timeout: 30000 })
@@ -103,7 +103,7 @@ await step('D+E: ask a question → real cosine ranking, streamed answer with ci
   const ranked = page.getByTestId('ranked-results')
   await ranked.waitFor()
   const first = await ranked.locator('li').first().innerText()
-  assert(/Complaint handling/.test(first), `top result should be PROCES-04 Complaint handling, got: ${first.slice(0, 80)}`)
+  assert(/Complaint handling/.test(first), `top result should be Complaint handling, got: ${first.slice(0, 80)}`)
   assert(/0\.\d{3}/.test(first), 'scores visible')
   await shot('03-retrieval')
 })

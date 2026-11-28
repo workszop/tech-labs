@@ -27,7 +27,7 @@ export const lab = {
     overlapHint: 'Whole sentences up to this many tokens are repeated',
     labelsTitle: 'Chunk label',
     labelSection: 'Document title and section heading',
-    labelSectionHint: 'Puts back the heading a chunk was cut away from, e.g. “PROCES-04 Complaint handling › Food safety hazard”.',
+    labelSectionHint: 'Puts back the heading a chunk was cut away from, e.g. “Complaint handling › Food safety hazard”.',
     labelMeta: 'Version, date, status and owner',
     labelMetaHint: 'Every chunk says which version it comes from and whether it is still current.',
     labelWords: { version: 'version', effectiveFrom: 'effective', current: 'current', outdated: 'OUTDATED', draft: 'DRAFT, NOT APPROVED', owner: 'owner' },
