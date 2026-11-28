@@ -66,6 +66,8 @@ export interface Capabilities {
   maxQuestionChars: number
   maxOutputTokens: NumberRange
   temperature: NumberRange
+  /** The Worker accepts `profile: 'own'` and `instructions` on /api/chat. Missing on older Workers. */
+  ownProfile?: boolean
   streaming: boolean
 }
 
@@ -134,6 +136,9 @@ export interface ContextChunk {
 
 export type ChatMode = 'rag' | 'no-rag'
 
+/** Which system prompt the Worker uses: the Rybex case (default) or the user's own documents. */
+export type PromptProfile = 'rybex' | 'own'
+
 /** POST /api/chat */
 /** Language of the documents, the prompt template and the answer. */
 export type Lang = 'pl' | 'en'
@@ -149,6 +154,10 @@ export interface ChatRequest {
   maxTokens?: number
   /** Default true. When true the response is text/event-stream (see ChatStreamEvent). */
   stream?: boolean
+  /** Default 'rybex'. */
+  profile?: PromptProfile
+  /** Team instructions, only with profile 'own' (max 2000 characters). */
+  instructions?: string
 }
 
 export interface ChatMessage {
