@@ -78,3 +78,16 @@ describe('fitToWorker', () => {
     expect(fitContext(ranked, budget, 0).kept).toHaveLength(3) // the old cl100k count would keep all three
   })
 })
+
+describe('polish from review (state)', () => {
+  it('finds chunks over the per-input embedding limit by the Worker estimate', async () => {
+    const { oversizedChunks } = await import('./state')
+    expect(oversizedChunks([{ ...chunk('a', 1500), text: 'x'.repeat(8004) }, { ...chunk('b', 300), text: 'x'.repeat(1200) }], 2000).map((c) => c.id)).toEqual(['a'])
+  })
+
+  it('estimates the embedding cost from the price per million tokens', async () => {
+    const { embedCostUsd } = await import('./state')
+    expect(embedCostUsd(500_000, 0.02)).toBeCloseTo(0.01)
+    expect(embedCostUsd(500_000, undefined)).toBeNull()
+  })
+})

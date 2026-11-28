@@ -68,6 +68,8 @@ export interface Capabilities {
   temperature: NumberRange
   /** The Worker accepts `profile: 'own'` and `instructions` on /api/chat. Missing on older Workers. */
   ownProfile?: boolean
+  /** USD per 1M embedding tokens, for cost estimates. Missing on older Workers. */
+  embeddingPricePerMTok?: number
   streaming: boolean
 }
 

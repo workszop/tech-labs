@@ -214,6 +214,7 @@ export const shell = {
         tooLong: 'the text is longer than 60,000 characters (20 pages)',
         noText: 'no text found (a scanned PDF needs OCR, which the lab does not do)',
         unreadable: 'the file could not be read',
+        duplicate: 'this file is already on the list',
       },
       empty: 'No files yet.',
     },
@@ -244,6 +245,8 @@ export const shell = {
       confirmBody: (chunks: number, tokens: string, _count: number) => `${chunks} chunks (~${tokens} tokens) go to the embedding model through OpenRouter. This uses tokens from your access code.`,
       confirm: 'Create vectors',
       cancel: 'Cancel',
+      cost: (usd: string) => `estimated cost: ${usd}`,
+      oversized: (n: number, max: number) => `${n} ${n === 1 ? 'chunk is' : 'chunks are'} over the embedding model limit (${max} tokens by the server's count, characters / 4). Lower the chunk size and split again.`,
     },
     ask: {
       title: 'Instructions and questions',
@@ -269,6 +272,8 @@ export const shell = {
     },
     errors: {
       noVectors: 'There are no vectors yet: create them in step 3.',
+      payloadTooLarge: 'The server refused a request that was too large. Shorten the question or the instructions, use smaller chunks or a lower top-k.',
+      questionTooLong: (max: number) => `A question can have at most ${max} characters.`,
       tooLarge: 'Not even one chunk fits in the server’s prompt limit. Split the documents into smaller chunks.',
     },
   },

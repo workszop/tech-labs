@@ -10,9 +10,9 @@ import { showActivation } from '@/state/actions'
 import { CHUNK_LIMITS } from '@/rag/chunker'
 import { MAX_INSTRUCTIONS_CHARS } from '@shared/prompt'
 import { useT } from '@/i18n'
-import { Alert, QuestionQuote, SectionCard, fmtNumber } from '../common'
+import { Alert, QuestionQuote, SectionCard, fmtNumber, fmtUsd } from '../common'
 import { OWN_LIMITS, type OwnDoc } from '@/own/files'
-import { askLock, estimateEmbedTokens, needsRebuild, needsResplit, ownAskReady, type OwnRun } from '@/own/state'
+import { askLock, embedCostUsd, estimateEmbedTokens, needsRebuild, needsResplit, oversizedChunks, ownAskReady, type OwnRun } from '@/own/state'
 import { addOwnFiles, askOwn, embedOwn, removeOwnDoc, setOwnChunking, setOwnInstructions, setOwnTopK, splitOwn, stopOwnEmbedding } from '@/own/actions'
 
 /**
@@ -70,7 +70,7 @@ function FilesStep() {
         }}
       >
         <input ref={input} type="file" multiple accept=".pdf,.docx,.txt,.md" className="hidden" onChange={(e) => { onFiles(e.target.files); e.target.value = '' }} data-testid="own-file-input" />
-        <Button variant="accent" size="sm" onClick={() => input.current?.click()} disabled={full || own.parsing}>
+        <Button variant="accent" size="sm" onClick={() => input.current?.click()} disabled={full}>
           <Upload /> {own.parsing ? tx.files.reading : tx.files.pick}
         </Button>
         <span className="text-[12.5px] text-muted-foreground">{tx.files.drop}</span>
@@ -99,7 +99,7 @@ function FilesStep() {
       )}
 
       {own.rejected.length > 0 && (
-        <div className="mt-3" data-testid="own-rejected">
+        <div className="mt-3" data-testid="own-rejected" role="status" aria-live="polite">
           <div className="mb-1 text-[12.5px] font-semibold">{tx.files.rejectedTitle}</div>
           <ul className="space-y-0.5 text-[12.5px]">
             {own.rejected.map((r, i) => (
@@ -212,15 +212,24 @@ function EmbedStep() {
   const running = own.embed.status === 'running'
   const canSplitChunks = !!own.split && !needsResplit(own)
   const stale = own.indexed && needsRebuild(own)
+  const lock = askLock(status, caps)
+  const oversized = caps ? oversizedChunks(own.chunks, caps.maxEmbeddingInputTokens).length : 0
+  const cost = embedCostUsd(tokens, caps?.embeddingPricePerMTok)
   return (
     <SectionCard icon={<Cpu />} title={stepTitle(tx.embed.title, tx.step(3))} right={caps ? tx.embed.model(caps.embeddingModel) : undefined} data-own-step="embed" data-status={own.embed.status}>
       {!canSplitChunks ? (
         <p className="text-[13px] text-muted-foreground">{tx.embed.needSplit}</p>
       ) : (
         <>
-          <p className="text-[13.5px]">{tx.embed.estimate(own.chunks.length, fmtNumber(tokens), tokens)}</p>
+          <p className="text-[13.5px]" data-testid="own-embed-estimate">
+            {tx.embed.estimate(own.chunks.length, fmtNumber(tokens), tokens)}
+            {cost != null && <span className="text-muted-foreground"> · {tx.embed.cost(fmtUsd(cost))}</span>}
+          </p>
+          {oversized > 0 && caps && <Alert tone="warn" className="mt-2">{tx.embed.oversized(oversized, caps.maxEmbeddingInputTokens)}</Alert>}
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            {status !== 'active' ? (
+            {lock === 'worker' ? (
+              <div data-testid="own-worker-lock-embed"><Alert tone="warn">{tx.ask.lockedWorker}</Alert></div>
+            ) : status !== 'active' ? (
               <>
                 <Button variant="accent" size="sm" onClick={showActivation}>
                   <KeyRound /> {tx.ask.activate}
@@ -232,7 +241,7 @@ function EmbedStep() {
                 <Square /> {tx.embed.stop}
               </Button>
             ) : (
-              <Button variant={own.embed.status === 'done' && !stale ? 'outline' : 'accent'} size="sm" onClick={() => setConfirm(true)} data-testid="own-embed">
+              <Button variant={own.embed.status === 'done' && !stale ? 'outline' : 'accent'} size="sm" onClick={() => setConfirm(true)} disabled={oversized > 0} data-testid="own-embed">
                 <Cpu /> {own.embed.status === 'done' ? tx.embed.again : tx.embed.run}
               </Button>
             )}
@@ -339,7 +348,7 @@ function AskStep() {
             send()
           }}
         >
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx.ask.questionPlaceholder} aria-label={tx.ask.question} className="min-w-0 flex-1 rounded-lg border border-input bg-card px-3 py-2 text-[13.5px]" data-testid="own-question" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={caps?.maxQuestionChars} placeholder={tx.ask.questionPlaceholder} aria-label={tx.ask.question} className="min-w-0 flex-1 rounded-lg border border-input bg-card px-3 py-2 text-[13.5px]" data-testid="own-question" />
           <Button type="submit" variant="accent" disabled={!q.trim() || busy} data-testid="own-ask">
             <Send /> {tx.ask.send}
           </Button>
@@ -366,7 +375,7 @@ function RunCard({ run }: { run: OwnRun }) {
       {run.status === 'error' ? (
         <Alert tone="danger">{run.error}</Alert>
       ) : (
-        <p className="whitespace-pre-wrap text-[14px] leading-relaxed" data-testid="own-answer">{run.answer || (run.status === 'running' ? tx.thinking : '')}</p>
+        <p className="whitespace-pre-wrap text-[14px] leading-relaxed" data-testid="own-answer" aria-live="polite" aria-busy={run.status === 'running'}>{run.answer || (run.status === 'running' ? tx.thinking : '')}</p>
       )}
       {run.sent.length > 0 && (
         <div>

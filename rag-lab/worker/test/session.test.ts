@@ -13,6 +13,7 @@ describe('sessions', () => {
     expect(info.label).toBe('S1')
     expect(info.capabilities.embeddingDimensions).toBe(256)
     expect(info.capabilities.ownProfile).toBe(true)
+    expect(info.capabilities.embeddingPricePerMTok).toBe(0.02)
   })
 
   it('sessionRef is the first 8 chars of the token hash (session id)', async () => {

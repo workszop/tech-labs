@@ -234,6 +234,7 @@ export const shell = {
         tooLong: 'tekst ma więcej niż 60 000 znaków (20 stron)',
         noText: 'nie znaleziono tekstu (zeskanowany PDF wymaga OCR, którego laboratorium nie robi)',
         unreadable: 'nie udało się odczytać pliku',
+        duplicate: 'ten plik jest już na liście',
       },
       empty: 'Nie ma jeszcze plików.',
     },
@@ -264,6 +265,8 @@ export const shell = {
       confirmBody: (chunks: number, tokens: string, count: number) => `Do modelu wektorów przez OpenRouter trafi: ${chunks} ${fragmenty(chunks)} (~${tokens} ${tokeny(count)}). Zużyje to tokeny z Waszego kodu dostępu.`,
       confirm: 'Utwórz wektory',
       cancel: 'Anuluj',
+      cost: (usd: string) => `szacowany koszt: ${usd}`,
+      oversized: (n: number, max: number) => `${n} ${fragmenty(n)} przekracza limit modelu wektorów (${max} tokenów według serwera, liczonych jako znaki / 4). Zmniejszcie rozmiar fragmentu i podzielcie jeszcze raz.`,
     },
     ask: {
       title: 'Instrukcje i pytania',
@@ -289,6 +292,8 @@ export const shell = {
     },
     errors: {
       noVectors: 'Nie ma jeszcze wektorów: utwórzcie je w kroku 3.',
+      payloadTooLarge: 'Serwer odrzucił zbyt duże zapytanie. Skróćcie pytanie albo instrukcje, użyjcie mniejszych fragmentów albo mniejszego top-k.',
+      questionTooLong: (max: number) => `Pytanie może mieć najwyżej ${max} znaków.`,
       tooLarge: 'Nawet jeden fragment nie mieści się w limicie promptu serwera. Podzielcie dokumenty na mniejsze fragmenty.',
     },
   },

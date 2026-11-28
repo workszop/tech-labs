@@ -38,6 +38,7 @@ export function capabilities(cfg: Config): Capabilities {
     temperature: { ...LIMITS.temperature },
     streaming: true,
     ownProfile: true,
+    embeddingPricePerMTok: cfg.embeddingPricePerMTok,
   }
 }
 

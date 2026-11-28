@@ -16,7 +16,7 @@ export interface OwnDoc {
   text: string
 }
 
-export type RejectReason = 'tooMany' | 'tooBig' | 'badType' | 'tooManyPages' | 'tooLong' | 'noText' | 'unreadable'
+export type RejectReason = 'tooMany' | 'tooBig' | 'badType' | 'tooManyPages' | 'tooLong' | 'noText' | 'unreadable' | 'duplicate'
 
 export interface Rejected {
   name: string
@@ -43,8 +43,27 @@ export function checkPreParse(file: { name: string; size: number; type: string }
 export function checkParsed(kind: OwnFileKind, pages: number, text: string): RejectReason | null {
   if (kind === 'pdf' && pages > OWN_LIMITS.maxPdfPages) return 'tooManyPages'
   if (kind !== 'pdf' && text.length > OWN_LIMITS.maxChars) return 'tooLong'
-  if (text.trim().length < 20) return 'noText'
+  // A scan has (almost) no text layer; page numbers or a stamped footer must not pass as text.
+  const minChars = kind === 'pdf' ? Math.max(20, 30 * pages) : 20
+  if (text.trim().length < minChars) return 'noText'
   return null
+}
+
+/** UTF-8 when valid, otherwise Windows-1250 (Polish text files saved by older Windows programs). */
+export function decodeText(bytes: Uint8Array): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/, '')
+  } catch {
+    return new TextDecoder('windows-1250').decode(bytes)
+  }
+}
+
+/** File names go into the prompt as the source title; the Worker caps that field at 300 characters. */
+export function shortDocName(name: string, max = 200): string {
+  if (name.length <= max) return name
+  const dot = name.lastIndexOf('.')
+  const ext = dot > 0 && name.length - dot <= 10 ? name.slice(dot) : ''
+  return `${name.slice(0, max - ext.length - 1)}…${ext}`
 }
 
 const textPages = (chars: number) => Math.max(1, Math.ceil(chars / OWN_LIMITS.charsPerPage))
@@ -56,11 +75,15 @@ async function parsePdf(file: File): Promise<{ text: string; pages: number }> {
   }
   const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) })
   const doc = await task.promise
+  // Over the page limit: the count alone rejects the file, no need to read any text.
+  if (doc.numPages > OWN_LIMITS.maxPdfPages) {
+    void task.destroy()
+    return { text: '', pages: doc.numPages }
+  }
   try {
     const pages: string[] = []
     // Past the limit there is no need to read further; the page count alone rejects the file.
-    const read = Math.min(doc.numPages, OWN_LIMITS.maxPdfPages)
-    for (let i = 1; i <= read; i++) {
+    for (let i = 1; i <= doc.numPages; i++) {
       const content = await (await doc.getPage(i)).getTextContent()
       pages.push(content.items.map((it) => ('str' in it ? it.str + (it.hasEOL ? '\n' : ' ') : '')).join('').replace(/[ \t]+\n/g, '\n').trim())
     }
@@ -79,7 +102,7 @@ async function parseDocx(file: File): Promise<string> {
 export async function parseFile(file: File): Promise<{ text: string; pages: number }> {
   const kind = kindOf(file.name, file.type)
   if (kind === 'pdf') return parsePdf(file)
-  const text = kind === 'docx' ? await parseDocx(file) : (await file.text()).replace(/\r\n/g, '\n')
+  const text = kind === 'docx' ? await parseDocx(file) : decodeText(new Uint8Array(await file.arrayBuffer())).replace(/\r\n/g, '\n')
   return { text, pages: textPages(text.length) }
 }
 
@@ -104,6 +127,11 @@ export async function addFiles(files: File[], existing: OwnDoc[]): Promise<{ acc
     const bad = checkParsed(kind, parsed.pages, parsed.text)
     if (bad) {
       rejected.push({ name: f.name, reason: bad })
+      continue
+    }
+    const dup = [...existing, ...accepted].some((d) => d.name === f.name && d.chars === parsed.text.length)
+    if (dup) {
+      rejected.push({ name: f.name, reason: 'duplicate' })
       continue
     }
     accepted.push({ id: uid('own'), name: f.name, kind, pages: parsed.pages, chars: parsed.text.length, text: parsed.text })

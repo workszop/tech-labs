@@ -26,7 +26,7 @@ describe('checkPreParse', () => {
 describe('checkParsed', () => {
   it('limits PDF pages and text length, and rejects empty text', () => {
     expect(checkParsed('pdf', 21, 'x'.repeat(100))).toBe('tooManyPages')
-    expect(checkParsed('pdf', 20, 'x'.repeat(100))).toBeNull()
+    expect(checkParsed('pdf', 20, 'x'.repeat(1000))).toBeNull()
     expect(checkParsed('txt', 1, 'x'.repeat(OWN_LIMITS.maxChars + 1))).toBe('tooLong')
     expect(checkParsed('docx', 1, 'x'.repeat(OWN_LIMITS.maxChars))).toBeNull()
     expect(checkParsed('pdf', 2, '   \n ')).toBe('noText')
@@ -56,5 +56,33 @@ describe('addFiles', () => {
   it('rejects an empty text file with noText', async () => {
     const r = await addFiles([file('empty.txt', '   ')], [])
     expect(r.rejected).toEqual([{ name: 'empty.txt', reason: 'noText' }])
+  })
+})
+
+describe('polish from review', () => {
+  it('rejects the same file twice', async () => {
+    const first = await addFiles([file('a.txt', 'Treść pierwszego dokumentu, wystarczająco długa.')], [])
+    const again = await addFiles([file('a.txt', 'Treść pierwszego dokumentu, wystarczająco długa.')], first.accepted)
+    expect(again.rejected).toEqual([{ name: 'a.txt', reason: 'duplicate' }])
+  })
+
+  it('treats a PDF with almost no text per page as a scan', () => {
+    expect(checkParsed('pdf', 3, '- 1 -\n- 2 -\n- 3 - plus a few more chars')).toBe('noText')
+    expect(checkParsed('pdf', 2, 'x'.repeat(257))).toBeNull()
+  })
+
+  it('reads a Windows-1250 text file without mojibake', async () => {
+    // "Zażółć gęślą jaźń" in windows-1250
+    const bytes = new Uint8Array([0x5a, 0x61, 0xbf, 0xf3, 0xb3, 0xe6, 0x20, 0x67, 0xea, 0x9c, 0x6c, 0xb9, 0x20, 0x6a, 0x61, 0x9f, 0xf1, 0x2e, 0x20, 0x44, 0x6f, 0x6b, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x20, 0x74, 0x65, 0x73, 0x74, 0x6f, 0x77, 0x79, 0x2e])
+    const r = await addFiles([new File([bytes], 'cp.txt', { type: 'text/plain' })], [])
+    expect(r.accepted[0]?.text).toBe('Zażółć gęślą jaźń. Dokument testowy.')
+  })
+
+  it('shortens very long file names for the prompt, keeping the extension', async () => {
+    const { shortDocName } = await import('./files')
+    const s = shortDocName('a'.repeat(400) + '.pdf')
+    expect(s.length).toBeLessThanOrEqual(200)
+    expect(s.endsWith('.pdf')).toBe(true)
+    expect(shortDocName('krótka.pdf')).toBe('krótka.pdf')
   })
 })

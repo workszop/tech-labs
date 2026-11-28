@@ -1,7 +1,7 @@
 // Pure state of the "own documents" mode. Documents, chunks and vectors live in memory only:
 // a reload starts own mode from scratch (the page says so).
 import type { Capabilities, ChatMessage, PromptEcho } from '@shared/api-types'
-import { estimateMessagesTokens } from '@shared/prompt'
+import { estimateMessagesTokens, estimateTokens } from '@shared/prompt'
 import type { OwnDoc, Rejected } from './files'
 
 export interface OwnChunk {
@@ -105,6 +105,16 @@ export function fitToWorker<T>(ranked: T[], build: (kept: T[]) => ChatMessage[],
   let kept = ranked
   while (kept.length && estimateMessagesTokens(build(kept)) > budgetTokens) kept = kept.slice(0, -1)
   return { kept, trimmed: ranked.length - kept.length }
+}
+
+/** Chunks the Worker would refuse to embed: over its per-input limit by its own estimate (characters / 4). */
+export function oversizedChunks<T extends { text: string; tokens: number }>(chunks: T[], maxInputTokens: number): T[] {
+  return chunks.filter((c) => Math.max(c.tokens, estimateTokens(c.text)) > maxInputTokens)
+}
+
+/** Embedding cost in USD from the Worker's price per million tokens; null when the Worker does not say. */
+export function embedCostUsd(tokens: number, pricePerMTok: number | undefined): number | null {
+  return pricePerMTok == null ? null : (tokens / 1_000_000) * pricePerMTok
 }
 
 /** Vectors are finished and match both the current split and the current documents and settings. */

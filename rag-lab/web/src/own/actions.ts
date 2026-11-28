@@ -10,8 +10,8 @@ import { uid } from '@/lib/utils'
 import { getLang, t } from '@/i18n'
 import { getState, setState, updateOwn } from '@/state/store'
 import { refreshUsage } from '@/state/actions'
-import { addFiles } from './files'
-import { askLock, fitToWorker, type OwnChunk, type OwnRun } from './state'
+import { addFiles, shortDocName } from './files'
+import { askLock, fitToWorker, oversizedChunks, type OwnChunk, type OwnRun } from './state'
 
 /** Same per-request token budget as the Rybex index build. */
 const MAX_BATCH_TOKENS = 7000
@@ -38,17 +38,39 @@ export function abortOwn() {
   askAbort = null
 }
 
-const errText = (e: unknown) => (e instanceof ApiError ? (e.code === 'aborted' ? t().lab.actions.stopped : e.message) : (e as Error).message)
-
-export async function addOwnFiles(files: File[]) {
-  if (!files.length || getState().own.parsing) return
-  updateOwn(() => ({ parsing: true }))
-  try {
-    const { accepted, rejected } = await addFiles(files, getState().own.docs)
-    updateOwn((o) => ({ docs: [...o.docs, ...accepted], rejected }))
-  } finally {
-    updateOwn(() => ({ parsing: false }))
+/** Error text for own mode: a size error gets a hint the team can act on. */
+export function ownErrorText(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.code === 'aborted') return t().lab.actions.stopped
+    if (e.code === 'payload_too_large') return t().shell.own.errors.payloadTooLarge
+    return e.message
   }
+  return (e as Error).message
+}
+const errText = ownErrorText
+
+let fileQueue: Promise<void> = Promise.resolve()
+let queuedBatches = 0
+
+/**
+ * Files added while others are still being read wait their turn (none is dropped). Rejections add up
+ * over batches queued together; a batch added when the queue is idle starts a fresh list.
+ */
+export function addOwnFiles(files: File[]): Promise<void> {
+  if (!files.length) return fileQueue
+  const fresh = queuedBatches === 0
+  queuedBatches++
+  fileQueue = fileQueue.then(async () => {
+    updateOwn(() => ({ parsing: true }))
+    try {
+      const { accepted, rejected } = await addFiles(files, getState().own.docs)
+      updateOwn((o) => ({ docs: [...o.docs, ...accepted], rejected: fresh ? rejected : [...o.rejected, ...rejected] }))
+    } finally {
+      queuedBatches--
+      updateOwn(() => ({ parsing: queuedBatches > 0 }))
+    }
+  })
+  return fileQueue
 }
 
 export function removeOwnDoc(id: string) {
@@ -92,6 +114,9 @@ export async function embedOwn() {
   const caps = s.auth.session?.capabilities
   const o = s.own
   if (!caps || !o.chunks.length || o.embed.status === 'running') return
+  // Asking would be locked on a Worker without profile 'own': do not spend tokens on vectors either.
+  if (askLock(s.auth.status, caps) === 'worker') return
+  if (oversizedChunks(o.chunks, caps.maxEmbeddingInputTokens).length) return
   embedAbort?.abort()
   embedAbort = new AbortController()
   const signal = embedAbort.signal
@@ -151,6 +176,10 @@ export async function askOwn(question: string) {
   const run: OwnRun = { id: uid('own-run'), question: q, instructions: o.instructions, topK: Math.min(o.topK, searchable.length), sent: [], trimmed: 0, status: 'running', answer: '' }
   const patch = (fn: (r: OwnRun) => Partial<OwnRun>) => updateOwn((x) => ({ runs: x.runs.map((r) => (r.id === run.id ? { ...r, ...fn(r) } : r)) }))
   updateOwn((x) => ({ runs: [...x.runs, run] }))
+  if (q.length > caps.maxQuestionChars) {
+    patch(() => ({ status: 'error', error: t().shell.own.errors.questionTooLong(caps.maxQuestionChars) }))
+    return
+  }
   if (!searchable.length) {
     patch(() => ({ status: 'error', error: t().shell.own.errors.noVectors }))
     return
@@ -167,7 +196,7 @@ export async function askOwn(question: string) {
     const lang = getLang()
     const folder = t().shell.own.folderLabel
     // The Worker rejects prompts over maxChatInputTokens by its own estimate; trim with that estimate.
-    const toContext = (kept: typeof ranked): ContextChunk[] => kept.map((k) => ({ chunkId: k.chunk.id, documentTitle: k.chunk.docName, folder, text: k.chunk.text }))
+    const toContext = (kept: typeof ranked): ContextChunk[] => kept.map((k) => ({ chunkId: k.chunk.id, documentTitle: shortDocName(k.chunk.docName), folder, text: k.chunk.text }))
     const { kept, trimmed } = fitToWorker(ranked, (kept) => buildChatMessages({ question: q, context: toContext(kept), mode: 'rag', lang, profile: 'own', instructions: o.instructions }), caps.maxChatInputTokens)
     const context = toContext(kept)
     if (!context.length) {
