@@ -9,6 +9,7 @@ import { ActivationScreen } from '@/features/ActivationScreen'
 import { Header } from '@/features/Header'
 import { FileExplorer } from '@/features/FileExplorer'
 import { CenterPanel } from '@/features/CenterPanel'
+import { OwnRag } from '@/features/own/OwnRag'
 import { ChatPanel } from '@/features/ChatPanel'
 import { DocumentDialog } from '@/features/DocumentDialog'
 import { LearnDialog } from '@/features/LearnDialog'
@@ -34,6 +35,7 @@ export default function App() {
   const ready = useStore((s) => s.storage.ready)
   const storage = useStore((s) => s.storage)
   const mobileTab = useStore((s) => s.ui.mobileTab)
+  const mode = useStore((s) => s.ui.mode)
   const desktop = useIsDesktop()
   const [narrowNoticeOpen, setNarrowNoticeOpen] = useState(true)
   const lang = useLang()
@@ -60,7 +62,9 @@ export default function App() {
               <span className="min-w-0 flex-1">{tx.notPersistent}</span>
             </div>
           )}
-          {desktop ? (
+          {mode === 'own' ? (
+            <main className="min-h-0 flex-1"><OwnRag /></main>
+          ) : desktop ? (
             <Group orientation="horizontal" className="min-h-0 flex-1">
               <Panel defaultSize="21" minSize="15" maxSize="32" className="bg-card"><FileExplorer /></Panel>
               <Handle />

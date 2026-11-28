@@ -122,7 +122,8 @@ export async function askOwn(question: string) {
   if (!q || askLock(s.auth.status, caps) || !caps) return
   const o = s.own
   const searchable = o.chunks.filter((c) => c.vector) as (OwnChunk & { vector: Float32Array })[]
-  const run: OwnRun = { id: uid('own-run'), question: q, instructions: o.instructions, topK: o.topK, sent: [], trimmed: 0, status: 'running', answer: '' }
+  // topK shown as "sent n of k": never more than there are chunks.
+  const run: OwnRun = { id: uid('own-run'), question: q, instructions: o.instructions, topK: Math.min(o.topK, searchable.length), sent: [], trimmed: 0, status: 'running', answer: '' }
   const patch = (fn: (r: OwnRun) => Partial<OwnRun>) => updateOwn((x) => ({ runs: x.runs.map((r) => (r.id === run.id ? { ...r, ...fn(r) } : r)) }))
   updateOwn((x) => ({ runs: [...x.runs, run] }))
   if (!searchable.length) {

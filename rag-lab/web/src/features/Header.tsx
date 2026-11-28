@@ -6,6 +6,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { setUi, useStore } from '@/state/store'
+import { ModeSwitch } from './own/ModeSwitch'
 import { resetAllProgress, showActivation } from '@/state/actions'
 import { useT } from '@/i18n'
 import { Logo } from './Logo'
@@ -61,6 +62,7 @@ export function Header() {
             <KeyRound /> {tx.activate}
           </Button>
         )}
+        <ModeSwitch />
         <LangSwitch />
         <div className="flex items-center">
           <Tooltip content={tx.guideTooltip}>
