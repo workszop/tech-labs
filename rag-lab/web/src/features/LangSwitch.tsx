@@ -24,7 +24,7 @@ export function LangSwitch() {
             onClick={() => choose(l)}
             aria-pressed={l === lang}
             lang={l}
-            className={cn('cursor-pointer rounded-full px-2.5 py-1 text-[12px] font-semibold uppercase tracking-wide transition-colors', l === lang ? 'bg-primary text-primary-foreground' : 'text-[var(--ink-2)] hover:bg-muted hover:text-foreground')}
+            className={cn('cursor-pointer rounded-full px-2 py-1 text-[12px] sm:px-2.5 font-semibold uppercase tracking-wide transition-colors', l === lang ? 'bg-primary text-primary-foreground' : 'text-[var(--ink-2)] hover:bg-muted hover:text-foreground')}
           >
             {l}
           </button>

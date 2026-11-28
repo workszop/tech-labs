@@ -232,7 +232,6 @@ export interface AppState {
     mapFolders: string[] | null
     /** Guide steps that were completed at least once (they stay ticked). */
     guideDone: string[]
-    logExported: boolean
     benchExported: boolean
   }
 }
@@ -339,7 +338,6 @@ let state: AppState = {
     mapFocusDoc: null,
     mapFolders: null,
     guideDone: [],
-    logExported: false,
     benchExported: false,
   },
 }

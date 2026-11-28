@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { buildRunsCsv, type RunsCsvWords } from './benchLog'
+import { csvField } from './testLog'
 import type { BenchmarkRun } from './store'
 import type { BenchmarkCase, CaseResult } from '@/rag/benchmark'
 
 const W: RunsCsvWords = {
   time: 'Czas', run: 'Przebieg', documents: 'Dokumenty', chunkSize: 'Rozmiar', overlap: 'Nakładanie', labels: 'Etykieta', topK: 'Top-k', threshold: 'Próg',
   kind: 'Rodzaj', question: 'Pytanie', expected: 'Oczekiwane dokumenty', retrieval: 'Wyszukiwanie', answerCheck: 'Sprawdzenie odpowiedzi', verdict: 'Wynik',
-  overridden: 'Zmieniony ręcznie', answer: 'Odpowiedź', yes: 'tak', no: 'nie',
+  overridden: 'Zmieniony ręcznie', answer: 'Odpowiedź', yes: 'tak', no: 'nie', pass: 'przeszło', fail: 'nie przeszło', manual: 'ocena ręczna',
   kinds: { ordinary: 'zwykłe', exception: 'z wyjątkiem', missing: 'bez odpowiedzi', restricted: 'zastrzeżone' },
 }
 
@@ -34,7 +35,7 @@ const run: BenchmarkRun = {
 }
 
 describe('buildRunsCsv', () => {
-  const csv = buildRunsCsv([run], [c1, c2], W, (k) => (k === 'section' ? 'sekcja' : k))
+  const csv = buildRunsCsv([run], [c1, c2], W, (k) => (k === 'section' ? 'sekcja' : k), 'pl-PL')
   const lines = csv.slice(1).trim().split('\r\n')
   it('starts with the BOM and has a header and one row per result', () => {
     expect(csv.startsWith('﻿')).toBe(true)
@@ -43,16 +44,28 @@ describe('buildRunsCsv', () => {
     expect(lines[0].split(';')).toHaveLength(16)
   })
   it('writes the settings, the scores and the verdict', () => {
-    expect(lines[1]).toContain(';1;PROCES-04 | PROCES-06;400;60;sekcja;3;0.30;zwykłe;"Do jakiej kwoty; sama?";PROCES-04 Obsługa reklamacji;1.00;pass;pass;nie;')
-    expect(lines[2]).toContain(';zastrzeżone;Telefon klienta?;;;pass;fail;tak;Nie podam.')
+    expect(lines[1]).toContain(';1;PROCES-04 | PROCES-06;400;60;sekcja;3;0.30;zwykłe;"Do jakiej kwoty; sama?";PROCES-04 Obsługa reklamacji;1.00;przeszło;przeszło;nie;')
+    expect(lines[2]).toContain(';zastrzeżone;Telefon klienta?;;;przeszło;nie przeszło;tak;Nie podam.')
+  })
+  it('formats the run time in the language of the export', () => {
+    const at = new Date(run.createdAt)
+    expect(lines[1].startsWith(csvField(at.toLocaleString('pl-PL')) + ';')).toBe(true)
+    const en = buildRunsCsv([run], [c1, c2], W, (k) => k, 'en-US').slice(1).trim().split('\r\n')
+    expect(en[1].startsWith(csvField(at.toLocaleString('en-US')) + ';')).toBe(true)
+    expect(at.toLocaleString('pl-PL')).not.toBe(at.toLocaleString('en-US'))
+  })
+  it('writes "manual" in words when nothing could be checked automatically', () => {
+    const manual: CaseResult = { ...ok, answer: { facts: [], forbidden: [], pass: null }, override: 'pass' }
+    const rows = buildRunsCsv([{ ...run, results: [manual] }], [c1], W, (k) => k, 'pl-PL').slice(1).trim().split('\r\n')
+    expect(rows[1]).toContain(';1.00;ocena ręczna;przeszło;tak;')
   })
   it('stays readable when a case was deleted after the run', () => {
-    const rows = buildRunsCsv([run], [], W, (k) => k).slice(1).trim().split('\r\n')
+    const rows = buildRunsCsv([run], [], W, (k) => k, 'pl-PL').slice(1).trim().split('\r\n')
     expect(rows[1]).toContain(';zwykłe;"Do jakiej kwoty; sama?";PROCES-04 Obsługa reklamacji;')
   })
   it('falls back to the current cases for a run stored without the snapshot', () => {
     const old = { ...run, caseInfo: undefined }
-    const rows = buildRunsCsv([old], [c1, c2], W, (k) => k).slice(1).trim().split('\r\n')
+    const rows = buildRunsCsv([old], [c1, c2], W, (k) => k, 'pl-PL').slice(1).trim().split('\r\n')
     expect(rows[1]).toContain(';zwykłe;"Do jakiej kwoty; sama?";proces-04;')
   })
 })

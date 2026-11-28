@@ -24,8 +24,9 @@ import { activeCases, allCases, canRun, cancelBenchmark, deleteCase, hasFullRun,
 import { partMark } from './nav'
 import { DEFAULT_SETTINGS, getState, setState, type BenchmarkRun } from './store'
 
-const embedOk = async () => ({ embeddings: [[1, 0]], model: 'm', dimensions: 2, usage: { inputTokens: 3 }, quota: null })
-const chatOk = async () => ({ answer: 'ok [1]', prompt: undefined, usage: undefined, finishReason: 'stop', quota: null })
+// The Worker sends the quota with every response (shared/api-types.ts), so the mocks do too.
+const embedOk = async () => ({ embeddings: [[1, 0]], model: 'm', dimensions: 2, usage: { inputTokens: 3 }, quota: usage })
+const chatOk = async () => ({ answer: 'ok [1]', prompt: undefined, usage: undefined, finishReason: 'stop', quota: usage })
 
 function chunk(docId: string, vector: number[]): ChunkRecord {
   return {
@@ -73,6 +74,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.mocked(api.embed).mockReset().mockImplementation(embedOk as never)
   vi.mocked(api.chat).mockReset().mockImplementation(chatOk as never)
+  vi.mocked(api.usage).mockReset().mockImplementation(async () => usage)
   await (await openVectorStore()).clearBenchRuns()
   seed()
 })
@@ -106,6 +108,10 @@ describe('planning a run', () => {
     expect(canRun()).toMatchObject({ ok: false, reason: 'quota', requests: 8, left: 5 })
     setState({ usage: { ...usage, requestLimit: 10, requestsUsed: 2 } }) // exactly enough
     expect(canRun()).toMatchObject({ ok: true, requests: 8, left: 8 })
+  })
+  it('refuses to start while the remaining quota is unknown', () => {
+    setState({ usage: null })
+    expect(canRun()).toMatchObject({ ok: false, reason: 'quota', requests: 8, left: null })
   })
   it('refuses without an access code', () => {
     setState({ auth: { status: 'browsing', session: null, notice: null } })

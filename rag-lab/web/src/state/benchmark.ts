@@ -8,7 +8,7 @@ import { BUILT_IN_CASES } from '@/data/benchmark'
 import { getCorpus } from '@/data/corpus'
 import { docFlag } from '@/data/docFlag'
 import { t } from '@/i18n'
-import { uid } from '@/lib/utils'
+import { currentLocale, uid } from '@/lib/utils'
 import { scoreAnswer, scoreRetrieval, scoreRun, type BenchmarkCase, type CaseKind, type CaseResult } from '@/rag/benchmark'
 import { abortBenchmark, benchmarkSignal, currentBuildPlan, indexSnapshot, runQuery, vectorStore } from './actions'
 import { buildRunsCsv } from './benchLog'
@@ -56,7 +56,8 @@ export function canRun(
   // A benchmark of a database that does not match the decisions on screen would be a lie.
   if (isStale(currentBuildPlan(s))) return no('stale-kb')
   if (requests === 0) return no('no-cases')
-  if (left !== null && left < requests) return no('quota')
+  // The session is active here: a quota that cannot be read cannot be shown to cover the run.
+  if (left === null || left < requests) return no('quota')
   return { ok: true, requests, left }
 }
 
@@ -229,7 +230,7 @@ export function toggleCase(id: string, active: boolean): void {
 export function downloadRunsCsv(): void {
   const s = getState()
   const tx = t().lab.benchmark
-  const csv = buildRunsCsv(s.bench.runs, allCases(s), tx.csv, (k) => t().lab.chat.labelNames[k] ?? k)
+  const csv = buildRunsCsv(s.bench.runs, allCases(s), tx.csv, (k) => t().lab.chat.labelNames[k] ?? k, currentLocale())
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
   const a = document.createElement('a')
   a.href = url

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { AlertTriangle, Check, CheckCircle2, CircleDashed, Info, Lightbulb, Loader2, Minus, MinusCircle, X, XCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
+import { cn, currentLocale } from '@/lib/utils'
 import { setUi, type StageStatus } from '@/state/store'
 import { useExplainers } from './explainers'
 import { getCorpus } from '@/data/corpus'
@@ -13,10 +13,8 @@ import { docFlag } from '@/data/docFlag'
 // These read the current language at call time; components calling them re-render on a
 // language change as long as they use useT() / useLang() / useCorpus().
 
-/** BCP 47 locale of the current UI language. */
-export function currentLocale(): 'pl-PL' | 'en-US' {
-  return getLang() === 'pl' ? 'pl-PL' : 'en-US'
-}
+/** BCP 47 locale of the current UI language (one helper, shared with `state/`). */
+export { currentLocale }
 /** Rounded integer with the grouping of the current language (12 345 / 12,345). */
 export function fmtNumber(n: number): string {
   return new Intl.NumberFormat(currentLocale()).format(Math.round(n))

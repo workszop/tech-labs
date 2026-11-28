@@ -79,7 +79,7 @@ export function RunBar({ onStart }: { onStart: () => void }) {
             </div>
             {!check.ok && check.reason && (
               <div className="flex flex-wrap items-center gap-2" data-testid="bench-reason" data-reason={check.reason}>
-                <p className="text-[12.5px] text-muted-foreground">{tx.reasons[check.reason]}</p>
+                <p className="text-[12.5px] text-muted-foreground">{check.reason === 'quota' && check.left === null ? tx.quotaUnknown : tx.reasons[check.reason]}</p>
                 {(check.reason === 'stale-kb' || check.reason === 'empty-kb') && (
                   <Button variant="outline" size="xs" onClick={() => goTo('vectors')}>
                     {tx.goToVectors} <ArrowRight />

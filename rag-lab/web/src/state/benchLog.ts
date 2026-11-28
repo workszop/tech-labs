@@ -25,22 +25,26 @@ export interface RunsCsvWords {
   answer: string
   yes: string
   no: string
+  pass: string
+  fail: string
+  manual: string
   kinds: Record<CaseKind, string>
 }
 
-/** `pass` / `fail` / `manual` (nothing to check automatically); empty for a case that did not finish. */
-function answerCheck(r: CaseResult): string {
+/** Pass / fail / manual (nothing to check automatically) in words; empty for a case that did not finish. */
+function answerCheck(r: CaseResult, w: RunsCsvWords): string {
   if (r.status !== 'done' || !r.answer) return ''
-  return r.answer.pass === null ? 'manual' : r.answer.pass ? 'pass' : 'fail'
+  return r.answer.pass === null ? w.manual : r.answer.pass ? w.pass : w.fail
 }
 
-/** `pass` / `fail`; empty for a case that did not finish and was not judged by hand. */
-function verdict(r: CaseResult): string {
+/** Pass / fail in words; empty for a case that did not finish and was not judged by hand. */
+function verdict(r: CaseResult, w: RunsCsvWords): string {
   if (r.status !== 'done' && !r.override) return ''
-  return casePassed(r) ? 'pass' : 'fail'
+  return casePassed(r) ? w.pass : w.fail
 }
 
-export function buildRunsCsv(runs: BenchmarkRun[], cases: BenchmarkCase[], w: RunsCsvWords, labelName: (key: string) => string): string {
+/** `locale` formats the run time in the language of the export (`pl-PL`, `en-US`). */
+export function buildRunsCsv(runs: BenchmarkRun[], cases: BenchmarkCase[], w: RunsCsvWords, labelName: (key: string) => string, locale: string): string {
   const byId = new Map(cases.map((c) => [c.id, c]))
   const header = [w.time, w.run, w.documents, w.chunkSize, w.overlap, w.labels, w.topK, w.threshold, w.kind, w.question, w.expected, w.retrieval, w.answerCheck, w.verdict, w.overridden, w.answer]
   const rows = runs.flatMap((run, i) =>
@@ -50,7 +54,7 @@ export function buildRunsCsv(runs: BenchmarkRun[], cases: BenchmarkCase[], w: Ru
       const info = run.caseInfo?.[r.caseId]
       const kind = info?.kind ?? c?.kind
       return [
-        new Date(run.createdAt).toLocaleString(),
+        new Date(run.createdAt).toLocaleString(locale),
         i + 1,
         run.index.docTitles.join(' | '),
         run.index.chunkSize ?? '',
@@ -62,8 +66,8 @@ export function buildRunsCsv(runs: BenchmarkRun[], cases: BenchmarkCase[], w: Ru
         info?.question ?? c?.question ?? '',
         (info?.expectedDocTitles ?? c?.expectedDocIds ?? []).join(' | '),
         r.retrieval?.applicable ? r.retrieval.share.toFixed(2) : '',
-        answerCheck(r),
-        verdict(r),
+        answerCheck(r, w),
+        verdict(r, w),
         r.override ? w.yes : w.no,
         r.answerText || r.error || '',
       ]

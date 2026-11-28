@@ -90,6 +90,13 @@ export function CaseDetail({ c, info, result, tech }: { c?: BenchmarkCase; info?
           ))}
         </div>
       )}
+      {/* An errored case keeps the stages that ran (a failed generation still has its context): Tech shows them. */}
+      {result?.status === 'error' && tech && trace && (
+        <div data-testid="bench-error-trace">
+          <div className={H}>{tx.traceTitle}</div>
+          <div className="-mx-3 [&>div]:p-0 [&>div]:px-3"><RunDetails run={trace} /></div>
+        </div>
+      )}
       {result?.status === 'done' &&
         (trace ? (
           tech ? (

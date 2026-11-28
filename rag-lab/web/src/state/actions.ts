@@ -273,7 +273,6 @@ export function downloadTestLog() {
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
-  setUi({ logExported: true })
 }
 
 async function removeFromIndex(docIds: string[]) {
