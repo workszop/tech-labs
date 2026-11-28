@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { FileSearch, Loader2, Workflow } from 'lucide-react'
+import { Compass, FileSearch, Loader2, Workflow } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { setUi, useStore, type CaseTechTab } from '@/state/store'
 import { useT } from '@/i18n'
@@ -14,7 +14,7 @@ const Loading = () => (
   </div>
 )
 
-/** Part 1. Students: the guide next to the chat. Tech: the chat next to retrieval details and the pipeline. */
+/** Part 1. Students: the guide next to the chat. Tech: the chat next to retrieval details, the pipeline and the guide. */
 export function CasePart() {
   const view = useStore((s) => s.settings.view)
   const tx = useT().shell.techTabs
@@ -42,11 +42,13 @@ export function CasePart() {
               <TabsList>
                 <TabsTrigger value="retrieval" data-testid="tab-retrieval"><FileSearch /> {tx.retrieval}</TabsTrigger>
                 <TabsTrigger value="pipeline" data-testid="tab-pipeline"><Workflow /> {tx.pipeline}</TabsTrigger>
+                <TabsTrigger value="guide" data-testid="tab-guide"><Compass /> {tx.guide}</TabsTrigger>
               </TabsList>
             </div>
             <div className="min-h-0 flex-1 bg-background">
               <TabsContent value="retrieval" className="scroll-thin h-full overflow-y-auto"><RetrievalView /></TabsContent>
               <TabsContent value="pipeline" className="h-full"><Suspense fallback={<Loading />}><PipelineFlow /></Suspense></TabsContent>
+              <TabsContent value="guide" className="scroll-thin h-full overflow-y-auto"><Guide /></TabsContent>
             </div>
           </Tabs>
         </>

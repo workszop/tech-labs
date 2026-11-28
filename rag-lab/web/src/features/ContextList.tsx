@@ -1,5 +1,5 @@
 import { Layers } from 'lucide-react'
-import { openDocument } from '@/state/actions'
+import { openRunSource } from '@/state/actions'
 import type { QueryRun } from '@/state/store'
 import { useT } from '@/i18n'
 
@@ -25,7 +25,7 @@ export function ContextList({ run }: { run: QueryRun }) {
         <ol className="space-y-1">
           {rows.map((r, i) => (
             <li key={r.id}>
-              <button className="flex w-full items-baseline gap-1.5 rounded-md px-1 py-0.5 text-left text-[12px] leading-snug transition-colors cursor-pointer hover:bg-muted" onClick={() => r.doc && openDocument(r.doc.docId, { start: r.doc.start, end: r.doc.end, chunkId: r.id })} title={tx.open} data-chunk-id={r.id}>
+              <button className="flex w-full items-baseline gap-1.5 rounded-md px-1 py-0.5 text-left text-[12px] leading-snug transition-colors cursor-pointer hover:bg-muted" onClick={() => openRunSource(run, i)} title={tx.open} data-chunk-id={r.id}>
                 <span className="shrink-0 font-mono font-medium">[{i + 1}]</span>
                 <span className="min-w-0">{tx.row(r.title, r.n, r.score !== undefined ? r.score.toFixed(2) : '–')}</span>
               </button>

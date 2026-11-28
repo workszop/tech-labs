@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SETTINGS, loadPrefsFrom, getState } from './store'
-import { goTo, PARTS, partMark, showRunDetails } from './nav'
+import { DEFAULT_SETTINGS, loadPrefsFrom, getState, setSettings, setUi } from './store'
+import { goTo, openGuide, PARTS, partMark, showRunDetails } from './nav'
 
 describe('stored preferences', () => {
   it('opens with the Students face when the stored prefs come from the old version', () => {
@@ -63,5 +63,29 @@ describe('goTo keeps the place', () => {
     goTo('vectors')
     expect(scrollTo).toHaveBeenCalledTimes(2)
     expect(getState().ui.part).toBe('vectors')
+  })
+})
+
+describe('the header guide button', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    setSettings({ view: 'students' })
+    setUi({ part: 'case', caseTechTab: 'retrieval' })
+  })
+  it('Tech face: selects the Guide tab of the Case part and leaves the view alone', () => {
+    setSettings({ view: 'tech' })
+    setUi({ part: 'benchmark', caseTechTab: 'pipeline' })
+    openGuide()
+    expect(getState().ui).toMatchObject({ part: 'case', caseTechTab: 'guide' })
+    expect(getState().settings.view).toBe('tech')
+  })
+  it('Students face: opens the Case part from its top, also when already there', () => {
+    const scrollTo = vi.fn()
+    vi.stubGlobal('document', { querySelector: () => ({ scrollTo }) })
+    setUi({ part: 'case', caseTechTab: 'pipeline' })
+    openGuide()
+    expect(scrollTo).toHaveBeenCalledTimes(1)
+    expect(getState().ui.caseTechTab).toBe('pipeline')
+    expect(getState().settings.view).toBe('students')
   })
 })

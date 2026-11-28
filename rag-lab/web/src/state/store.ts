@@ -164,7 +164,7 @@ export interface ChatEntry {
 
 export type Part = 'case' | 'data' | 'vectors' | 'generator' | 'benchmark'
 export type View = 'students' | 'tech'
-export type CaseTechTab = 'retrieval' | 'pipeline'
+export type CaseTechTab = 'retrieval' | 'pipeline' | 'guide'
 export type PipelineNodeId =
   | 'docs'
   | 'selection'

@@ -13,7 +13,7 @@ vi.mock('@/api/client', async (orig) => {
   }
 })
 
-import { ask, runQuery } from './actions'
+import { ask, openRunSource, runQuery } from './actions'
 import { getState, setState } from './store'
 import type { ChunkRecord } from '@/rag/db'
 
@@ -85,5 +85,23 @@ describe('runQuery', () => {
     setState({ index: { meta: null, chunks: [], documents: {} } })
     const run = await runQuery('q', opts())
     expect(run.generate.status).toBe('error')
+  })
+})
+
+describe('opening a past run source fragment', () => {
+  it('opens by the offsets kept with the run, even when the chunk id now points elsewhere', async () => {
+    const run = await runQuery('q', opts())
+    // Re-split: the same id now covers other characters.
+    setState({ index: { ...getState().index, chunks: [chunk('a', [1, 0], 200, 300)] } })
+    openRunSource(run, 0)
+    expect(getState().ui.previewDocId).toBe('a')
+    expect(getState().ui.previewHighlight).toEqual({ start: 10, end: 40, chunkId: 'a#0' })
+  })
+  it('falls back to the chunk id when the run kept no offsets', async () => {
+    const run = await runQuery('q', opts())
+    const old = { ...run, context: { ...run.context, docs: undefined } }
+    setState({ ui: { ...getState().ui, previewDocId: null, previewHighlight: null } })
+    openRunSource(old, 0)
+    expect(getState().ui.previewHighlight).toEqual({ start: 10, end: 40, chunkId: 'a#0' })
   })
 })

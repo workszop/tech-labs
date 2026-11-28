@@ -3,11 +3,11 @@ import { ArrowRight, BookOpen, Check, Download, FileSearch, FlaskConical, Folder
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getState, setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
-import { ask, downloadTestLog, previewChunking, selectFolder, toggleSelect } from '@/state/actions'
+import { ask, previewChunking, selectFolder, toggleSelect } from '@/state/actions'
 import { goTo } from '@/state/nav'
 import { answerModePatch } from '@/state/answerMode'
 import { previewShows } from '@/state/membership'
-import { t, useT, type Dict } from '@/i18n'
+import { useT, type Dict } from '@/i18n'
 import { Badge } from '@/components/ui/badge'
 import { IconBadge, LearnCard, SectionCard } from './common'
 import { useExplainers } from './explainers'
@@ -17,7 +17,7 @@ type StepId = keyof Dict['shell']['guide']['steps']
 /**
  * The guide follows the workshop flow "RAG w organizacji" (Rybex, complaints assistant):
  * sources → unapproved draft out → where the app cuts a procedure → one change to the split →
- * chunk label → four tests → test log. Each step checks the app state, so it ticks
+ * chunk label → the benchmark → the runs CSV. Each step checks the app state, so it ticks
  * itself when the team has really done it; a ticked step stays ticked.
  * Step logic only; texts come from the dictionary (`shell.guide.steps[id]`).
  */
@@ -95,17 +95,19 @@ const STEPS: GuideStep[] = [
   {
     id: 'tests',
     icon: <FlaskConical />,
-    done: (s) => {
-      const asked = new Set(ragRuns(s).map((r) => r.question))
-      return t().shell.guide.tests.every((q) => asked.has(q.question))
-    },
+    // One full run: every active case planned and the run finished.
+    done: (s) => s.bench.runs.some((r) => r.status === 'done' && r.caseIds.length === r.totalActive),
+    run: () => goTo('benchmark'),
     topic: 'failures',
   },
   {
     id: 'log',
     icon: <Download />,
-    done: (s) => s.ui.logExported,
-    run: () => downloadTestLog(),
+    // The runs CSV is the workshop's evidence; the chat's test log stays in Case as an extra.
+    done: (s) => s.ui.benchExported,
+    run: () => {
+      goTo('benchmark')
+    },
   },
 ]
 
@@ -203,12 +205,7 @@ export function Guide() {
     const text: { module?: string; title: string; body: string; action?: string } = tx.steps[st.id]
     const showAction = !!(st.run && text.action && (isNext || !done))
     const topic = st.topic && explainers[st.topic] ? st.topic : null
-    const chips =
-      st.id === 'tests'
-        ? tx.tests.map((q) => chip(q.question, <><span className="font-semibold">{q.kind}:</span> {q.question}</>, q.question))
-        : st.askGuiding
-          ? [chip('home', <>{tx.ask}: {tx.guiding}</>, tx.guiding)]
-          : []
+    const chips = st.askGuiding ? [chip('home', <>{tx.ask}: {tx.guiding}</>, tx.guiding)] : []
     return (
       <li
         key={st.id}

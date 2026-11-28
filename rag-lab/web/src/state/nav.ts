@@ -21,10 +21,15 @@ function scrollPartToTop(): void {
 }
 
 /**
- * The header's guide button: the Case part from its top, where the guide is. Unlike goTo it scrolls
- * also when the user is already in that part (below 1024 px the guide sits above the chat).
+ * The header's guide button: the guide in the Case part. Students face: from the part's top, where the
+ * guide is (unlike goTo it scrolls also when the user is already there; below 1024 px the guide sits
+ * above the chat). Tech face: the Guide tab next to the chat. The view itself never changes.
  */
 export function openGuide(): void {
+  if (getState().settings.view === 'tech') {
+    setUi({ part: 'case', caseTechTab: 'guide' })
+    return
+  }
   setUi({ part: 'case' })
   scrollPartToTop()
 }

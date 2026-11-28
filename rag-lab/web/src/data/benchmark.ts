@@ -1,6 +1,6 @@
 /**
- * Built-in benchmark cases, one per kind and language. Questions are the guide's test questions
- * (`shell.guide.tests`); key facts are literal strings of the expected documents (a test checks that).
+ * Built-in benchmark cases, one per kind and language. Questions were the guide's four test questions
+ * (the guide now sends the team to the benchmark); key facts are literal strings of the expected documents (a test checks that).
  * Replaced by the content plan.
  */
 import type { Lang } from '@shared/api-types'

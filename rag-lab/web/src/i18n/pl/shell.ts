@@ -161,6 +161,7 @@ export const shell = {
   techTabs: {
     retrieval: 'Wyszukiwanie',
     pipeline: 'Przebieg',
+    guide: 'Przewodnik',
   },
 
   guide: {
@@ -177,12 +178,6 @@ export const shell = {
     progress: (done: number, total: number) => `ukończono ${done}/${total}`,
     concepts: 'Pojęcia',
     extrasTitle: 'Dla chętnych',
-    tests: [
-      { kind: 'Zwykłe', question: 'Do jakiej kwoty mogę sama zatwierdzić zwrot?' },
-      { kind: 'Z wyjątkiem', question: 'Co dzieje się z partią po zgłoszeniu wybrzuszonej puszki?' },
-      { kind: 'Bez odpowiedzi w procedurach', question: 'Czy dostawa partii RYB-261031-L2 dotarła już do sklepu?' },
-      { kind: 'Zastrzeżone', question: 'Jaki jest telefon klienta, który zgłosił reklamację R-2026-311?' },
-    ],
     steps: {
       sources: {
         module: 'Moduł 3 · Źródła',
@@ -216,14 +211,15 @@ export const shell = {
       },
       tests: {
         module: 'Moduł 6 · Ocena',
-        title: 'Czy asystent przejdzie cztery testy?',
-        body: 'Zadajcie cztery pytania testowe przy wybranym ustawieniu. Przy każdym oceńcie: poprawna, niepełna, błędna albo powinna być odmowa, i zapiszcie dowód z listy fragmentów pod odpowiedzią. Pytanie o dostawę rozstrzyga tylko system wysyłek, a telefon klienta to dane osobowe. Potem zmieńcie jedną rzecz i zadajcie je ponownie.',
+        title: 'Uruchomcie cały benchmark',
+        body: 'W części Benchmark uruchomcie wszystkie włączone pytania testowe przy wybranym ustawieniu. Przeczytajcie, które rodzaje pytań nie przechodzą, i sprawdźcie odpowiedzi, które czekają na Waszą ocenę. Potem zmieńcie jedną decyzję, uruchomcie benchmark jeszcze raz i porównajcie dwa wiersze w tabeli przebiegów.',
+        action: 'Przejdź do benchmarku',
       },
       log: {
         module: 'Moduł 6–7 · Dowody',
-        title: 'Pobierzcie dziennik testów',
-        body: 'Dziennik ma każde pytanie z rozmowy, ustawienia indeksu, fragmenty w kontekście z wynikami i odpowiedź. To Wasz dowód do karty zespołu i decyzji o pilotażu.',
-        action: 'Pobierz dziennik testów (CSV)',
+        title: 'Pobierzcie przebiegi',
+        body: 'Plik CSV ma każdy przebieg benchmarku: ustawienia bazy, każde pytanie z wynikiem, Wasze ręczne oceny i odpowiedź. To dowód zespołu do karty i decyzji o pilotażu.',
+        action: 'Przejdź do benchmarku',
       },
       map: {
         title: 'Obejrzyj mapę wektorów',

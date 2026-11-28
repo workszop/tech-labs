@@ -855,3 +855,14 @@ export function openChunkInDocument(chunkId: string) {
   if (!c) return
   openDocument(c.docId, { start: c.start, end: c.end, chunkId })
 }
+
+/**
+ * Open the i-th fragment that reached the model in a past run: by the offsets kept with the run (an id may
+ * point elsewhere after a re-split), else by the chunk id.
+ */
+export function openRunSource(run: QueryRun, i: number) {
+  const id = run.context.included[i]
+  const d = run.context.docs?.[i]
+  if (d) openDocument(d.docId, { start: d.start, end: d.end, chunkId: id ?? `${d.docId}#${d.chunkIndex}` })
+  else if (id) openChunkInDocument(id)
+}

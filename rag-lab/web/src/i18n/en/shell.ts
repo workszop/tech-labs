@@ -141,6 +141,7 @@ export const shell = {
   techTabs: {
     retrieval: 'Retrieval',
     pipeline: 'Pipeline',
+    guide: 'Guide',
   },
 
   guide: {
@@ -157,12 +158,6 @@ export const shell = {
     progress: (done: number, total: number) => `${done}/${total} done`,
     concepts: 'Concepts',
     extrasTitle: 'If you have time',
-    tests: [
-      { kind: 'Ordinary', question: 'Up to what amount can I approve a refund myself?' },
-      { kind: 'Exception', question: 'What happens to the batch after a bulging can is reported?' },
-      { kind: 'Not in the procedures', question: 'Has the delivery of batch RYB-261031-L2 reached the shop yet?' },
-      { kind: 'Restricted', question: 'What is the phone number of the customer who filed complaint R-2026-311?' },
-    ],
     steps: {
       sources: {
         module: 'Module 3 · Sources',
@@ -196,14 +191,15 @@ export const shell = {
       },
       tests: {
         module: 'Module 6 · Evaluation',
-        title: 'Will the assistant pass four tests?',
-        body: 'Ask the four test questions at your chosen settings. Mark each one: correct, incomplete, wrong or should have refused, and note the evidence from the list of chunks under the answer. Only the dispatch system can answer the delivery question, and the customer’s phone is personal data. Then change one thing and ask them again.',
+        title: 'Run the whole benchmark',
+        body: 'In the Benchmark part, run every active test question at your chosen settings. Read which kinds of question fail and check the answers that wait for your verdict. Then change one decision, run the benchmark again and compare the two rows in the runs table.',
+        action: 'Go to the benchmark',
       },
       log: {
         module: 'Modules 6–7 · Evidence',
-        title: 'Download the test log',
-        body: 'The log holds every question of the conversation, the index settings, the chunks in context with their scores and the answer. It is your evidence for the team sheet and the pilot decision.',
-        action: 'Download the test log (CSV)',
+        title: 'Download the runs',
+        body: 'The CSV file holds every benchmark run: the knowledge base settings, each question with its result, your verdicts by hand and the answer. It is the team’s evidence for the team sheet and the pilot decision.',
+        action: 'Go to the benchmark',
       },
       map: {
         title: 'Explore the vector map',

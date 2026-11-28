@@ -12,6 +12,7 @@ import { uid } from '@/lib/utils'
 import { scoreAnswer, scoreRetrieval, type BenchmarkCase, type CaseKind, type CaseResult } from '@/rag/benchmark'
 import { abortBenchmark, benchmarkSignal, currentBuildPlan, indexSnapshot, runQuery, vectorStore } from './actions'
 import { buildRunsCsv } from './benchLog'
+import { pruneBenchTraces } from './benchTraces'
 import { isStale } from './membership'
 import { closeBenchRun, getState, setSettings, setState, setUi, type AppState, type BenchmarkRun, type QueryRun } from './store'
 
@@ -105,6 +106,7 @@ function scoreCase(c: BenchmarkCase, q: QueryRun, runId: string): CaseResult {
     answer: scoreAnswer(answerText, c.keyFacts, c.mustNotContain),
     answerText,
     override: null,
+    queryRunId: q.id,
   }
 }
 
@@ -128,7 +130,11 @@ export async function runBenchmark(filter: RunFilter = {}): Promise<void> {
       cases.map((c) => [c.id, { kind: c.kind, question: c.question, expectedDocTitles: c.expectedDocIds.map((id) => getCorpus(s.settings.lang).docById[id]?.title ?? id) }]),
     ),
   }
-  setState((st) => ({ bench: { ...st.bench, runs: [...st.bench.runs, run], currentRunId: run.id } }))
+  setState((st) => {
+    const bench = { ...st.bench, runs: [...st.bench.runs, run], currentRunId: run.id }
+    // Traces of older benchmark runs go (their query vectors add up); the chat's runs stay.
+    return { bench, runs: pruneBenchTraces({ ...st, bench }) }
+  })
   await save(run)
   let end: { status: 'done' | 'cancelled' | 'error'; error?: string } = { status: 'done' }
   for (const c of cases) {
@@ -150,7 +156,7 @@ export async function runBenchmark(filter: RunFilter = {}): Promise<void> {
       break
     }
     const result: CaseResult = failed
-      ? { caseId: c.id, runId: run.id, status: 'error', retrieval: null, answer: null, answerText: '', error: q.generate.error, override: null }
+      ? { caseId: c.id, runId: run.id, status: 'error', retrieval: null, answer: null, answerText: '', error: q.generate.error, override: null, queryRunId: q.id }
       : scoreCase(c, q, run.id)
     await save(patchRun(run.id, (r) => ({ ...r, results: [...r.results, result] })))
     if (failed && stopsTheRun(q.generate.errorCode)) {

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { cn, formatBytes, formatMs, formatNumber } from '@/lib/utils'
-import { buildIndex, cancelIndexing, currentBuildPlan, indexCompatibility, retryFailedBatches } from '@/state/actions'
+import { benchmarkRunning, buildIndex, cancelIndexing, currentBuildPlan, indexCompatibility, retryFailedBatches } from '@/state/actions'
 import { isStale } from '@/state/membership'
 import { setSettings, useStore, type IndexJob, type IndexStep, type StageStatus } from '@/state/store'
 import { goTo } from '@/state/nav'
@@ -106,6 +106,8 @@ export function BuildControls() {
   const tv = useT().lab.vectors
   const td = useT().lab.data
   const running = job?.status === 'running'
+  // The knowledge base must not change under a running benchmark (buildIndex refuses too).
+  const benchBusy = useStore(benchmarkRunning)
   const e = job?.embedding
   return (
     <SectionCard
@@ -119,13 +121,14 @@ export function BuildControls() {
           {selection.length === 0 && !stale && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground">{tx.selectHint}</p>}
           {/* Without an access code the button is disabled: say why. */}
           {needsEmbeddings && !authed && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground" data-testid="build-needs-code">{tx.embedding.needSession}</p>}
+          {benchBusy && <p className="min-w-0 flex-1 basis-48 text-[12.5px] text-muted-foreground" data-testid="build-blocked-bench">{tv.buildBlockedByBench}</p>}
           <div className="ml-auto flex flex-wrap gap-2">
             {running && (
               <Button variant="outline" size="sm" onClick={cancelIndexing}>
                 <X /> {tx.embedding.cancel}
               </Button>
             )}
-            <Button variant="accent" size="sm" disabled={!stale || running || (needsEmbeddings && !authed)} onClick={() => buildIndex()} data-testid="rebuild-index">
+            <Button variant="accent" size="sm" disabled={!stale || running || benchBusy || (needsEmbeddings && !authed)} onClick={() => buildIndex()} data-testid="rebuild-index">
               <Hammer /> {stale ? tx.buildPlan(plan.add.length, plan.remove.length, plan.resplit.length) : tx.upToDate}
             </Button>
           </div>
@@ -162,7 +165,7 @@ export function BuildControls() {
             tone={job.status === 'partial' ? 'warn' : 'danger'}
             title={job.status === 'partial' ? tx.partialTitle : tx.stoppedTitle}
             action={
-              job.embedding?.batches.some((b) => b.status === 'failed' || b.status === 'pending') && authed ? (
+              job.embedding?.batches.some((b) => b.status === 'failed' || b.status === 'pending') && authed && !benchBusy ? (
                 <Button size="xs" variant="outline" onClick={() => retryFailedBatches()}>
                   <RefreshCw /> {tx.retry}
                 </Button>

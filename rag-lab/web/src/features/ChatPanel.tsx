@@ -7,7 +7,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { useCorpus } from '@/data/corpus'
 import { useT, type Dict } from '@/i18n'
 import { cn, formatMs } from '@/lib/utils'
-import { ask, cancelQuery, clearConversation, downloadTestLog, indexCompatibility, openChunkInDocument, openDocument, showActivation } from '@/state/actions'
+import { ask, cancelQuery, clearConversation, downloadTestLog, indexCompatibility, openRunSource, showActivation } from '@/state/actions'
 import { setUi, useStore, type ContextDoc, type GenerationResult, type QueryRun } from '@/state/store'
 import { goTo, showRunDetails } from '@/state/nav'
 import { answerMode } from '@/state/answerMode'
@@ -217,7 +217,7 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
   const sources = run.context.included.map((id, i) => {
     const chunk = chunks.find((c) => c.id === id)
     const doc = run.context.docs?.[i]
-    return { n: i + 1, id, chunk, doc, docId: chunk?.docId ?? doc?.docId, title: chunk?.docTitle ?? doc?.docTitle ?? id }
+    return { n: i + 1, id, chunk, doc, run, docId: chunk?.docId ?? doc?.docId, title: chunk?.docTitle ?? doc?.docTitle ?? id }
   })
   const pending = gen.status === 'processing' && !gen.answer
   const dict = useT()
@@ -289,12 +289,11 @@ function AnswerCard({ run, gen, title, baseline }: { run: QueryRun; gen: Generat
   )
 }
 
-type Source = { n: number; id: string; doc?: ContextDoc }
+type Source = { n: number; id: string; doc?: ContextDoc; run: QueryRun }
 
-/** Opens the passage the model received, by the offsets recorded with the run (the id may point elsewhere after a re-split). */
+/** Opens the passage the model received (see openRunSource). */
 function openSource(src: Source) {
-  if (src.doc) openDocument(src.doc.docId, { start: src.doc.start, end: src.doc.end, chunkId: src.id })
-  else openChunkInDocument(src.id)
+  openRunSource(src.run, src.n - 1)
 }
 
 /** Render the answer with [n] citations turned into clickable chips. */

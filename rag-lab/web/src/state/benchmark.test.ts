@@ -17,8 +17,6 @@ vi.mock('@/api/client', async (orig) => {
 import { api, ApiError } from '@/api/client'
 import { BUILT_IN_CASES } from '@/data/benchmark'
 import { getCorpus } from '@/data/corpus'
-import { pl } from '@/i18n/pl'
-import { en } from '@/i18n/en'
 import { CASE_KINDS, containsTerm, type BenchmarkCase } from '@/rag/benchmark'
 import { openVectorStore, type ChunkRecord, type IndexedDocRecord } from '@/rag/db'
 import { benchmarkRunning, buildIndex, docHash, docText, initApp, resetKnowledgeBase, setLang, toggleSelect } from './actions'
@@ -80,10 +78,10 @@ beforeEach(async () => {
 })
 
 describe('built-in cases', () => {
-  it.each([['pl', pl], ['en', en]] as const)('%s: one case per kind, questions from the guide', (lang, dict) => {
+  it.each(['pl', 'en'] as const)('%s: one case per kind', (lang) => {
     const cases = BUILT_IN_CASES[lang]
     expect(cases.map((c) => c.kind)).toEqual(CASE_KINDS)
-    expect(cases.map((c) => c.question)).toEqual(dict.shell.guide.tests.map((x) => x.question))
+    expect(new Set(cases.map((c) => c.question)).size).toBe(cases.length)
     expect(cases.every((c) => c.builtIn && c.lang === lang && c.expectedAnswer.length > 0)).toBe(true)
   })
   it.each(['pl', 'en'] as const)('%s: every key fact occurs in an expected document', (lang) => {
@@ -266,6 +264,23 @@ describe('the run loop', () => {
     expect(run.status).toBe('cancelled')
     expect(run.results.map((r) => [r.caseId, r.status])).toEqual([['b-ordinary-1', 'done'], ['b-exception-1', 'skipped'], ['b-missing-1', 'skipped']])
     expect((await storedRuns()).find((r) => r.id === 'r-old')!.status).toBe('cancelled')
+  })
+})
+
+describe('benchmark traces', () => {
+  it('links each result to its query run and keeps only the traces of the latest two runs', async () => {
+    const { ask } = await import('./actions')
+    await ask('pytanie z czatu')
+    const chatRun = getState().chat[0].runId
+    await runBenchmark()
+    const first = getState().bench.runs.at(-1)!
+    expect(first.results.every((r) => r.queryRunId && getState().runs[r.queryRunId])).toBe(true)
+    await runBenchmark()
+    await runBenchmark()
+    const [, second, third] = getState().bench.runs
+    const traces = (r: BenchmarkRun) => r.results.map((x) => x.queryRunId!)
+    expect(Object.keys(getState().runs).sort()).toEqual([chatRun, ...traces(second), ...traces(third)].sort())
+    expect(traces(first).some((id) => getState().runs[id])).toBe(false)
   })
 })
 

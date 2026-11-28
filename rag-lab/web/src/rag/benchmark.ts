@@ -31,6 +31,8 @@ export interface CaseResult {
   retrieval: RetrievalScore | null; answer: AnswerScore | null
   answerText: string; error?: string
   override: 'pass' | 'fail' | null
+  /** The query run (in `state.runs`) that answered this case; its trace is in memory only until a reload. */
+  queryRunId?: string
 }
 
 /** Lower-cases (Polish rules), turns non-breaking and narrow spaces into spaces, collapses whitespace, trims. */
