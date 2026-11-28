@@ -24,7 +24,8 @@ export function Header() {
     // Narrow screens give way in this order: tagline, wordmark, product name, usage meter, then smaller logo
     // and icons. The Students / Tech switch, the language switch and the account button always stay.
     <header className="flex h-[72px] shrink-0 items-center gap-1.5 border-b bg-card pl-1 pr-2 sm:gap-3 sm:pl-3 sm:pr-5">
-      <div className="flex shrink-0 items-center">
+      {/* Without a session the Activate button needs the room: below 400 px the logo gives way. */}
+      <div className={cn('flex shrink-0 items-center', status !== 'active' && 'max-[399px]:hidden')}>
         <Logo className="size-10 sm:size-[60px]" />
         <span className="hidden font-display text-[22px] font-bold leading-none tracking-[-0.02em] text-foreground sm:inline">edulab</span>
       </div>
