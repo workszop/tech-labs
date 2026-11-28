@@ -37,6 +37,7 @@ export function capabilities(cfg: Config): Capabilities {
     maxOutputTokens: { ...LIMITS.maxOutputTokens },
     temperature: { ...LIMITS.temperature },
     streaming: true,
+    ownProfile: true,
   }
 }
 

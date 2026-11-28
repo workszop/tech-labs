@@ -10,8 +10,8 @@
  * maxTokens → [64, 1024], rounded); wrong types are `invalid_request`.
  * The echo shows the values actually used.
  */
-import type { ChatMode, ChatResponse, ChatUsage, ContextChunk, Lang, PromptEcho } from '../../../shared/api-types'
-import { DEFAULT_PROMPT_LANG, buildChatMessages, estimateMessagesTokens, estimateTokens, isLang } from '../../../shared/prompt'
+import type { ChatMode, ChatResponse, ChatUsage, ContextChunk, Lang, PromptEcho, PromptProfile } from '../../../shared/api-types'
+import { DEFAULT_PROMPT_LANG, MAX_INSTRUCTIONS_CHARS, buildChatMessages, estimateMessagesTokens, estimateTokens, isLang } from '../../../shared/prompt'
 import { requireSession } from '../auth/session'
 import { cost, type RequestContext } from '../context'
 import { type AccessCodeRow, reserveQuota, settleUsage, usageInfo } from '../db'
@@ -28,6 +28,8 @@ export interface ValidatedChat {
   context: ContextChunk[]
   mode: ChatMode
   lang: Lang
+  profile: PromptProfile
+  instructions: string
   temperature: number
   maxTokens: number
   stream: boolean
@@ -53,6 +55,17 @@ export function validateChat(body: unknown): ValidatedChat {
   if (body.lang !== undefined && body.lang !== null) {
     if (!isLang(body.lang)) throw new ApiError('invalid_request', '`lang` must be "pl" or "en".')
     lang = body.lang
+  }
+
+  let profile: PromptProfile = 'rybex'
+  if (body.profile !== undefined && body.profile !== null) {
+    if (body.profile !== 'rybex' && body.profile !== 'own') throw new ApiError('invalid_request', '`profile` must be "rybex" or "own".')
+    profile = body.profile
+  }
+  let instructions = ''
+  if (body.instructions !== undefined && body.instructions !== null) {
+    if (profile !== 'own') throw new ApiError('invalid_request', '`instructions` need `profile: "own"`.')
+    instructions = str(body.instructions, 'instructions', MAX_INSTRUCTIONS_CHARS)
   }
 
   const rawCtx = body.context ?? []
@@ -90,7 +103,7 @@ export function validateChat(body: unknown): ValidatedChat {
     if (typeof body.stream !== 'boolean') throw new ApiError('invalid_request', '`stream` must be a boolean.')
     stream = body.stream
   }
-  return { question, context, mode, lang, temperature, maxTokens, stream }
+  return { question, context, mode, lang, profile, instructions, temperature, maxTokens, stream }
 }
 
 /** POST /api/chat */
@@ -102,7 +115,7 @@ export async function handleChat(c: RequestContext): Promise<Response> {
   const provider = createProvider(c.cfg, c.fetch)
   assertNoClientModel(body as Record<string, unknown>, provider.chatModel)
 
-  const messages = buildChatMessages({ question: v.question, context: v.context, mode: v.mode, lang: v.lang })
+  const messages = buildChatMessages({ question: v.question, context: v.context, mode: v.mode, lang: v.lang, profile: v.profile, instructions: v.instructions })
   const inputEst = estimateMessagesTokens(messages)
   if (inputEst > LIMITS.maxChatInputTokens) {
     throw new ApiError(

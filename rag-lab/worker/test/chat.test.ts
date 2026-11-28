@@ -178,4 +178,33 @@ describe('POST /api/chat', () => {
     const u = await (await api('/api/usage', { headers: auth(token) })).json()
     expect(u).toMatchObject({ requestsUsed: 0, tokensUsed: 0 })
   })
+
+  describe('profile own', () => {
+    it('uses the own prompt with team instructions and echoes it', async () => {
+      const { token } = await newSession()
+      const req = { ...ragReq, lang: 'pl' as const, profile: 'own' as const, instructions: 'Odpowiadaj punktami.' }
+      const res = await chat(token, { ...req, stream: false })
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as ChatResponse
+      expect(body.prompt.messages).toEqual(buildChatMessages(req))
+      expect(body.prompt.messages[0]!.content).toContain('Odpowiadaj punktami.')
+      expect(body.prompt.messages[0]!.content).not.toContain('Rybex')
+    })
+
+    it('rejects an unknown profile', async () => {
+      const { token } = await newSession()
+      await expectError(await chat(token, { ...ragReq, profile: 'x' }), 400, 'invalid_request')
+    })
+
+    it('rejects instructions that are too long or not a string', async () => {
+      const { token } = await newSession()
+      await expectError(await chat(token, { ...ragReq, profile: 'own', instructions: 'a'.repeat(2001) }), 413, 'payload_too_large')
+      await expectError(await chat(token, { ...ragReq, profile: 'own', instructions: 5 }), 400, 'invalid_request')
+    })
+
+    it('rejects instructions without profile own', async () => {
+      const { token } = await newSession()
+      await expectError(await chat(token, { ...ragReq, instructions: 'Hi' }), 400, 'invalid_request')
+    })
+  })
 })
