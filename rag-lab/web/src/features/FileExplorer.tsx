@@ -11,7 +11,7 @@ import { cn, formatNumber } from '@/lib/utils'
 import { useT } from '@/i18n'
 import { currentBuildPlan, docHash, docText, openDocument, resetKnowledgeBase, toggleSelect } from '@/state/actions'
 import { isStale } from '@/state/membership'
-import { goTo } from '@/state/nav'
+import { goTo, toggleFolder } from '@/state/nav'
 import { useStore, type View } from '@/state/store'
 import { Alert, Explain, IconBadge, docFlag, folderColor } from './common'
 
@@ -47,7 +47,7 @@ export function FileExplorer({ view = 'students' }: { view?: View }) {
   const { documents, folders } = useCorpus()
   const tx = useT().shell.explorer
   const td = useT().lab.data
-  const [open, setOpen] = useState<Record<string, boolean>>({})
+  const openFolders = useStore((s) => s.ui.openFolders)
   const [confirmReset, setConfirmReset] = useState(false)
   const sel = useMemo(() => new Set(selection), [selection])
   const indexedCount = Object.keys(indexed).length
@@ -92,16 +92,16 @@ export function FileExplorer({ view = 'students' }: { view?: View }) {
           const docs = documents.filter((d) => d.folder === f.id)
           const ids = docs.map((d) => d.id)
           const nSel = ids.filter((id) => sel.has(id)).length
-          const isOpen = open[f.id] ?? false
+          const isOpen = openFolders.includes(f.id)
           const checked = nSel === 0 ? false : nSel === ids.length ? true : 'indeterminate'
           return (
             <div key={f.id} role="treeitem" aria-expanded={isOpen} className="mb-0.5" data-folder={f.id}>
               <div className="group flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted">
-                <button className="flex size-5 items-center justify-center rounded text-muted-foreground cursor-pointer" onClick={() => setOpen({ ...open, [f.id]: !isOpen })} aria-label={isOpen ? tx.collapse(f.name) : tx.expand(f.name)} data-folder-toggle={f.id}>
+                <button className="flex size-5 items-center justify-center rounded text-muted-foreground cursor-pointer" onClick={() => toggleFolder(f.id)} aria-label={isOpen ? tx.collapse(f.name) : tx.expand(f.name)} data-folder-toggle={f.id}>
                   <ChevronRight className={cn('size-3.5 transition-transform', isOpen && 'rotate-90')} />
                 </button>
                 {students && <Checkbox checked={checked} onCheckedChange={(v) => toggleSelect(ids, v === true)} aria-label={tx.selectAllIn(f.name)} />}
-                <button className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[13px] font-medium cursor-pointer" onClick={() => setOpen({ ...open, [f.id]: !isOpen })}>
+                <button className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[13px] font-medium cursor-pointer" onClick={() => toggleFolder(f.id)}>
                   {isOpen ? <FolderOpen className="size-4 shrink-0" style={{ color: folderColor(f.id) }} /> : <Folder className="size-4 shrink-0" style={{ color: folderColor(f.id) }} />}
                   <span className="truncate">{f.name}</span>
                   {!students && <span className="truncate font-mono text-[11px] font-normal text-muted-foreground">{f.id}/</span>}

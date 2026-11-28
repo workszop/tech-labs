@@ -39,6 +39,8 @@ export function buildTestLogCsv(
   w: TestLogWords,
   chunkNo: (c: { chunkIndex: number }) => string,
   labelName: (key: string) => string,
+  /** Formats the time in the language of the export (`pl-PL`, `en-US`). */
+  locale: string,
 ): string {
   const byId = new Map(chunks.map((c) => [c.id, c]))
   const header = [w.time, w.question, w.rag, w.documents, w.chunkSize, w.overlap, w.labels, w.topK, w.threshold, w.context, w.answer]
@@ -53,7 +55,7 @@ export function buildTestLogCsv(
       })
       .join(' | ')
     return [
-      new Date(r.createdAt).toLocaleString(),
+      new Date(r.createdAt).toLocaleString(locale),
       r.question,
       r.ragEnabled ? w.yes : w.no,
       r.index ? r.index.docTitles.join(' | ') : '',

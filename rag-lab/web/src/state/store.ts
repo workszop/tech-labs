@@ -230,6 +230,8 @@ export interface AppState {
     caseTechTab: CaseTechTab
     mapFocusDoc: string | null
     mapFolders: string[] | null
+    /** Folders open in the Data part, kept while the app is open so returning to Data finds them as left. */
+    openFolders: string[]
     /** Guide steps that were completed at least once (they stay ticked). */
     guideDone: string[]
     benchExported: boolean
@@ -337,6 +339,7 @@ let state: AppState = {
     caseTechTab: 'retrieval',
     mapFocusDoc: null,
     mapFolders: null,
+    openFolders: [],
     guideDone: [],
     benchExported: false,
   },

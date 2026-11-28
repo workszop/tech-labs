@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SETTINGS, loadPrefsFrom, getState, setSettings, setUi } from './store'
-import { goTo, openGuide, PARTS, partMark, showRunDetails } from './nav'
+import { goTo, openGuide, PARTS, partMark, showRunDetails, toggleFolder } from './nav'
 
 describe('stored preferences', () => {
   it('opens with the Students face when the stored prefs come from the old version', () => {
@@ -87,5 +87,16 @@ describe('the header guide button', () => {
     expect(scrollTo).toHaveBeenCalledTimes(1)
     expect(getState().ui.caseTechTab).toBe('pipeline')
     expect(getState().settings.view).toBe('students')
+  })
+})
+
+describe('folders in the Data part', () => {
+  it('keep their open state in the app state while the app is open', () => {
+    setUi({ openFolders: [] })
+    toggleFolder('complaints')
+    toggleFolder('quality')
+    expect(getState().ui.openFolders).toEqual(['complaints', 'quality'])
+    toggleFolder('complaints')
+    expect(getState().ui.openFolders).toEqual(['quality'])
   })
 })

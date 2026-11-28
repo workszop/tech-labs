@@ -33,7 +33,7 @@ describe('csvField', () => {
 
 describe('buildTestLogCsv', () => {
   it('writes one row per question with settings, context and answer', () => {
-    const csv = buildTestLogCsv([run], [chunk], W, (c) => `fragment ${c.chunkIndex + 1}`, (k) => (k === 'section' ? 'sekcja' : k))
+    const csv = buildTestLogCsv([run], [chunk], W, (c) => `fragment ${c.chunkIndex + 1}`, (k) => (k === 'section' ? 'sekcja' : k), 'pl-PL')
     expect(csv.startsWith('﻿')).toBe(true)
     const lines = csv.slice(1).trim().split('\r\n')
     expect(lines).toHaveLength(2)
@@ -44,7 +44,14 @@ describe('buildTestLogCsv', () => {
   })
   it('keeps the source title when the chunk is no longer in the index', () => {
     const gone = { ...run, id: 'r2', context: { ...run.context, included: ['hr-remote-work-2022#3'], docs: [{ docId: 'hr-remote-work-2022', docTitle: 'Zasady pracy zdalnej (2022, nieaktualne)', chunkIndex: 3, start: 0, end: 10 }] } }
-    const csv = buildTestLogCsv([gone], [], W, (c) => `fragment ${c.chunkIndex + 1}`, (k) => k)
+    const csv = buildTestLogCsv([gone], [], W, (c) => `fragment ${c.chunkIndex + 1}`, (k) => k, 'pl-PL')
     expect(csv).toContain('[1] Zasady pracy zdalnej (2022, nieaktualne), fragment 4')
+  })
+  it('formats the time in the language of the export', () => {
+    const at = new Date(run.createdAt)
+    const first = (locale: string) => buildTestLogCsv([run], [chunk], W, (c) => `fragment ${c.chunkIndex + 1}`, (k) => k, locale).slice(1).split('\r\n')[1]
+    expect(first('pl-PL').startsWith(csvField(at.toLocaleString('pl-PL')) + ';')).toBe(true)
+    expect(first('en-US').startsWith(csvField(at.toLocaleString('en-US')) + ';')).toBe(true)
+    expect(at.toLocaleString('pl-PL')).not.toBe(at.toLocaleString('en-US'))
   })
 })

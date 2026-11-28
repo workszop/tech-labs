@@ -68,3 +68,9 @@ export function partMark(part: Part, s: AppState): number | null {
   }
   return n ? n : null
 }
+
+/** Open or close a folder of the Data part (in memory only, not in the stored preferences). */
+export function toggleFolder(id: string): void {
+  const open = getState().ui.openFolders
+  setUi({ openFolders: open.includes(id) ? open.filter((f) => f !== id) : [...open, id] })
+}

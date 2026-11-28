@@ -125,7 +125,7 @@ await step('A: valid code activates the app in the Students face', async () => {
 })
 
 await step('C: select three documents and build a real vector index', async () => {
-  await tick(['PROCES-04 Complaint handling', 'PROCES-06 Batch hold and release', 'PROCES-01 Can seam inspection'])
+  await tick(['Complaint handling', 'Batch hold and release', 'Can seam inspection'])
   await build()
   await page.getByTestId('vectors-result').filter({ hasText: /from 3 documents/ }).waitFor()
   await shot('02-build')
@@ -138,13 +138,16 @@ await step('D+E: ask → fragments under the answer (Students), real cosine rank
   await page.locator('[data-panel=chat] [data-testid=context-list]').last().waitFor()
   await face('tech')
   assert((await viewOf('case')) === 'tech', 'the Case part should stay open in the Tech face')
+  // Leave Retrieval first (it is the default tab), so the check below proves that "Full details" selects it.
+  await page.getByTestId('tab-pipeline').click()
+  assert((await page.getByTestId('tab-retrieval').getAttribute('data-state')) === 'inactive', 'Retrieval should be left before "Full details"')
   await page.locator('[data-panel=chat] button[aria-expanded]').last().click()
   await page.getByTestId('full-details').last().click()
   assert((await page.getByTestId('tab-retrieval').getAttribute('data-state')) === 'active', '"Full details" should open the Retrieval tab')
   const ranked = page.getByTestId('ranked-results')
   await ranked.waitFor()
   const first = await ranked.locator('li').first().innerText()
-  assert(/Complaint handling/.test(first), `top result should be PROCES-04 Complaint handling, got: ${first.slice(0, 80)}`)
+  assert(/Complaint handling/.test(first), `top result should be Complaint handling, got: ${first.slice(0, 80)}`)
   assert(/0\.\d{3}/.test(first), 'scores visible')
   await shot('03-retrieval')
 })
@@ -210,30 +213,41 @@ await step('Compare mode (Generator · Students): answers with and without docum
 })
 
 await step('b: untick a document → stale alert; the build removes it', async () => {
-  await tick(['PROCES-01 Can seam inspection'])
+  await tick(['Can seam inspection'])
   await page.getByTestId('data-stale').waitFor()
   await build()
   await page.getByTestId('vectors-result').filter({ hasText: /from 2 documents/ }).waitFor()
   await nav('data')
   assert((await page.getByTestId('data-stale').count()) === 0, 'stale alert should be gone after the build')
+  // The folders opened by tick() are still open after leaving Data and coming back.
+  assert((await page.locator('[data-folder-toggle=production]').getAttribute('aria-label'))?.startsWith('Collapse'), 'folders should keep their open state')
 })
 
-await step('c: a benchmark run gives every built-in case a verdict; the build waits; the CSV downloads', async () => {
+await step('c: a benchmark run gives every built-in case a verdict mark (pass, fail, or waiting for the participant); the build waits; the CSV downloads', async () => {
   await nav('benchmark')
   await page.getByTestId('bench-cost').filter({ hasText: /questions = \d+ requests, you have \d+ left/ }).waitFor()
-  await page.getByTestId('bench-run').click()
-  await page.getByTestId('bench-progress').waitFor()
-  // The build is held back, with its reason, while the run lasts. (Changing a decision now would end the
-  // run: a benchmark never scores a database that differs from the decisions on screen.)
-  await nav('vectors')
-  const running = (await page.getByTestId('build-blocked-bench').count()) > 0
-  assert(await page.getByTestId('rebuild-index').isDisabled(), 'build must be disabled while a benchmark runs')
+  // The mock answers in milliseconds: slow each answer down so the run is still going while we look.
+  const slow = (route) => setTimeout(() => route.continue().catch(() => {}), 1500)
+  await page.route('**/api/chat', slow)
+  try {
+    await page.getByTestId('bench-run').click()
+    await page.getByTestId('bench-progress').waitFor()
+    // The build is held back, with its reason, while the run lasts. (Changing a decision now would end the
+    // run: a benchmark never scores a database that differs from the decisions on screen.)
+    await nav('vectors')
+    await page.getByTestId('build-blocked-bench').waitFor({ timeout: 3000 })
+  } finally {
+    await page.unroute('**/api/chat', slow)
+  }
   await nav('benchmark')
   await page.waitForFunction(() => !document.querySelector('[data-testid=bench-progress]'), null, { timeout: 60000 })
   const verdicts = await page.locator('[data-testid=bench-cases] [data-case]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-verdict')))
   assert(verdicts.length >= 4, `expected the 4 built-in cases, got ${verdicts.length}`)
-  assert(verdicts.every((v) => v === 'pass' || v === 'fail' || v === 'waiting'), `every case needs a verdict: ${verdicts.join(',')}`)
-  assert(running, 'the build-blocked note should show while the run lasts')
+  // 'waiting' is a verdict mark too: the case waits for the participant's own verdict.
+  assert(verdicts.every((v) => v === 'pass' || v === 'fail' || v === 'waiting'), `every case needs a verdict mark: ${verdicts.join(',')}`)
+  await nav('vectors')
+  assert((await page.getByTestId('build-blocked-bench').count()) === 0, 'the build-blocked note should go away when the run ends')
+  await nav('benchmark')
   await page.getByTestId('bench-runs').locator('tbody tr').first().waitFor()
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bench-export').click()])
   assert(/\.csv$/.test(download.suggestedFilename()), `CSV expected, got ${download.suggestedFilename()}`)

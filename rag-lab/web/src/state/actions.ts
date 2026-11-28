@@ -18,7 +18,7 @@ import { rankBySimilarity, selectTopK, DimensionMismatchError } from '@/rag/simi
 import { TOKENIZER_NAME } from '@/rag/tokenizer'
 import { buildChatMessages } from '@shared/prompt'
 import type { ContextChunk, Lang, SessionInfo } from '@shared/api-types'
-import { uid } from '@/lib/utils'
+import { currentLocale, uid } from '@/lib/utils'
 import { buildTestLogCsv } from './testLog'
 import { initialSelection, planBuild, type BuildPlan } from './membership'
 import { closeBenchRun, getState, loadedSelectionIsMembership, markSelectionIsMembership, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type IndexSnapshot, type PlannedChunk, type QueryRun } from './store'
@@ -264,7 +264,7 @@ export function downloadTestLog() {
   const tx = t().lab.chat
   const seen = new Set<string>()
   const runs = s.chat.map((m) => s.runs[m.runId]).filter((r) => r && !seen.has(r.id) && seen.add(r.id))
-  const csv = buildTestLogCsv(runs, s.index.chunks, tx.csv, (c) => t().lab.retrieval.chunkNo(c.chunkIndex + 1), (k) => tx.labelNames[k] ?? k)
+  const csv = buildTestLogCsv(runs, s.index.chunks, tx.csv, (c) => t().lab.retrieval.chunkNo(c.chunkIndex + 1), (k) => tx.labelNames[k] ?? k, currentLocale())
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
   const a = document.createElement('a')
   a.href = url
