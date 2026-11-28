@@ -3,7 +3,7 @@ import { ArrowRight, BookOpen, Check, Download, FileSearch, FlaskConical, Folder
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getState, setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
-import { ask, previewChunking, selectFolder, toggleSelect } from '@/state/actions'
+import { ask, buildIndex, previewChunking, selectFolder, toggleSelect } from '@/state/actions'
 import { goTo } from '@/state/nav'
 import { answerModePatch } from '@/state/answerMode'
 import { previewShows } from '@/state/membership'
@@ -56,9 +56,13 @@ const STEPS: GuideStep[] = [
       const firstWith = runs.find((r) => r.index!.docIds.includes(OUTDATED))
       return !!firstWith && runs.some((r) => r.createdAt > firstWith.createdAt && !r.index!.docIds.includes(OUTDATED) && r.index!.docIds.includes(CURRENT))
     },
-    run: () => {
+    // The button does what its label says: untick the draft, rebuild (removing a document needs no
+    // embeddings), then back to the chat, where the guiding question is one click away.
+    run: async () => {
       toggleSelect([OUTDATED], false)
-      goTo('vectors')
+      await buildIndex()
+      const job = getState().job
+      if (!job || job.status === 'done') goToChat()
     },
     askGuiding: true,
   },

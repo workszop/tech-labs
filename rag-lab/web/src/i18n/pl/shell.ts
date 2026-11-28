@@ -188,7 +188,7 @@ export const shell = {
       outdated: {
         module: 'Moduł 3 · Jedna zmiana',
         title: 'Usuńcie projekt wersji 6 i zapytajcie jeszcze raz',
-        body: 'Zmieńcie tylko jedną rzecz: odznaczcie projekt wersji 6 w części Dane, zbudujcie indeks jeszcze raz i zadajcie to samo pytanie. Co się zmieniło w odpowiedzi i w źródłach? Potem zdecydujcie, czy rejestr z danymi osobowymi i rekord przesyłki w ogóle powinny być w bazie.',
+        body: 'Zmieńcie tylko jedną rzecz: usuńcie z bazy projekt wersji 6. Przycisk na dole odznacza go w części Dane, buduje indeks bez niego i wraca do czatu. Potem kliknijcie pytanie przewodnie i porównajcie z pierwszą odpowiedzią. Co się zmieniło w odpowiedzi i w źródłach? Potem zdecydujcie, czy rejestr z danymi osobowymi i rekord przesyłki w ogóle powinny być w bazie.',
         action: 'Odznacz projekt wersji 6 i zbuduj jeszcze raz',
       },
       split: {

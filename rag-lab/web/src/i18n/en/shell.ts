@@ -168,7 +168,7 @@ export const shell = {
       outdated: {
         module: 'Module 3 · One change',
         title: 'Remove draft version 6 and ask again',
-        body: 'Change only one thing: untick draft version 6 in the Data part, build the index again and ask the same question. What changed in the answer and in the sources? Then decide whether the register with personal data and the shipment record belong in the knowledge base at all.',
+        body: 'Change only one thing: remove draft version 6 from the knowledge base. The button below unticks it in the Data part, builds the index without it and returns to the chat. Then click the guiding question and compare with the first answer. What changed in the answer and in the sources? Then decide whether the register with personal data and the shipment record belong in the knowledge base at all.',
         action: 'Untick draft version 6 and build again',
       },
       split: {
