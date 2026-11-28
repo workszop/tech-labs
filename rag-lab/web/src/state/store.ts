@@ -123,7 +123,7 @@ export interface ChatEntry {
 }
 
 
-export type CenterTab = 'guide' | 'pipeline' | 'build' | 'map' | 'retrieval'
+export type CenterTab = 'guide' | 'usertest' | 'pipeline' | 'build' | 'map' | 'retrieval'
 export type PipelineNodeId =
   | 'docs'
   | 'selection'
