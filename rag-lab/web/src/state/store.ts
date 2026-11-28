@@ -8,6 +8,7 @@ import type { PromptEcho, SessionInfo, ChatUsage, UsageInfo, ChatMode, Lang } fr
 import type { ChunkConfig, TextChunk } from '@/rag/chunker'
 import type { ChunkLabelOptions } from '@/rag/chunkHeader'
 import type { ChunkRecord, IndexMeta, IndexedDocRecord } from '@/rag/db'
+import { INITIAL_USER_TESTING, type UserTestingState } from './userTesting'
 
 export type StageStatus = 'waiting' | 'processing' | 'completed' | 'error' | 'skipped'
 
@@ -182,6 +183,8 @@ export interface AppState {
     /** Guide steps that were completed at least once (they stay ticked). */
     guideDone: string[]
     logExported: boolean
+    /** The user testing exercise (session only). */
+    userTesting: UserTestingState
   }
 }
 
@@ -248,6 +251,7 @@ let state: AppState = {
     mapFolders: null,
     guideDone: [],
     logExported: false,
+    userTesting: INITIAL_USER_TESTING,
   },
 }
 
@@ -273,6 +277,9 @@ export function setState(update: Partial<AppState> | ((s: AppState) => Partial<A
 
 export function setUi(patch: Partial<AppState['ui']>) {
   setState((s) => ({ ui: { ...s.ui, ...patch } }))
+}
+export function updateUserTesting(fn: (u: UserTestingState) => UserTestingState) {
+  setState((s) => ({ ui: { ...s.ui, userTesting: fn(s.ui.userTesting) } }))
 }
 export function setSettings(patch: Partial<Settings>) {
   setState((s) => ({ settings: { ...s.settings, ...patch } }))
