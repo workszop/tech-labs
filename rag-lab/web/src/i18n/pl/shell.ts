@@ -182,7 +182,7 @@ export const shell = {
       sources: {
         module: 'Moduł 3 · Źródła',
         title: 'Który dokument rozstrzyga reklamację?',
-        body: 'Zaznaczcie cały folder „Reklamacje i klient”: obowiązującą procedurę PROCES-04, jej niezatwierdzony projekt wersji 6, eksport rejestru reklamacji i rekord przesyłki. Zbudujcie indeks wektorowy i zadajcie pytanie przewodnie. Zapiszcie terminy, które podał asystent, i dokumenty, z których je wziął.',
+        body: 'Zaznaczcie cały folder „Reklamacje i klient”: obowiązującą procedurę „Obsługa reklamacji”, jej niezatwierdzony projekt wersji 6, eksport rejestru reklamacji i rekord przesyłki. Zbudujcie indeks wektorowy i zadajcie pytanie przewodnie. Zapiszcie terminy, które podał asystent, i dokumenty, z których je wziął.',
         action: 'Zaznacz folder „Reklamacje i klient”',
       },
       outdated: {
@@ -194,8 +194,8 @@ export const shell = {
       split: {
         module: 'Moduł 4 · Przygotowanie dokumentów',
         title: 'Gdzie aplikacja tnie procedurę?',
-        body: 'Obejrzyjcie sam podział PROCES-04 przy domyślnym ustawieniu 400 tokenów (działa bez kodu). Znajdźcie regułę „traktuje się jako potencjalne zagrożenie” i akapit „W takim przypadku… w ciągu 24 godzin”. Czy są w tym samym fragmencie? Co wie fragment, który zaczyna się od „W takim przypadku”?',
-        action: 'Pokaż podział PROCES-04',
+        body: 'Obejrzyjcie sam podział procedury „Obsługa reklamacji” przy domyślnym ustawieniu 400 tokenów (działa bez kodu). Znajdźcie regułę „traktuje się jako potencjalne zagrożenie” i akapit „W takim przypadku… w ciągu 24 godzin”. Czy są w tym samym fragmencie? Co wie fragment, który zaczyna się od „W takim przypadku”?',
+        action: 'Pokaż podział procedury „Obsługa reklamacji”',
       },
       size: {
         module: 'Moduł 5 · Podział i diagnoza',

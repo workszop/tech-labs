@@ -247,8 +247,8 @@ describe('the run loop', () => {
     await runBenchmark()
     await deleteCase(own.id)
     const run = getState().bench.runs.at(-1)!
-    expect(run.caseInfo?.[own.id]).toEqual({ kind: 'missing', question: 'Własne pytanie?', expectedDocTitles: ['PROCES-06 Wstrzymanie i zwolnienie partii'] })
-    expect(run.caseInfo?.['b-ordinary-1']?.expectedDocTitles).toEqual(['PROCES-04 Obsługa reklamacji'])
+    expect(run.caseInfo?.[own.id]).toEqual({ kind: 'missing', question: 'Własne pytanie?', expectedDocTitles: ['Wstrzymanie i zwolnienie partii'] })
+    expect(run.caseInfo?.['b-ordinary-1']?.expectedDocTitles).toEqual(['Obsługa reklamacji'])
   })
   it('does not start a second run while one is running', async () => {
     let release!: () => void

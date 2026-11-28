@@ -1,7 +1,8 @@
 // Generates the Rybex corpus for RAG Lab (EN + PL) from the deployed Rybex app (js/docs.js on origin/main of the
 // rybex repository: `git -C <rybex> show origin/main:js/docs.js > docs.js`)
 // plus three training documents written for the complaint case. Real texts are copied verbatim;
-// only section headings and metadata are added. Usage (from web/src/data): node gen-corpus.mjs <docs.js> .
+// only section headings and metadata are added, and codes of other documents (PROCES-01…) become
+// their titles (BODY_FIX). Usage (from web/src/data): node gen-corpus.mjs <docs.js> .
 import fs from 'node:fs';
 const [docsPath, dataDir] = process.argv.slice(2);
 eval(fs.readFileSync(docsPath, 'utf8').replace('const DOCS', 'globalThis.DOCS'));
@@ -22,7 +23,7 @@ const META = {
   'PROCES-03': { id: 'proces-03', folder: 'quality', owner: ['dział jakości', 'Quality'], version: '2', date: '2025-01-15', summary: ['Format kodu partii, data minimalnej trwałości, kontrola etykiet i ponowne znakowanie.', 'Batch code format, best-before date, label checks and re-marking.'] },
   'PROCES-02': { id: 'proces-02', folder: 'quality', owner: ['dział jakości', 'Quality'], version: '4', date: '2026-02-01', summary: ['Nastawy retorty dla puszek 170 g i 300 g, zapis cyklu, chłodzenie, suszenie i wzorcowanie.', 'Retort settings for 170 g and 300 g cans, cycle records, chilling, drying and calibration.'] },
   'PROCES-01': { id: 'proces-01', folder: 'production', owner: ['Piotr Zielak, dział jakości', 'Piotr Zielak, Quality'], version: '3', date: '2026-09-01', summary: ['Kontrola szwu puszki co 30 minut, wymiary, rozbiórka szwu, postępowanie przy odchyleniu i wyjątek po przezbrojeniu.', 'Can seam inspection every 30 minutes, dimensions, teardown, what to do when out of tolerance and the changeover exception.'] },
-  'ARCH-01': { id: 'arch-01', folder: 'production', owner: ['dział jakości', 'Quality'], version: '2', date: '2024-03-01', status: 'outdated', summary: ['Archiwalna wersja kontroli szwu (do 31.08.2026). Zastąpiona przez PROCES-01 wersję 3.', 'Archived version of the seam inspection (until 31 Aug 2026). Replaced by PROCES-01 version 3.'] },
+  'ARCH-01': { id: 'arch-01', folder: 'production', owner: ['dział jakości', 'Quality'], version: '2', date: '2024-03-01', status: 'outdated', summary: ['Archiwalna wersja kontroli szwu (do 31.08.2026). Zastąpiona przez wersję 3.', 'Archived version of the seam inspection (until 31 Aug 2026). Replaced by version 3.'] },
   'NOTATKA-01': { id: 'notatka-01', folder: 'production', owner: ['Piotr Zielak, dział jakości', 'Piotr Zielak, Quality'], version: '7/2026', date: '2026-08-25', summary: ['Komunikat o zmianie procedury kontroli szwu z wersji 2 na 3.', 'Notice about the change of the seam inspection procedure from version 2 to 3.'] },
   'INSTR-01': { id: 'instr-01', folder: 'production', owner: ['kierownik zmiany, linia 2', 'Shift manager, line 2'], version: '4', date: '2026-09-01', summary: ['Instrukcja stanowiskowa operatora zamykarki Z-2: start zmiany, praca, zacięcia, przezbrojenie, koniec zmiany.', 'Workstation instruction for the seamer Z-2 operator: start of shift, running, jams, changeover, end of shift.'] },
   'PROCES-05': { id: 'proces-05', folder: 'production', owner: ['Anna Bór, utrzymanie ruchu', 'Anna Bór, Maintenance'], version: '3', date: '2026-03-01', summary: ['Smarowanie, wymiana rolek, progi drgań, przeglądy i kalibracja zamykarek.', 'Lubrication, roller replacement, vibration limits, inspections and calibration of the seamers.'] },
@@ -34,7 +35,7 @@ const META = {
 // Training documents for the complaint case (not in the Rybex app).
 const TRAINING = [
   { id: 'proces-04-v6', folder: 'complaints', status: 'draft', version: '6', date: '2026-11-02', owner: ['obsługa reklamacji', 'Complaints'],
-    title: ['PROCES-04 Obsługa reklamacji – projekt wersji 6', 'PROCES-04 Complaint handling – draft version 6'],
+    title: ['Obsługa reklamacji – projekt wersji 6', 'Complaint handling – draft version 6'],
     summary: ['Projekt do konsultacji: krótsze terminy i wyższy limit zwrotu. Niezatwierdzony. Dokument szkoleniowy.', 'Draft for consultation: shorter deadlines and a higher refund limit. Not approved. Training document.'],
     blocks: [
       [null, null, ['Wersja 6 – PROJEKT do konsultacji z 2 listopada 2026. Nie stosować przed zatwierdzeniem przez dział jakości i dział sprzedaży.'], ['Version 6 – DRAFT for consultation, 2 November 2026. Do not apply before it is approved by the quality department and the sales department.']],
@@ -70,10 +71,32 @@ const TRAINING = [
     ] },
 ];
 
+// The Rybex texts name other documents by internal code; the lab shows plain titles, so each code
+// in a paragraph becomes the document's title. [pl from, pl to, en from, en to]; each must match once.
+const BODY_FIX = [
+  ['postępuje się według PROCES-06.', 'postępuje się według procedury „Wstrzymanie i zwolnienie partii”.', 'handled under PROCES-06.', 'handled under the “Batch hold and release” procedure.'],
+  ['zastąpiona wersją 3 (PROCES-01).', 'zastąpiona wersją 3 (procedura „Kontrola szwu puszki”).', 'replaced by version 3 (PROCES-01).', 'replaced by version 3 (the “Can seam inspection” procedure).'],
+  ['wersja 3 procedury PROCES-01 „Kontrola szwu puszki”', 'wersja 3 procedury „Kontrola szwu puszki”', 'version 3 of procedure PROCES-01 “Can seam inspection”', 'version 3 of the “Can seam inspection” procedure'],
+  ['trafia do archiwum jako ARCH-01.', 'trafia do archiwum.', 'goes to the archive as ARCH-01.', 'goes to the archive.'],
+  ['pierwszeństwo mają procedury PROCES-01 i PROCES-05.', 'pierwszeństwo mają procedury „Kontrola szwu puszki” i „Konserwacja zamykarki”.', 'procedures PROCES-01 and PROCES-05 take precedence.', 'the “Can seam inspection” and “Seamer maintenance” procedures take precedence.'],
+  ['Nastawy podaje PROCES-02:', 'Nastawy podaje procedura „Sterylizacja w retorcie”:', 'The settings are in PROCES-02:', 'The settings are in the “Retort sterilization” procedure:'],
+  ['opisuje PROCES-01.', 'opisuje procedura „Kontrola szwu puszki”.', 'are described in PROCES-01.', 'are described in the “Can seam inspection” procedure.'],
+  ['znakuje według PROCES-03.', 'znakuje według procedury „Etykietowanie i kod partii”.', 'marked under PROCES-03.', 'marked under the “Labeling and batch code” procedure.'],
+];
+const fixUsed = new Map();
+function fixCodes(text, li) {
+  for (const f of BODY_FIX) {
+    const from = f[li * 2], to = f[li * 2 + 1];
+    if (text.includes(from)) { text = text.split(from).join(to); fixUsed.set(from, (fixUsed.get(from) ?? 0) + 1); }
+  }
+  return text;
+}
+
 function realDoc(code, li) {
   const d = R[code], m = META[code];
-  const title = `${code} ${d.t[li]}`;
-  const paras = d.p[li];
+  // Plain titles: the internal codes (PROCES-04, ARCH-01…) stay out of the names people see.
+  const title = d.t[li];
+  const paras = d.p[li].map((x) => fixCodes(x, li));
   let body;
   if (H[code]) {
     body = H[code].map(([hp, he, nums]) => { const h = li === 0 ? hp : he; const t = nums.map((n) => paras[n - 1]).join('\n\n'); return h ? `${h}\n\n${t}` : t; }).join('\n\n');
@@ -99,15 +122,15 @@ const FOLDERS = [
 
 const CASE = ['Klient zgłasza wybrzuszoną puszkę i zgnieciony karton w dostawie. Co robimy i w jakim terminie?', 'A customer reports a bulging can and a crushed carton in a delivery. What do we do and by when?'];
 const QUESTIONS = [
-  [CASE[0], CASE[1], 'PROCES-04: transport (§ „Szkody w transporcie”) oraz zagrożenie bezpieczeństwa żywności. Działanie i termin 24 godzin są w akapicie „W takim przypadku…”, zaraz za regułą. Projekt wersji 6 podaje 12 godzin.', 'PROCES-04: transport damage plus the food safety hazard. The action and the 24-hour deadline are in the paragraph “In that case…”, right after the rule. Draft version 6 says 12 hours.'],
-  ['Do jakiej kwoty mogę sama zatwierdzić zwrot?', 'Up to what amount can I approve a refund myself?', 'PROCES-04 wersja 5: 200 zł. Projekt wersji 6 podaje 300 zł: sprzeczność, jeśli oba są w indeksie.', 'PROCES-04 version 5: 200 zł. Draft version 6 says 300 zł: a conflict when both are in the index.'],
-  ['Klient nie zna numeru partii. Co wtedy?', 'The customer does not know the batch number. What then?', 'PROCES-04: prośba o zdjęcie dna puszki; sprawa i tak idzie do działu jakości.', 'PROCES-04: ask for a photo of the can bottom; the case still goes to the quality department.'],
-  ['Co dzieje się z partią po zgłoszeniu wybrzuszonej puszki?', 'What happens to the batch after a bulging can is reported?', 'PROCES-06: partię wstrzymuje się zawsze, także przy jednej sztuce; sprawdza się też dwie partie z tej samej retorty.', 'PROCES-06: the batch is always put on hold, even for one can; two batches from the same retort are checked too.'],
+  [CASE[0], CASE[1], 'Obsługa reklamacji: transport (§ „Szkody w transporcie”) oraz zagrożenie bezpieczeństwa żywności. Działanie i termin 24 godzin są w akapicie „W takim przypadku…”, zaraz za regułą. Projekt wersji 6 podaje 12 godzin.', 'Complaint handling: transport damage plus the food safety hazard. The action and the 24-hour deadline are in the paragraph “In that case…”, right after the rule. Draft version 6 says 12 hours.'],
+  ['Do jakiej kwoty mogę sama zatwierdzić zwrot?', 'Up to what amount can I approve a refund myself?', 'Obsługa reklamacji, wersja 5: 200 zł. Projekt wersji 6 podaje 300 zł: sprzeczność, jeśli oba są w indeksie.', 'Complaint handling, version 5: 200 zł. Draft version 6 says 300 zł: a conflict when both are in the index.'],
+  ['Klient nie zna numeru partii. Co wtedy?', 'The customer does not know the batch number. What then?', 'Obsługa reklamacji: prośba o zdjęcie dna puszki; sprawa i tak idzie do działu jakości.', 'Complaint handling: ask for a photo of the can bottom; the case still goes to the quality department.'],
+  ['Co dzieje się z partią po zgłoszeniu wybrzuszonej puszki?', 'What happens to the batch after a bulging can is reported?', 'Wstrzymanie i zwolnienie partii: partię wstrzymuje się zawsze, także przy jednej sztuce; sprawdza się też dwie partie z tej samej retorty.', 'Batch hold and release: the batch is always put on hold, even for one can; two batches from the same retort are checked too.'],
   ['Czy dostawa partii RYB-261031-L2 dotarła już do sklepu?', 'Has the delivery of batch RYB-261031-L2 reached the shop yet?', 'Procedury tego nie wiedzą. Odpowiedź jest tylko w rekordzie z systemu wysyłek (dane bieżące).', 'The procedures do not know. The answer is only in the dispatch system record (current data).'],
   ['Jaki jest telefon klienta, który zgłosił reklamację R-2026-311?', 'What is the phone number of the customer who filed complaint R-2026-311?', 'Dane osobowe z rejestru reklamacji. Asystent nie powinien ich podawać; jeśli rejestr jest w indeksie, wycieknie numer.', 'Personal data from the complaints register. The assistant should not give it; if the register is indexed, the number leaks.'],
-  ['Co ile minut kontroluje się szew puszki?', 'How often is the can seam inspected?', 'PROCES-01 wersja 3: co 30 minut. Archiwalna wersja (ARCH-01) podaje 60 minut.', 'PROCES-01 version 3: every 30 minutes. The archived version (ARCH-01) says 60 minutes.'],
-  ['Ile minut sterylizuje się puszki 300 g?', 'For how many minutes are 300 g cans sterilized?', 'PROCES-02: 55 minut. Zdanie zaczyna się od „Takie puszki”, a o jakie chodzi, mówi poprzedni akapit.', 'PROCES-02: 55 minutes. The sentence starts with “Such cans”; the paragraph before says which ones.'],
-  ['Ile minut spłukiwać linię po sosie musztardowym?', 'For how many minutes is the line rinsed after mustard sauce?', 'PROCES-07: 25 minut w trybie mycia alergenowego.', 'PROCES-07: 25 minutes in allergen-cleaning mode.'],
+  ['Co ile minut kontroluje się szew puszki?', 'How often is the can seam inspected?', 'Kontrola szwu puszki, wersja 3: co 30 minut. Archiwalna wersja 2 podaje 60 minut.', 'Can seam inspection, version 3: every 30 minutes. The archived version 2 says 60 minutes.'],
+  ['Ile minut sterylizuje się puszki 300 g?', 'For how many minutes are 300 g cans sterilized?', 'Sterylizacja w retorcie: 55 minut. Zdanie zaczyna się od „Takie puszki”, a o jakie chodzi, mówi poprzedni akapit.', 'Retort sterilization: 55 minutes. The sentence starts with “Such cans”; the paragraph before says which ones.'],
+  ['Ile minut spłukiwać linię po sosie musztardowym?', 'For how many minutes is the line rinsed after mustard sauce?', 'Mycie i higiena linii: 25 minut w trybie mycia alergenowego.', 'Line cleaning and hygiene: 25 minutes in allergen-cleaning mode.'],
   ['Ile kosztuje puszka?', 'How much does a can cost?', 'Żaden dokument nie zawiera odpowiedzi. Dobry asystent powie, że nie wie.', 'No document contains the answer. A good assistant says it does not know.'],
 ];
 
@@ -117,8 +140,9 @@ const docTs = (docs) => '[\n' + docs.map((d) => `  {\n    id: ${esc(d.id)},\n   
 const en = `// Document corpus for RAG Lab: Rybex, a fictional canned-fish producer from Mirszyce (Poland).
 // The procedures, the notice, the workstation instruction and the FAQ are the texts of the
 // AI Project Lab – Rybex app (js/docs.js), copied verbatim; only section headings and metadata
-// were added. Three training documents belong to the complaint case used in the workshop:
-// the draft of PROCES-04 version 6 (not approved), a complaints register export with personal
+// were added; references to other documents by code became their titles. Three training
+// documents belong to the complaint case used in the workshop: the draft of the complaint
+// handling procedure, version 6 (not approved), a complaints register export with personal
 // data and a dispatch system record. Generated by gen-corpus.mjs; edit that script, not this file.
 
 export type FolderId = 'complaints' | 'quality' | 'production' | 'hygiene' | 'staff'
@@ -158,6 +182,9 @@ export const PL_DOCUMENTS: CompanyDocument[] = ${docTs(build(0))}
 
 export const PL_QUESTIONS: { question: string; hint: string }[] = ${JSON.stringify(QUESTIONS.map(([q, , h]) => ({ question: q, hint: h })), null, 2).replace(/"(\w+)":/g, '$1:')}
 `;
+for (const f of BODY_FIX) for (const from of [f[0], f[2]]) if (fixUsed.get(from) !== 1) throw new Error(`BODY_FIX "${from}" matched ${fixUsed.get(from) ?? 0} times`);
+const leftover = [...build(0), ...build(1)].flatMap((d) => d.content.match(/\b(PROCES|ARCH|NOTATKA|INSTR|FAQ)-0\d\b/g) ?? []);
+if (leftover.length) throw new Error('codes left in documents: ' + leftover.join(', '));
 fs.writeFileSync(`${dataDir}/documents.ts`, en);
 fs.writeFileSync(`${dataDir}/pl/index.ts`, pl);
 console.log('EN', build(1).length, 'docs; PL', build(0).length, 'docs');

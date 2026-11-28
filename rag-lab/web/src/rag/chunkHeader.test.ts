@@ -18,7 +18,7 @@ describe('findSections', () => {
   it('finds the food-safety section of the complaints procedure', () => {
     const titles = findSections(p04.content).map((s) => s.title)
     expect(titles).toContain('Zagrożenie bezpieczeństwa żywności')
-    expect(titles).not.toContain('PROCES-04 Obsługa reklamacji')
+    expect(titles).not.toContain('Obsługa reklamacji')
   })
 })
 
@@ -45,13 +45,13 @@ describe('chunkLabel', () => {
     expect(action.text).toContain('W takim przypadku')
     expect(action.text).not.toContain('potencjalne zagrożenie') // the rule is in the previous chunk
     const label = chunkLabel(p04, findSections(text), action.start, { section: true, meta: false }, W)
-    expect(label).toBe('[PROCES-04 Obsługa reklamacji › Zagrożenie bezpieczeństwa żywności]')
+    expect(label).toBe('[Obsługa reklamacji › Zagrożenie bezpieczeństwa żywności]')
   })
   it('marks every chunk of the draft as not approved and every chunk of the archive as outdated', async () => {
     const count = await getTokenCounter()
     const d12 = chunkText(draft.content, { chunkSize: 60, overlap: 0 }, count).find((c) => c.text.includes('12 godzin'))!
     expect(d12.text).not.toContain('PROJEKT')
-    expect(chunkLabel(draft, findSections(draft.content), d12.start, { section: false, meta: true }, W)).toBe('[PROCES-04 Obsługa reklamacji – projekt wersji 6 · wersja 6 · obowiązuje od 2026-11-02 · PROJEKT, NIEZATWIERDZONY · właściciel: obsługa reklamacji]')
+    expect(chunkLabel(draft, findSections(draft.content), d12.start, { section: false, meta: true }, W)).toBe('[Obsługa reklamacji – projekt wersji 6 · wersja 6 · obowiązuje od 2026-11-02 · PROJEKT, NIEZATWIERDZONY · właściciel: obsługa reklamacji]')
     const a60 = chunkText(arch.content, { chunkSize: 120, overlap: 0 }, count).find((c) => c.text.includes('60 minut'))!
     expect(a60.text).not.toContain('ARCHIWALNA')
     expect(chunkLabel(arch, findSections(arch.content), a60.start, { section: false, meta: true }, W)).toContain('NIEAKTUALNY')
@@ -59,7 +59,7 @@ describe('chunkLabel', () => {
   it('does not repeat a heading that the chunk already contains', () => {
     const text = 'Title\n\nHeading\n\nBody text.'
     const secs = findSections(text)
-    expect(chunkLabel(p04, secs, text.indexOf('Heading'), { section: true, meta: false }, W)).toBe('[PROCES-04 Obsługa reklamacji]')
-    expect(chunkLabel(p04, secs, text.indexOf('Body'), { section: true, meta: false }, W)).toBe('[PROCES-04 Obsługa reklamacji › Heading]')
+    expect(chunkLabel(p04, secs, text.indexOf('Heading'), { section: true, meta: false }, W)).toBe('[Obsługa reklamacji]')
+    expect(chunkLabel(p04, secs, text.indexOf('Body'), { section: true, meta: false }, W)).toBe('[Obsługa reklamacji › Heading]')
   })
 })

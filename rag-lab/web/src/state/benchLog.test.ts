@@ -26,10 +26,10 @@ const overridden: CaseResult = {
 }
 const run: BenchmarkRun = {
   id: 'r1', createdAt: Date.UTC(2026, 10, 27, 10, 0), lang: 'pl',
-  index: { docIds: ['proces-04'], docTitles: ['PROCES-04', 'PROCES-06'], chunkSize: 400, overlap: 60, labels: 'section', chunks: 12 },
+  index: { docIds: ['proces-04'], docTitles: ['Obsługa reklamacji', 'Wstrzymanie i zwolnienie partii'], chunkSize: 400, overlap: 60, labels: 'section', chunks: 12 },
   topK: 3, threshold: 0.3, caseIds: ['c1', 'c2'], totalActive: 2, status: 'done', results: [ok, overridden],
   caseInfo: {
-    c1: { kind: 'ordinary', question: 'Do jakiej kwoty; sama?', expectedDocTitles: ['PROCES-04 Obsługa reklamacji'] },
+    c1: { kind: 'ordinary', question: 'Do jakiej kwoty; sama?', expectedDocTitles: ['Obsługa reklamacji'] },
     c2: { kind: 'restricted', question: 'Telefon klienta?', expectedDocTitles: [] },
   },
 }
@@ -44,7 +44,7 @@ describe('buildRunsCsv', () => {
     expect(lines[0].split(';')).toHaveLength(16)
   })
   it('writes the settings, the scores and the verdict', () => {
-    expect(lines[1]).toContain(';1;PROCES-04 | PROCES-06;400;60;sekcja;3;0.30;zwykłe;"Do jakiej kwoty; sama?";PROCES-04 Obsługa reklamacji;1.00;przeszło;przeszło;nie;')
+    expect(lines[1]).toContain(';1;Obsługa reklamacji | Wstrzymanie i zwolnienie partii;400;60;sekcja;3;0.30;zwykłe;"Do jakiej kwoty; sama?";Obsługa reklamacji;1.00;przeszło;przeszło;nie;')
     expect(lines[2]).toContain(';zastrzeżone;Telefon klienta?;;;przeszło;nie przeszło;tak;Nie podam.')
   })
   it('formats the run time in the language of the export', () => {
@@ -61,7 +61,7 @@ describe('buildRunsCsv', () => {
   })
   it('stays readable when a case was deleted after the run', () => {
     const rows = buildRunsCsv([run], [], W, (k) => k, 'pl-PL').slice(1).trim().split('\r\n')
-    expect(rows[1]).toContain(';zwykłe;"Do jakiej kwoty; sama?";PROCES-04 Obsługa reklamacji;')
+    expect(rows[1]).toContain(';zwykłe;"Do jakiej kwoty; sama?";Obsługa reklamacji;')
   })
   it('falls back to the current cases for a run stored without the snapshot', () => {
     const old = { ...run, caseInfo: undefined }

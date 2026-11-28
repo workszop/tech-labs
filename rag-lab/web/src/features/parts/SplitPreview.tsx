@@ -23,7 +23,7 @@ export function SplitPreview() {
   const tc = useT().lab.indexBuilder.chunking
   const [picked, setPicked] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
-  // A preview of a single document selects that document; the guide previews PROCES-04 even when it
+  // A preview of a single document selects that document; the guide previews the complaint procedure even when it
   // is not ticked, so the previewed document is offered next to the ticked ones.
   const previewed = preview && preview.selection.docs.length === 1 ? preview.selection.docs[0].id : null
   const offered = documents.filter((d) => selection.includes(d.id) || d.id === previewed)

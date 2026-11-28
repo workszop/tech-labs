@@ -162,7 +162,7 @@ export const shell = {
       sources: {
         module: 'Module 3 · Sources',
         title: 'Which document settles the complaint?',
-        body: 'Select the whole “Complaints and customers” folder: the procedure in force PROCES-04, its unapproved draft version 6, the complaints register export and the shipment record. Build the vector index and ask the guiding question. Note the deadlines the assistant gave and the documents it took them from.',
+        body: 'Select the whole “Complaints and customers” folder: the procedure in force “Complaint handling”, its unapproved draft version 6, the complaints register export and the shipment record. Build the vector index and ask the guiding question. Note the deadlines the assistant gave and the documents it took them from.',
         action: 'Select the “Complaints and customers” folder',
       },
       outdated: {
@@ -174,8 +174,8 @@ export const shell = {
       split: {
         module: 'Module 4 · Preparing documents',
         title: 'Where does the app cut the procedure?',
-        body: 'Look at the split of PROCES-04 at the default 400 tokens (works without a code). Find the rule “treated as a potential food safety hazard” and the paragraph “In that case… within 24 hours”. Are they in the same chunk? What does a chunk that starts with “In that case” know?',
-        action: 'Show the split of PROCES-04',
+        body: 'Look at the split of “Complaint handling” at the default 400 tokens (works without a code). Find the rule “treated as a potential food safety hazard” and the paragraph “In that case… within 24 hours”. Are they in the same chunk? What does a chunk that starts with “In that case” know?',
+        action: 'Show the split of “Complaint handling”',
       },
       size: {
         module: 'Module 5 · Splitting and diagnosis',

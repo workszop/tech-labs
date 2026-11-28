@@ -34,13 +34,13 @@ export const PL_DOCUMENTS: CompanyDocument[] = [
   {
     id: "proces-04",
     folder: "complaints",
-    title: "PROCES-04 Obsługa reklamacji",
+    title: "Obsługa reklamacji",
     owner: "Magda Kruk, obsługa reklamacji",
     version: "5",
     effectiveDate: "2026-06-01",
     status: "current",
     summary: "Jak obsługujemy reklamacje: termin odpowiedzi, kategorie, zgłoszenia o zagrożeniu bezpieczeństwa żywności, zwroty, szkody w transporcie i dane osobowe.",
-    content: `PROCES-04 Obsługa reklamacji
+    content: `Obsługa reklamacji
 
 Wersja 5, obowiązuje od 1 czerwca 2026. Właścicielką procedury jest Magda Kruk z obsługi reklamacji i klienta. Część o bezpieczeństwie żywności zatwierdza dział jakości.
 
@@ -77,13 +77,13 @@ Raz w miesiącu obsługa reklamacji przekazuje dyrekcji zakładu zestawienie: li
   {
     id: "proces-04-v6",
     folder: "complaints",
-    title: "PROCES-04 Obsługa reklamacji – projekt wersji 6",
+    title: "Obsługa reklamacji – projekt wersji 6",
     owner: "obsługa reklamacji",
     version: "6",
     effectiveDate: "2026-11-02",
     status: "draft",
     summary: "Projekt do konsultacji: krótsze terminy i wyższy limit zwrotu. Niezatwierdzony. Dokument szkoleniowy.",
-    content: `PROCES-04 Obsługa reklamacji – projekt wersji 6
+    content: `Obsługa reklamacji – projekt wersji 6
 
 Wersja 6 – PROJEKT do konsultacji z 2 listopada 2026. Nie stosować przed zatwierdzeniem przez dział jakości i dział sprzedaży.
 
@@ -146,13 +146,13 @@ Status partii w magazynie: WSTRZYMANA od 12.11.2026, 10:40 (strefa K).`,
   {
     id: "proces-06",
     folder: "quality",
-    title: "PROCES-06 Wstrzymanie i zwolnienie partii",
+    title: "Wstrzymanie i zwolnienie partii",
     owner: "Piotr Zielak, dział jakości",
     version: "2",
     effectiveDate: "2026-04-01",
     status: "current",
     summary: "Kto i kiedy wstrzymuje partię, strefa K, badanie, decyzja o partii na formularzu F-12, próbki archiwalne i zasada dla bombażu.",
-    content: `PROCES-06 Wstrzymanie i zwolnienie partii
+    content: `Wstrzymanie i zwolnienie partii
 
 Wersja 2, obowiązuje od 1 kwietnia 2026. Właścicielem procedury jest Piotr Zielak. Procedura opisuje, co dzieje się z partią, której jakość budzi wątpliwości.
 
@@ -185,13 +185,13 @@ Po zgłoszeniu wybrzuszonej puszki (bombażu) partię wstrzymuje się zawsze, ta
   {
     id: "proces-03",
     folder: "quality",
-    title: "PROCES-03 Etykietowanie i kod partii",
+    title: "Etykietowanie i kod partii",
     owner: "dział jakości",
     version: "2",
     effectiveDate: "2025-01-15",
     status: "current",
     summary: "Format kodu partii, data minimalnej trwałości, kontrola etykiet i ponowne znakowanie.",
-    content: `PROCES-03 Etykietowanie i kod partii
+    content: `Etykietowanie i kod partii
 
 Wersja 2, obowiązuje od 15 stycznia 2025. Właścicielem procedury jest dział jakości. Procedura dotyczy drukarek inkjet i etykieciarek na wszystkich liniach.
 
@@ -214,13 +214,13 @@ Etykiety rozlicza się na koniec zmiany: liczba wydanych minus zwrócone i znisz
   {
     id: "proces-02",
     folder: "quality",
-    title: "PROCES-02 Sterylizacja w retorcie",
+    title: "Sterylizacja w retorcie",
     owner: "dział jakości",
     version: "4",
     effectiveDate: "2026-02-01",
     status: "current",
     summary: "Nastawy retorty dla puszek 170 g i 300 g, zapis cyklu, chłodzenie, suszenie i wzorcowanie.",
-    content: `PROCES-02 Sterylizacja w retorcie
+    content: `Sterylizacja w retorcie
 
 Wersja 4, obowiązuje od 1 lutego 2026. Właścicielem procedury jest dział jakości. Procedura obejmuje retorty R-1 i R-2 oraz wszystkie formaty puszek.
 
@@ -253,13 +253,13 @@ Czujniki temperatury retorty wzorcuje się co 6 miesięcy, a manometr raz w roku
   {
     id: "proces-01",
     folder: "production",
-    title: "PROCES-01 Kontrola szwu puszki",
+    title: "Kontrola szwu puszki",
     owner: "Piotr Zielak, dział jakości",
     version: "3",
     effectiveDate: "2026-09-01",
     status: "current",
     summary: "Kontrola szwu puszki co 30 minut, wymiary, rozbiórka szwu, postępowanie przy odchyleniu i wyjątek po przezbrojeniu.",
-    content: `PROCES-01 Kontrola szwu puszki
+    content: `Kontrola szwu puszki
 
 Wersja 3, obowiązuje od 1 września 2026. Właścicielem procedury jest Piotr Zielak, kierownik działu jakości i bezpieczeństwa żywności. Procedura dotyczy zamykarek na liniach 1, 2 i 3.
 
@@ -275,7 +275,7 @@ Oprócz pomiaru z zewnątrz co 4 godziny wykonuje się rozbiórkę szwu. Operato
 
 Odchylenie od normy
 
-Przy odchyleniu od normy należy natychmiast zatrzymać linię i odizolować puszki wyprodukowane w ostatnich 30 minutach. Odizolowane puszki trafiają na paletę z czerwoną etykietą „WSTRZYMANE”, a dalej postępuje się według PROCES-06.
+Przy odchyleniu od normy należy natychmiast zatrzymać linię i odizolować puszki wyprodukowane w ostatnich 30 minutach. Odizolowane puszki trafiają na paletę z czerwoną etykietą „WSTRZYMANE”, a dalej postępuje się według procedury „Wstrzymanie i zwolnienie partii”.
 
 Linię po zatrzymaniu uruchamia kierownik zmiany, ale dopiero po zgodzie działu jakości. Wcześniej utrzymanie ruchu reguluje zamykarkę, a dwie kolejne kontrole szwu muszą zmieścić się w normie.
 
@@ -292,15 +292,15 @@ Wyjątek: przez pierwszą godzinę po przezbrojeniu zamykarki na inny format sze
   {
     id: "arch-01",
     folder: "production",
-    title: "ARCH-01 Kontrola szwu puszki, wersja 2 (archiwalna)",
+    title: "Kontrola szwu puszki, wersja 2 (archiwalna)",
     owner: "dział jakości",
     version: "2",
     effectiveDate: "2024-03-01",
     status: "outdated",
-    summary: "Archiwalna wersja kontroli szwu (do 31.08.2026). Zastąpiona przez PROCES-01 wersję 3.",
-    content: `ARCH-01 Kontrola szwu puszki, wersja 2 (archiwalna)
+    summary: "Archiwalna wersja kontroli szwu (do 31.08.2026). Zastąpiona przez wersję 3.",
+    content: `Kontrola szwu puszki, wersja 2 (archiwalna)
 
-WERSJA ARCHIWALNA, NIEOBOWIĄZUJĄCA. Wersja 2 obowiązywała od 1 marca 2024 do 31 sierpnia 2026 i została zastąpiona wersją 3 (PROCES-01). Dokument zostaje w archiwum tylko do wglądu podczas audytów.
+WERSJA ARCHIWALNA, NIEOBOWIĄZUJĄCA. Wersja 2 obowiązywała od 1 marca 2024 do 31 sierpnia 2026 i została zastąpiona wersją 3 (procedura „Kontrola szwu puszki”). Dokument zostaje w archiwum tylko do wglądu podczas audytów.
 
 Częstotliwość kontroli
 
@@ -327,17 +327,17 @@ Karty kontrolne szwu przechowuje się przez 2 lata w biurze kierownika zmiany. S
   {
     id: "notatka-01",
     folder: "production",
-    title: "NOTATKA-01 Komunikat 7/2026: zmiana procedury kontroli szwu",
+    title: "Komunikat 7/2026: zmiana procedury kontroli szwu",
     owner: "Piotr Zielak, dział jakości",
     version: "7/2026",
     effectiveDate: "2026-08-25",
     status: "current",
     summary: "Komunikat o zmianie procedury kontroli szwu z wersji 2 na 3.",
-    content: `NOTATKA-01 Komunikat 7/2026: zmiana procedury kontroli szwu
+    content: `Komunikat 7/2026: zmiana procedury kontroli szwu
 
 Mirszyce, 25 sierpnia 2026. Od: Piotr Zielak, kierownik działu jakości i bezpieczeństwa żywności. Do: operatorzy zamykarek, brygadziści, kierownicy zmian, utrzymanie ruchu.
 
-Od 1 września 2026 obowiązuje wersja 3 procedury PROCES-01 „Kontrola szwu puszki”. Wersja 2 traci ważność z końcem sierpnia i trafia do archiwum jako ARCH-01.
+Od 1 września 2026 obowiązuje wersja 3 procedury „Kontrola szwu puszki”. Wersja 2 traci ważność z końcem sierpnia i trafia do archiwum.
 
 Powód zmiany: w drugim kwartale trzy razy wykryliśmy za niski szew dopiero po godzinie produkcji. Za każdym razem trzeba było wstrzymać i przejrzeć około 18 000 puszek.
 
@@ -354,15 +354,15 @@ Stare karty kontrolne z nagłówkiem „wersja 2” należy oddać brygadziście
   {
     id: "instr-01",
     folder: "production",
-    title: "INSTR-01 Instrukcja stanowiskowa: operator zamykarki, linia 2",
+    title: "Instrukcja stanowiskowa: operator zamykarki, linia 2",
     owner: "kierownik zmiany, linia 2",
     version: "4",
     effectiveDate: "2026-09-01",
     status: "current",
     summary: "Instrukcja stanowiskowa operatora zamykarki Z-2: start zmiany, praca, zacięcia, przezbrojenie, koniec zmiany.",
-    content: `INSTR-01 Instrukcja stanowiskowa: operator zamykarki, linia 2
+    content: `Instrukcja stanowiskowa: operator zamykarki, linia 2
 
-Wydanie 4, obowiązuje od 1 września 2026. Instrukcja wisi przy zamykarce Z-2 i dotyczy operatora oraz jego zmiennika. W razie różnic pierwszeństwo mają procedury PROCES-01 i PROCES-05.
+Wydanie 4, obowiązuje od 1 września 2026. Instrukcja wisi przy zamykarce Z-2 i dotyczy operatora oraz jego zmiennika. W razie różnic pierwszeństwo mają procedury „Kontrola szwu puszki” i „Konserwacja zamykarki”.
 
 Przed startem załóż czepek, fartuch i ochronniki słuchu, zdejmij zegarek i biżuterię. Sprawdź, czy osłony zamykarki są zamknięte, a wyłącznik awaryjny odblokowany.
 
@@ -391,13 +391,13 @@ Awaria lub wypadek: wciśnij wyłącznik awaryjny i zadzwoń do brygadzisty, num
   {
     id: "proces-05",
     folder: "production",
-    title: "PROCES-05 Konserwacja zamykarki",
+    title: "Konserwacja zamykarki",
     owner: "Anna Bór, utrzymanie ruchu",
     version: "3",
     effectiveDate: "2026-03-01",
     status: "current",
     summary: "Smarowanie, wymiana rolek, progi drgań, przeglądy i kalibracja zamykarek.",
-    content: `PROCES-05 Konserwacja zamykarki
+    content: `Konserwacja zamykarki
 
 Wersja 3, obowiązuje od 1 marca 2026. Właścicielką procedury jest Anna Bór z utrzymania ruchu. Procedura dotyczy zamykarek Z-1, Z-2 i Z-3.
 
@@ -420,13 +420,13 @@ Każdy postój zamykarki dłuższy niż 15 minut wpisuje się do dziennika posto
   {
     id: "proces-07",
     folder: "hygiene",
-    title: "PROCES-07 Mycie i higiena linii",
+    title: "Mycie i higiena linii",
     owner: "dział jakości",
     version: "2",
     effectiveDate: "2025-10-01",
     status: "current",
     summary: "Mycie linii po zmianie, mycie kwaśne, mycie alergenowe po sosie musztardowym, higiena rąk.",
-    content: `PROCES-07 Mycie i higiena linii
+    content: `Mycie i higiena linii
 
 Wersja 2, obowiązuje od 1 października 2025. Właścicielem procedury jest dział jakości. Procedura dotyczy linii 1–3, od stołu nadawczego do zamykarki.
 
@@ -449,13 +449,13 @@ Pracownik myje i dezynfekuje ręce przy każdym wejściu na halę oraz po każde
   {
     id: "proces-08",
     folder: "hygiene",
-    title: "PROCES-08 Przyjęcie surowca i opakowań",
+    title: "Przyjęcie surowca i opakowań",
     owner: "dział jakości",
     version: "3",
     effectiveDate: "2026-05-01",
     status: "current",
     summary: "Przyjęcie ryby świeżej i mrożonej, histamina, dokumenty dostawy, kontrola puszek i wieczek.",
-    content: `PROCES-08 Przyjęcie surowca i opakowań
+    content: `Przyjęcie surowca i opakowań
 
 Wersja 3, obowiązuje od 1 maja 2026. Właścicielem procedury jest dział jakości. Procedura dotyczy dostaw ryb, oleju, pustych puszek i wieczek.
 
@@ -478,19 +478,19 @@ Przyjęty surowiec dostaje etykietę z datą przyjęcia i numerem dostawy. Rybę
   {
     id: "faq-01",
     folder: "staff",
-    title: "FAQ-01 Pytania pracowników do działu jakości",
+    title: "Pytania pracowników do działu jakości",
     owner: "dział jakości",
     version: "2026.09",
     effectiveDate: "2026-09-10",
     status: "current",
     summary: "Pytania pracowników do działu jakości. Skrót: w razie różnic obowiązuje procedura.",
-    content: `FAQ-01 Pytania pracowników do działu jakości
+    content: `Pytania pracowników do działu jakości
 
 Pytania zebrał dział jakości, ostatnia aktualizacja 10 września 2026. Pochodzą ze szkoleń stanowiskowych i ze skrzynki przy szatni. Odpowiedzi są skrótem, a w razie różnic obowiązuje procedura.
 
-Czy autoklaw i retorta to to samo? Tak, „autoklaw” to potoczna nazwa retorty. Nastawy podaje PROCES-02: dla puszek 170 g jest to 121°C przez 40 minut.
+Czy autoklaw i retorta to to samo? Tak, „autoklaw” to potoczna nazwa retorty. Nastawy podaje procedura „Sterylizacja w retorcie”: dla puszek 170 g jest to 121°C przez 40 minut.
 
-Co to jest „dekiel”? W procedurach dekiel nazywa się wieczkiem. Wieczka nakłada zamykarka, a wymiary szwu, który łączy wieczko z puszką, opisuje PROCES-01.
+Co to jest „dekiel”? W procedurach dekiel nazywa się wieczkiem. Wieczka nakłada zamykarka, a wymiary szwu, który łączy wieczko z puszką, opisuje procedura „Kontrola szwu puszki”.
 
 Puszka spadła mi na podłogę, czy mogę ją odłożyć na taśmę? Nie. Puszka, która dotknęła podłogi, idzie do pojemnika na odpad, także gdy wygląda na całą.
 
@@ -498,7 +498,7 @@ Czy lekko wgnieciona puszka może iść do kartonu? Wgniecenie na korpusie płyt
 
 Kto może zatrzymać linię? Każdy pracownik, który widzi zagrożenie dla ludzi albo dla jakości. Nikt nie ponosi konsekwencji za zatrzymanie w dobrej wierze.
 
-Co zrobić, gdy drukarka kodów przestaje drukować w środku zmiany? Zatrzymać podawanie puszek i wezwać brygadzistę. Puszki bez kodu odkłada się osobno i znakuje według PROCES-03.
+Co zrobić, gdy drukarka kodów przestaje drukować w środku zmiany? Zatrzymać podawanie puszek i wezwać brygadzistę. Puszki bez kodu odkłada się osobno i znakuje według procedury „Etykietowanie i kod partii”.
 
 Czy mogę wynieść puszkę z hali do domu? Nie, także puszkę uszkodzoną. Wyroby dla pracowników sprzedaje sklepik zakładowy w piątki.
 
@@ -511,19 +511,19 @@ Mam katar albo skaleczoną rękę, czy mogę pracować przy otwartym produkcie? 
 export const PL_QUESTIONS: { question: string; hint: string }[] = [
   {
     question: "Klient zgłasza wybrzuszoną puszkę i zgnieciony karton w dostawie. Co robimy i w jakim terminie?",
-    hint: "PROCES-04: transport (§ „Szkody w transporcie”) oraz zagrożenie bezpieczeństwa żywności. Działanie i termin 24 godzin są w akapicie „W takim przypadku…”, zaraz za regułą. Projekt wersji 6 podaje 12 godzin."
+    hint: "Obsługa reklamacji: transport (§ „Szkody w transporcie”) oraz zagrożenie bezpieczeństwa żywności. Działanie i termin 24 godzin są w akapicie „W takim przypadku…”, zaraz za regułą. Projekt wersji 6 podaje 12 godzin."
   },
   {
     question: "Do jakiej kwoty mogę sama zatwierdzić zwrot?",
-    hint: "PROCES-04 wersja 5: 200 zł. Projekt wersji 6 podaje 300 zł: sprzeczność, jeśli oba są w indeksie."
+    hint: "Obsługa reklamacji, wersja 5: 200 zł. Projekt wersji 6 podaje 300 zł: sprzeczność, jeśli oba są w indeksie."
   },
   {
     question: "Klient nie zna numeru partii. Co wtedy?",
-    hint: "PROCES-04: prośba o zdjęcie dna puszki; sprawa i tak idzie do działu jakości."
+    hint: "Obsługa reklamacji: prośba o zdjęcie dna puszki; sprawa i tak idzie do działu jakości."
   },
   {
     question: "Co dzieje się z partią po zgłoszeniu wybrzuszonej puszki?",
-    hint: "PROCES-06: partię wstrzymuje się zawsze, także przy jednej sztuce; sprawdza się też dwie partie z tej samej retorty."
+    hint: "Wstrzymanie i zwolnienie partii: partię wstrzymuje się zawsze, także przy jednej sztuce; sprawdza się też dwie partie z tej samej retorty."
   },
   {
     question: "Czy dostawa partii RYB-261031-L2 dotarła już do sklepu?",
@@ -535,15 +535,15 @@ export const PL_QUESTIONS: { question: string; hint: string }[] = [
   },
   {
     question: "Co ile minut kontroluje się szew puszki?",
-    hint: "PROCES-01 wersja 3: co 30 minut. Archiwalna wersja (ARCH-01) podaje 60 minut."
+    hint: "Kontrola szwu puszki, wersja 3: co 30 minut. Archiwalna wersja 2 podaje 60 minut."
   },
   {
     question: "Ile minut sterylizuje się puszki 300 g?",
-    hint: "PROCES-02: 55 minut. Zdanie zaczyna się od „Takie puszki”, a o jakie chodzi, mówi poprzedni akapit."
+    hint: "Sterylizacja w retorcie: 55 minut. Zdanie zaczyna się od „Takie puszki”, a o jakie chodzi, mówi poprzedni akapit."
   },
   {
     question: "Ile minut spłukiwać linię po sosie musztardowym?",
-    hint: "PROCES-07: 25 minut w trybie mycia alergenowego."
+    hint: "Mycie i higiena linii: 25 minut w trybie mycia alergenowego."
   },
   {
     question: "Ile kosztuje puszka?",

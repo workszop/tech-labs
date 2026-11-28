@@ -30,7 +30,7 @@ export const lab: Dict['lab'] = {
     overlapHint: 'Powtarzają się całe zdania, łącznie do tylu tokenów',
     labelsTitle: 'Etykieta fragmentu',
     labelSection: 'Tytuł dokumentu i nagłówek sekcji',
-    labelSectionHint: 'Przywraca nagłówek, od którego fragment został odcięty, np. „PROCES-04 Obsługa reklamacji › Zagrożenie bezpieczeństwa żywności”.',
+    labelSectionHint: 'Przywraca nagłówek, od którego fragment został odcięty, np. „Obsługa reklamacji › Zagrożenie bezpieczeństwa żywności”.',
     labelMeta: 'Wersja, data, status i właściciel',
     labelMetaHint: 'Każdy fragment mówi, z której wersji pochodzi i czy nadal obowiązuje.',
     labelWords: { version: 'wersja', effectiveFrom: 'obowiązuje od', current: 'aktualny', outdated: 'NIEAKTUALNY', draft: 'PROJEKT, NIEZATWIERDZONY', owner: 'właściciel' },
