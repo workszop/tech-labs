@@ -10,6 +10,7 @@ import type { ChunkLabelOptions } from '@/rag/chunkHeader'
 import type { ChunkRecord, IndexMeta, IndexedDocRecord } from '@/rag/db'
 import { INITIAL_USER_TESTING, canAdvance, type UserTestingState } from './userTesting'
 import { SCENARIOS } from '@/data/userTesting'
+import { INITIAL_OWN, type OwnState } from '@/own/state'
 
 export type StageStatus = 'waiting' | 'processing' | 'completed' | 'error' | 'skipped'
 
@@ -170,7 +171,11 @@ export interface AppState {
   chat: ChatEntry[]
   activeRunId: string | null
   settings: Settings
+  /** The "own documents" mode (memory only). */
+  own: OwnState
   ui: {
+    /** Which knowledge base the app shows: the Rybex case or the team's own documents. */
+    mode: 'rybex' | 'own'
     centerTab: CenterTab
     mobileTab: 'docs' | 'lab' | 'chat'
     pipelineNode: PipelineNodeId | null
@@ -230,6 +235,7 @@ const prefs = typeof window === 'undefined' ? { settings: DEFAULT_SETTINGS, sele
 
 function initialUi(): AppState['ui'] {
   return {
+    mode: 'rybex',
     centerTab: 'guide',
     mobileTab: 'docs',
     pipelineNode: null,
@@ -257,6 +263,7 @@ let state: AppState = {
   chat: [],
   activeRunId: null,
   settings: prefs.settings,
+  own: INITIAL_OWN,
   ui: initialUi(),
 }
 
@@ -311,9 +318,14 @@ export function resetProgressState() {
     chat: [],
     activeRunId: null,
     settings: { ...DEFAULT_SETTINGS, lang: s.settings.lang },
+    own: INITIAL_OWN,
     ui: initialUi(),
   }))
 }
+export function updateOwn(fn: (o: OwnState) => Partial<OwnState>) {
+  setState((s) => ({ own: { ...s.own, ...fn(s.own) } }))
+}
+
 export function setSettings(patch: Partial<Settings>) {
   setState((s) => ({ settings: { ...s.settings, ...patch } }))
 }
