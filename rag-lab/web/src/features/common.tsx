@@ -26,6 +26,10 @@ export function fmtUsd(n: number): string {
   if (getLang() === 'en') return `$${n.toFixed(digits)}`
   return `${new Intl.NumberFormat('pl-PL', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n)} USD`
 }
+/** Like fmtUsd, but a positive amount too small for 5 decimals reads "< 0,00001 USD", never zero. */
+export function fmtUsdAtLeast(n: number): string {
+  return n > 0 && n < 0.00001 ? `< ${fmtUsd(0.00001)}` : fmtUsd(n)
+}
 /** Date and time in the current language. */
 export function fmtDateTime(value: string | number | Date): string {
   return new Date(value).toLocaleString(currentLocale())

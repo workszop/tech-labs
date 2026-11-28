@@ -10,7 +10,7 @@ import { showActivation } from '@/state/actions'
 import { CHUNK_LIMITS } from '@/rag/chunker'
 import { MAX_INSTRUCTIONS_CHARS } from '@shared/prompt'
 import { useT } from '@/i18n'
-import { Alert, QuestionQuote, SectionCard, fmtNumber, fmtUsd } from '../common'
+import { Alert, QuestionQuote, SectionCard, fmtNumber, fmtUsdAtLeast } from '../common'
 import { OWN_LIMITS, type OwnDoc } from '@/own/files'
 import { askLock, embedCostUsd, estimateEmbedTokens, needsRebuild, needsResplit, oversizedChunks, ownAskReady, type OwnRun } from '@/own/state'
 import { addOwnFiles, askOwn, embedOwn, removeOwnDoc, setOwnChunking, setOwnInstructions, setOwnTopK, splitOwn, stopOwnEmbedding } from '@/own/actions'
@@ -223,7 +223,7 @@ function EmbedStep() {
         <>
           <p className="text-[13.5px]" data-testid="own-embed-estimate">
             {tx.embed.estimate(own.chunks.length, fmtNumber(tokens), tokens)}
-            {cost != null && <span className="text-muted-foreground"> · {tx.embed.cost(fmtUsd(cost))}</span>}
+            {cost != null && <span className="text-muted-foreground"> · {tx.embed.cost(fmtUsdAtLeast(cost))}</span>}
           </p>
           {oversized > 0 && caps && <Alert tone="warn" className="mt-2">{tx.embed.oversized(oversized, caps.maxEmbeddingInputTokens)}</Alert>}
           <div className="mt-3 flex flex-wrap items-center gap-3">
