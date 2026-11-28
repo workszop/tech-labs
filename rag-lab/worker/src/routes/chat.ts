@@ -84,6 +84,11 @@ export function validateChat(body: unknown): ValidatedChat {
     }
   })
 
+  // Profile 'own' only ever answers from excerpts: no RAG-less mode, no empty context (never a free chat).
+  if (profile === 'own' && (mode !== 'rag' || context.length === 0)) {
+    throw new ApiError('invalid_request', 'Profile "own" needs mode "rag" and at least one context chunk.')
+  }
+
   let temperature: number = LIMITS.temperature.default
   if (body.temperature !== undefined && body.temperature !== null) {
     if (typeof body.temperature !== 'number' || !Number.isFinite(body.temperature)) {

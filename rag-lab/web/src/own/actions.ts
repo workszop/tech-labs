@@ -4,20 +4,39 @@ import { api, ApiError } from '@/api/client'
 import { compute } from '@/rag/compute'
 import { normalizeConfig } from '@/rag/chunker'
 import { rankBySimilarity } from '@/rag/similarity'
-import { estimateMessagesTokens, buildChatMessages, MAX_INSTRUCTIONS_CHARS } from '@shared/prompt'
+import { buildChatMessages, MAX_INSTRUCTIONS_CHARS } from '@shared/prompt'
 import type { ContextChunk } from '@shared/api-types'
 import { uid } from '@/lib/utils'
 import { getLang, t } from '@/i18n'
 import { getState, setState, updateOwn } from '@/state/store'
 import { refreshUsage } from '@/state/actions'
 import { addFiles } from './files'
-import { askLock, fitContext, type OwnChunk, type OwnRun } from './state'
+import { askLock, fitToWorker, type OwnChunk, type OwnRun } from './state'
 
 /** Same per-request token budget as the Rybex index build. */
 const MAX_BATCH_TOKENS = 7000
 
 let embedAbort: AbortController | null = null
 let askAbort: AbortController | null = null
+/** Bumped by anything that invalidates a running embedding; its late writes are then dropped. */
+let embedGen = 0
+
+/** Cancel a running embedding because the chunks it works on changed or went away. */
+function cancelEmbedding() {
+  embedGen++
+  embedAbort?.abort()
+  embedAbort = null
+  if (getState().own.embed.status === 'running') updateOwn(() => ({ embed: { status: 'idle', done: 0, total: 0, tokens: 0 } }))
+}
+
+/** "Start again": stop every own-mode request so nothing writes into the fresh state or spends tokens. */
+export function abortOwn() {
+  embedGen++
+  embedAbort?.abort()
+  askAbort?.abort()
+  embedAbort = null
+  askAbort = null
+}
 
 const errText = (e: unknown) => (e instanceof ApiError ? (e.code === 'aborted' ? t().lab.actions.stopped : e.message) : (e as Error).message)
 
@@ -33,6 +52,7 @@ export async function addOwnFiles(files: File[]) {
 }
 
 export function removeOwnDoc(id: string) {
+  cancelEmbedding()
   updateOwn((o) => ({ docs: o.docs.filter((d) => d.id !== id), chunks: o.chunks.filter((c) => c.docId !== id) }))
 }
 
@@ -53,6 +73,7 @@ export function setOwnTopK(k: number) {
 export async function splitOwn() {
   const o = getState().own
   if (!o.docs.length) return
+  cancelEmbedding()
   const cfg = normalizeConfig({ chunkSize: o.chunkSize, overlap: o.overlap })
   const res = await compute.chunk(o.docs.map((d) => ({ id: d.id, text: d.text })), cfg)
   const names = Object.fromEntries(o.docs.map((d) => [d.id, d.name]))
@@ -74,6 +95,8 @@ export async function embedOwn() {
   embedAbort?.abort()
   embedAbort = new AbortController()
   const signal = embedAbort.signal
+  const gen = ++embedGen
+  const live = () => gen === embedGen
   const batches: OwnChunk[][] = []
   let cur: OwnChunk[] = []
   let curTokens = 0
@@ -94,15 +117,17 @@ export async function embedOwn() {
   try {
     for (const b of batches) {
       const res = await api.embed(b.map((c) => c.text), signal)
+      if (!live()) return
       b.forEach((c, i) => vectors.set(c.id, new Float32Array(res.embeddings[i])))
       tokens += res.usage.inputTokens
       setState({ usage: res.quota })
       updateOwn((x) => ({ embed: { ...x.embed, done: vectors.size, tokens } }))
     }
   } catch (e) {
-    updateOwn((x) => ({ embed: { ...x.embed, status: 'error', error: errText(e) } }))
+    if (live()) updateOwn((x) => ({ embed: { ...x.embed, status: 'error', error: errText(e) } }))
     return
   }
+  if (!live()) return
   updateOwn((x) => ({
     chunks: x.chunks.map((c) => ({ ...c, vector: vectors.get(c.id) })),
     embed: { status: 'done', done: vectors.size, total: x.chunks.length, tokens },
@@ -141,10 +166,14 @@ export async function askOwn(question: string) {
       .map((r) => ({ chunk: r.item, score: r.score }))
     const lang = getLang()
     const folder = t().shell.own.folderLabel
-    // Budget: the Worker rejects prompts over maxChatInputTokens; leave room for the fixed parts.
-    const fixed = estimateMessagesTokens(buildChatMessages({ question: q, context: [], mode: 'rag', lang, profile: 'own', instructions: o.instructions })) + 50 * ranked.length
-    const { kept, trimmed } = fitContext(ranked, caps.maxChatInputTokens, fixed)
-    const context: ContextChunk[] = kept.map((k) => ({ chunkId: k.chunk.id, documentTitle: k.chunk.docName, folder, text: k.chunk.text }))
+    // The Worker rejects prompts over maxChatInputTokens by its own estimate; trim with that estimate.
+    const toContext = (kept: typeof ranked): ContextChunk[] => kept.map((k) => ({ chunkId: k.chunk.id, documentTitle: k.chunk.docName, folder, text: k.chunk.text }))
+    const { kept, trimmed } = fitToWorker(ranked, (kept) => buildChatMessages({ question: q, context: toContext(kept), mode: 'rag', lang, profile: 'own', instructions: o.instructions }), caps.maxChatInputTokens)
+    const context = toContext(kept)
+    if (!context.length) {
+      patch(() => ({ status: 'error', error: t().shell.own.errors.tooLarge, trimmed }))
+      return
+    }
     patch(() => ({ sent: kept.map((k) => ({ chunkId: k.chunk.id, docName: k.chunk.docName, index: k.chunk.index, score: k.score, text: k.chunk.text })), trimmed }))
     const res = await api.chat(
       { question: q, context, mode: 'rag', lang, profile: 'own', instructions: o.instructions, stream: true },

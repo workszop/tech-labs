@@ -20,6 +20,7 @@ import { buildChatMessages } from '@shared/prompt'
 import type { ContextChunk, Lang, SessionInfo } from '@shared/api-types'
 import { uid } from '@/lib/utils'
 import { buildTestLogCsv } from './testLog'
+import { abortOwn } from '@/own/actions'
 import { getState, resetProgressState, setSettings, setState, setUi, updateJob, updateRun, type AppState, type EmbeddingBatch, type IndexJob, type PlannedChunk, type QueryRun } from './store'
 
 /** A document of the current-language corpus (ids are the same in every language). */
@@ -214,6 +215,8 @@ export async function resetKnowledgeBase() {
 
 /** "Start again" for the whole app: the vector database and every bit of progress (see resetProgressState). */
 export async function resetAllProgress() {
+  // Own-mode requests first: nothing may keep spending tokens or write into the fresh state.
+  abortOwn()
   await resetKnowledgeBase()
   resetProgressState()
 }

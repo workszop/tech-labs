@@ -289,6 +289,7 @@ export const shell = {
     },
     errors: {
       noVectors: 'Nie ma jeszcze wektorów: utwórzcie je w kroku 3.',
+      tooLarge: 'Nawet jeden fragment nie mieści się w limicie promptu serwera. Podzielcie dokumenty na mniejsze fragmenty.',
     },
   },
 

@@ -61,3 +61,20 @@ describe('resetProgressState and own mode', () => {
     expect(getState().ui.mode).toBe('rybex')
   })
 })
+
+describe('fitToWorker', () => {
+  it('trims with the Worker estimate (characters / 4), not with cl100k tokens', async () => {
+    const { fitToWorker } = await import('./state')
+    const { buildChatMessages, estimateMessagesTokens } = await import('@shared/prompt')
+    // Layout-heavy text: 4000 characters (1000 Worker tokens) but only 300 cl100k tokens each.
+    const ranked = ['a', 'b', 'c'].map((id, i) => ({ chunk: { ...chunk(id, 300), text: '.'.repeat(4000) }, score: 0.9 - i / 10 }))
+    const build = (kept: typeof ranked) =>
+      buildChatMessages({ question: 'Q?', mode: 'rag', lang: 'pl', profile: 'own', context: kept.map((k) => ({ chunkId: k.chunk.id, documentTitle: 'a.txt', folder: 'own', text: k.chunk.text })) })
+    const budget = estimateMessagesTokens(build(ranked.slice(0, 2)))
+    const r = fitToWorker(ranked, build, budget)
+    expect(r.kept.map((k) => k.chunk.id)).toEqual(['a', 'b'])
+    expect(r.trimmed).toBe(1)
+    expect(estimateMessagesTokens(build(r.kept))).toBeLessThanOrEqual(budget)
+    expect(fitContext(ranked, budget, 0).kept).toHaveLength(3) // the old cl100k count would keep all three
+  })
+})

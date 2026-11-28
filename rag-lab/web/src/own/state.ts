@@ -1,6 +1,7 @@
 // Pure state of the "own documents" mode. Documents, chunks and vectors live in memory only:
 // a reload starts own mode from scratch (the page says so).
-import type { Capabilities, PromptEcho } from '@shared/api-types'
+import type { Capabilities, ChatMessage, PromptEcho } from '@shared/api-types'
+import { estimateMessagesTokens } from '@shared/prompt'
 import type { OwnDoc, Rejected } from './files'
 
 export interface OwnChunk {
@@ -94,6 +95,21 @@ export function fitContext<T extends { chunk: { tokens: number } }>(ranked: T[],
     used += r.chunk.tokens
   }
   return { kept, trimmed: ranked.length - kept.length }
+}
+
+/**
+ * Keep the best-ranked chunks so that the prompt, measured exactly as the Worker measures it
+ * (`estimateMessagesTokens`, characters / 4), stays within `budgetTokens`. Drops the lowest-ranked first.
+ */
+export function fitToWorker<T>(ranked: T[], build: (kept: T[]) => ChatMessage[], budgetTokens: number): { kept: T[]; trimmed: number } {
+  let kept = ranked
+  while (kept.length && estimateMessagesTokens(build(kept)) > budgetTokens) kept = kept.slice(0, -1)
+  return { kept, trimmed: ranked.length - kept.length }
+}
+
+/** Vectors are finished and match both the current split and the current documents and settings. */
+export function ownAskReady(s: OwnState): boolean {
+  return s.embed.status === 'done' && !needsRebuild(s) && !needsResplit(s)
 }
 
 /** Why the Ask step is locked: no code yet, or a Worker that does not know profile 'own'. */

@@ -12,7 +12,7 @@ import { MAX_INSTRUCTIONS_CHARS } from '@shared/prompt'
 import { useT } from '@/i18n'
 import { Alert, QuestionQuote, SectionCard, fmtNumber } from '../common'
 import { OWN_LIMITS, type OwnDoc } from '@/own/files'
-import { askLock, estimateEmbedTokens, needsRebuild, needsResplit, type OwnRun } from '@/own/state'
+import { askLock, estimateEmbedTokens, needsRebuild, needsResplit, ownAskReady, type OwnRun } from '@/own/state'
 import { addOwnFiles, askOwn, embedOwn, removeOwnDoc, setOwnChunking, setOwnInstructions, setOwnTopK, splitOwn, stopOwnEmbedding } from '@/own/actions'
 
 /**
@@ -283,7 +283,7 @@ function AskStep() {
   const caps = useStore((s) => s.auth.session?.capabilities)
   const [q, setQ] = useState('')
   const lock = askLock(status, caps)
-  const ready = own.embed.status === 'done' && !needsRebuild(own)
+  const ready = ownAskReady(own)
   const busy = own.runs.some((r) => r.status === 'running')
   const runs = [...own.runs].reverse()
   const send = () => {

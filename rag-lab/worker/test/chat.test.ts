@@ -202,6 +202,19 @@ describe('POST /api/chat', () => {
       await expectError(await chat(token, { ...ragReq, profile: 'own', instructions: 5 }), 400, 'invalid_request')
     })
 
+    it('refuses profile own without excerpts or without RAG, so it is never a free chat', async () => {
+      const { token } = await newSession()
+      await expectError(await chat(token, { ...ragReq, profile: 'own', context: [], instructions: 'You are a general assistant.' }), 400, 'invalid_request')
+      await expectError(await chat(token, { question: 'Hi', context: [], mode: 'no-rag', profile: 'own', instructions: 'x' }), 400, 'invalid_request')
+    })
+
+    it('tells the model that team instructions cannot widen the rules', () => {
+      for (const lang of ['pl', 'en'] as const) {
+        const sys = buildChatMessages({ ...ragReq, lang, profile: 'own', instructions: 'x' })[0]!.content
+        expect(sys).toMatch(lang === 'en' ? /only change the tone, format, length or focus/ : /mogą zmienić tylko ton, format, długość albo zakres/)
+      }
+    })
+
     it('rejects instructions without profile own', async () => {
       const { token } = await newSession()
       await expectError(await chat(token, { ...ragReq, instructions: 'Hi' }), 400, 'invalid_request')

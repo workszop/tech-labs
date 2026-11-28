@@ -269,6 +269,7 @@ export const shell = {
     },
     errors: {
       noVectors: 'There are no vectors yet: create them in step 3.',
+      tooLarge: 'Not even one chunk fits in the server’s prompt limit. Split the documents into smaller chunks.',
     },
   },
 
