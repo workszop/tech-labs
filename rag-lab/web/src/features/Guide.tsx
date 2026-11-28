@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { ArrowRight, BookOpen, Check, Download, FileSearch, FlaskConical, FolderTree, GitCompare, Map as MapIcon, Scissors, Tag, Trash2 } from 'lucide-react'
+import { ArrowRight, BookOpen, Check, Download, FileSearch, FlaskConical, FolderTree, GitCompare, Map as MapIcon, Scissors, Tag, ThumbsUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
@@ -15,7 +15,7 @@ type StepId = keyof Dict['shell']['guide']['steps']
 /**
  * The guide follows the workshop flow "RAG w organizacji" (Rybex, complaints assistant):
  * sources → unapproved draft out → where the app cuts a procedure → one change to the split →
- * chunk label → four tests → test log. Each step checks the app state, so it ticks
+ * chunk label → user testing (thumbs vs structured feedback) → four tests → test log. Each step checks the app state, so it ticks
  * itself when the team has really done it; a ticked step stays ticked.
  * Step logic only; texts come from the dictionary (`shell.guide.steps[id]`).
  */
@@ -87,6 +87,13 @@ const STEPS: GuideStep[] = [
       setUi({ centerTab: 'build', mobileTab: 'lab' })
     },
     askGuiding: true,
+  },
+  {
+    id: 'usertest',
+    icon: <ThumbsUp />,
+    // Simulated answers: no code needed; done once the team reached the reveal.
+    done: (s) => s.ui.userTesting.round === 3,
+    run: () => setUi({ centerTab: 'usertest', mobileTab: 'lab' }),
   },
   {
     id: 'tests',

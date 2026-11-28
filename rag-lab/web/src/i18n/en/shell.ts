@@ -279,6 +279,12 @@ export const shell = {
         body: 'Turn on the chunk label (section heading plus version, date and status), build the index again and ask the guiding question. The chunk “In that case…” now carries the heading “Food safety hazard”, and draft version 6, if it is still indexed, says “DRAFT, NOT APPROVED” in every chunk.',
         action: 'Turn on the chunk label',
       },
+      usertest: {
+        module: 'Module 6 · Evaluation',
+        title: 'A thumb or real feedback?',
+        body: 'Before you rate your own assistant, rate seven ready-made answers: first with a thumb, then with tags. Compare which rating tells you what to fix in the RAG pipeline. Works without an access code.',
+        action: 'Open user testing',
+      },
       tests: {
         module: 'Module 6 · Evaluation',
         title: 'Will the assistant pass four tests?',

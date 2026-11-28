@@ -299,6 +299,12 @@ export const shell = {
         body: 'Włączcie etykietę fragmentu (nagłówek sekcji oraz wersja, data i status), zbudujcie indeks jeszcze raz i zadajcie pytanie przewodnie. Fragment „W takim przypadku…” dostaje teraz nagłówek „Zagrożenie bezpieczeństwa żywności”, a projekt wersji 6, jeśli został w bazie, ma w każdym fragmencie „PROJEKT, NIEZATWIERDZONY”.',
         action: 'Włącz etykietę fragmentu',
       },
+      usertest: {
+        module: 'Moduł 6 · Ocena',
+        title: 'Kciuk czy konkretna ocena?',
+        body: 'Zanim ocenicie własnego asystenta, oceńcie siedem gotowych odpowiedzi: najpierw kciukiem, potem kategoriami. Porównajcie, z której oceny wiecie, co poprawić w RAG. Działa bez kodu dostępu.',
+        action: 'Otwórz testy z użytkownikami',
+      },
       tests: {
         module: 'Moduł 6 · Ocena',
         title: 'Czy asystent przejdzie cztery testy?',
