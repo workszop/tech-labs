@@ -5,7 +5,7 @@
  *  - chunks:     one row per indexed chunk, including its embedding (Float32Array).
  *  - documents:  which documents are in the index, with the content hash they were indexed at.
  *  - meta:       the index "space": embedding model, dimensions and chunking settings.
- *                All chunks in one index share the same space — vectors from different
+ *                All chunks in one index share the same space – vectors from different
  *                models are never mixed.
  *  - embeddingCache: vectors keyed by sha256(model + text), so re-building with unchanged
  *                text never pays for the same embedding twice.

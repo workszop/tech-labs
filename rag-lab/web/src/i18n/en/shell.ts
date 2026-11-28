@@ -13,7 +13,7 @@ export const shell = {
   app: {
     opening: 'Opening your local knowledge base…',
     storageError: (message: string) => `Local storage error: ${message}`,
-    notPersistent: 'IndexedDB is unavailable in this browser window — your index is kept in memory and will be lost when you reload.',
+    notPersistent: 'IndexedDB is unavailable in this browser window – your index is kept in memory and will be lost when you reload.',
     narrowNotice: 'RAG Lab is built for a desktop screen. It works in a narrow window too, but the vector map, tables and diagrams need room: widen the window to at least 1024 px.',
     dismiss: 'Dismiss',
   },
@@ -36,7 +36,7 @@ export const shell = {
   header: {
     product: 'RAG Lab',
     tagline: 'Build your own knowledge engine',
-    mockTooltip: 'The server runs in offline demo mode: embeddings are deterministic word-hash vectors and answers are extracted sentences — not a real AI model.',
+    mockTooltip: 'The server runs in offline demo mode: embeddings are deterministic word-hash vectors and answers are extracted sentences – not a real AI model.',
     mockBadge: 'Offline demo models',
     usageTooltip: (u: { requestsUsed: string; requestLimit: string; tokensUsed: string; tokenLimit: string; cost: string }) =>
       `Requests ${u.requestsUsed}/${u.requestLimit} · Tokens ${u.tokensUsed}/${u.tokenLimit} · est. ${u.cost}`,
@@ -56,15 +56,15 @@ export const shell = {
     codePlaceholder: 'RAG-XXXX-XXXX-XXXX-XXXX-XXXX',
     checking: 'Checking code…',
     submit: 'Activate',
-    help: 'Your workshop host gives you a personal code. It unlocks the AI models used to create embeddings and answers — with a fair-use allowance tracked on the server.',
+    help: 'Your workshop host gives you a personal code. It unlocks the AI models used to create embeddings and answers – with a fair-use allowance tracked on the server.',
     privacyLocal: 'Your documents, vectors and search run locally in this browser. Text you embed and the context of each question are sent to the AI provider through the RAG Lab server.',
-    sessionNote: (hasIndex: boolean) => `The session is kept in memory only. After a page reload you enter the code again${hasIndex ? ' — your knowledge base is still saved here' : ''}.`,
+    sessionNote: (hasIndex: boolean) => `The session is kept in memory only. After a page reload you enter the code again${hasIndex ? ' – your knowledge base is still saved here' : ''}.`,
     explore: 'Explore the documents first',
     exploreNote: 'Without a code you can browse documents and preview chunking; AI features stay locked.',
     apiLabel: (url: string) => `API: ${url}`,
     rateLimited: (minutes: number | null) => `Too many attempts. Please wait ${minutes ? minutes + ' minute(s)' : 'a few minutes'} and try again.`,
     errors: {
-      invalid_code: 'That access code was not recognised. Check for typos — codes look like RAG-XXXX-XXXX-XXXX-XXXX-XXXX.',
+      invalid_code: 'That access code was not recognised. Check for typos – codes look like RAG-XXXX-XXXX-XXXX-XXXX-XXXX.',
       expired_code: 'This access code has expired. Ask your workshop host for a new one.',
       revoked_code: 'This access code has been revoked. Ask your workshop host for a new one.',
       too_many_sessions: 'This code is already in use on the maximum number of devices. Log out elsewhere or ask your host.',
@@ -227,8 +227,8 @@ export const shell = {
       skipped: 'Skipped',
     },
     vector: 'Vector',
-    vectorHead: (label: string, shown: number, dims: string) => `${label} — first ${shown} of ${dims} numbers`,
-    vectorAllZero: 'These first numbers happen to be 0 — the offline demo model makes sparse vectors where most numbers are 0. Real models fill every dimension.',
+    vectorHead: (label: string, shown: number, dims: string) => `${label} – first ${shown} of ${dims} numbers`,
+    vectorAllZero: 'These first numbers happen to be 0 – the offline demo model makes sparse vectors where most numbers are 0. Real models fill every dimension.',
     overlapPrev: 'Shared with the previous chunk (overlap)',
     overlapNext: 'Shared with the next chunk (overlap)',
   },
@@ -241,12 +241,12 @@ export const shell = {
       body: [
         'A language model only knows what was in its training data. It has never seen Rybex’s internal procedures.',
         'RAG fixes this in two phases. Indexing (once): split documents into chunks, turn each chunk into an embedding vector and store it. Answering (every question): embed the question, find the chunks whose vectors are most similar, and paste those chunks into the prompt as context.',
-        'The model is still the same model — it is just given an open book. That is why the quality of retrieval decides the quality of the answer.',
+        'The model is still the same model – it is just given an open book. That is why the quality of retrieval decides the quality of the answer.',
       ],
     },
     chunk: {
       title: 'What is a chunk?',
-      short: 'A short, self-contained piece of a document — here about 400 tokens (≈ 300 words).',
+      short: 'A short, self-contained piece of a document – here about 400 tokens (≈ 300 words).',
       body: [
         'A chunk is the unit that gets embedded, retrieved and shown to the model. Each one remembers where it came from (document and position), so answers can cite it.',
         'RAG Lab cuts at sentence boundaries and prefers paragraph boundaries, so a chunk rarely stops mid-thought.',
@@ -256,14 +256,14 @@ export const shell = {
       title: 'Why split documents?',
       short: 'One vector per whole document blurs many topics together. Smaller chunks give sharper vectors and fit into the model’s context window.',
       body: [
-        'An embedding summarises its text as a single point. A 600-word procedure covering deadlines, food safety and refunds becomes an “average” of all three — and matches none of them strongly.',
-        'Too small is also bad: a 20-token chunk loses context (“it is capped at 50%” — what is?). Try different sizes and watch the retrieval scores change.',
+        'An embedding summarises its text as a single point. A 600-word procedure covering deadlines, food safety and refunds becomes an “average” of all three – and matches none of them strongly.',
+        'Too small is also bad: a 20-token chunk loses context (“it is capped at 50%” – what is?). Try different sizes and watch the retrieval scores change.',
         'Overlap repeats the last sentence(s) of one chunk at the start of the next, so a fact that straddles a boundary is still complete in at least one chunk.',
       ],
     },
     token: {
       title: 'What is a token?',
-      short: 'Models read text as tokens — word pieces. In English, 1 token ≈ ¾ of a word.',
+      short: 'Models read text as tokens – word pieces. In English, 1 token ≈ ¾ of a word.',
       body: [
         'RAG Lab counts tokens with the real cl100k_base tokenizer, the one used by OpenAI’s text-embedding-3 models, so chunk sizes and costs are accurate.',
         'Providers bill and limit by tokens, which is why the usage meter is in tokens too.',
@@ -273,7 +273,7 @@ export const shell = {
       title: 'What is an embedding?',
       short: 'A list of numbers (a vector) that captures the meaning of a text. Texts with similar meaning get similar vectors.',
       body: [
-        'An embedding model turns any text into a fixed-length vector — for text-embedding-3-small, 1,536 numbers. No single number means anything on its own; meaning is in the direction of the whole vector.',
+        'An embedding model turns any text into a fixed-length vector – for text-embedding-3-small, 1,536 numbers. No single number means anything on its own; meaning is in the direction of the whole vector.',
         '“The can puffed up and hisses” and “bulging can” share almost no words, yet their vectors point in similar directions. That is semantic search: matching meaning, not keywords.',
         'The question and the documents must be embedded by the same model. Vectors from different models live in different spaces and cannot be compared.',
       ],
@@ -301,7 +301,7 @@ export const shell = {
       body: [
         'cos(θ) = (a · b) / (‖a‖ ‖b‖). Multiply the vectors element by element, add up, and divide by their lengths.',
         'It is a ranking signal, not a probability. A score of 0.62 does not mean “62 % likely to be correct”; typical score ranges also differ between models. Compare scores within one query, not across models.',
-        'RAG Lab computes it locally, in full 1,536-dimensional space — never from the 2D map.',
+        'RAG Lab computes it locally, in full 1,536-dimensional space – never from the 2D map.',
       ],
     },
     topk: {
@@ -314,7 +314,7 @@ export const shell = {
     },
     context: {
       title: 'What is the context window?',
-      short: 'The maximum amount of text (in tokens) the model can read in one request — instructions, retrieved chunks and the question together.',
+      short: 'The maximum amount of text (in tokens) the model can read in one request – instructions, retrieved chunks and the question together.',
       body: [
         'Retrieved chunks are pasted into the prompt. The more you include, the more tokens each question costs, and the server enforces a limit.',
         'Open “Inspect prompt” on any answer to see the exact text the model received.',
@@ -325,7 +325,7 @@ export const shell = {
       short: 'PCA squeezes 1,536 dimensions down to 2 so you can see them. Distances on the map are only an approximation.',
       body: [
         'Principal Component Analysis finds the two directions along which your chunk vectors vary the most, and projects every vector onto them. It runs in your browser.',
-        'The axis label shows how much of the total variation each direction keeps — often only 5–15 %. Two points can look close on the map and still have a modest cosine score, or vice versa.',
+        'The axis label shows how much of the total variation each direction keeps – often only 5–15 %. Two points can look close on the map and still have a modest cosine score, or vice versa.',
         'Your question is projected with the same fitted directions, so asking a question does not move the document points. Lines connect it to the chunks that were actually retrieved by exact cosine similarity.',
       ],
     },
@@ -353,7 +353,7 @@ export const shell = {
       title: 'RAG on vs. RAG off',
       short: 'The same model answers twice: once with retrieved Rybex excerpts, once with no documents at all.',
       body: [
-        'Without retrieval the model can only guess what a typical company does — it has never seen Rybex’s procedures.',
+        'Without retrieval the model can only guess what a typical company does – it has never seen Rybex’s procedures.',
         'With retrieval it can quote real numbers and cite them. The difference is the whole point of RAG.',
       ],
     },

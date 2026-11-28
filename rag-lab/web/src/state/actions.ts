@@ -457,7 +457,7 @@ async function runEmbedding(signal: AbortSignal) {
   const chunks = job.chunking.chunks
   updateJob((j) => ({ ...j, step: 'embedding' }))
 
-  // 1) cache lookup — identical text + model ⇒ identical vector, no need to pay twice
+  // 1) cache lookup – identical text + model ⇒ identical vector, no need to pay twice
   const keys = await Promise.all(chunks.map((c) => sha256Hex(`${model}\n${c.text}`)))
   const cached = await store.getCached(keys)
   let cachedCount = 0
@@ -748,7 +748,7 @@ export async function runQuery(question: string, opts: QueryOptions): Promise<Qu
       updateRun(run.id, (r) => ({ ...r, embed: { status: 'error', error: compat.reason }, generate: { ...r.generate, status: 'error', error: compat.reason } }))
       return getState().runs[run.id] ?? run
     }
-    // Stage 2 — query embedding
+    // Stage 2 – query embedding
     updateRun(run.id, (r) => ({ ...r, embed: { status: 'processing' } }))
     const t0 = performance.now()
     let qv: Float32Array
@@ -765,7 +765,7 @@ export async function runQuery(question: string, opts: QueryOptions): Promise<Qu
       failRun(run.id, 'embed', e)
       return getState().runs[run.id] ?? run
     }
-    // Stage 3 — similarity search (exact cosine over the original vectors)
+    // Stage 3 – similarity search (exact cosine over the original vectors)
     updateRun(run.id, (r) => ({ ...r, search: { status: 'processing' } }))
     const t1 = performance.now()
     let ranked
@@ -786,7 +786,7 @@ export async function runQuery(question: string, opts: QueryOptions): Promise<Qu
     context = top.map((t) => ({ chunkId: t.item.id, documentTitle: t.item.docTitle, folder: folderName(t.item.folder), text: t.item.text }))
   }
 
-  // Stage 5 — generation (and optional no-RAG baseline in parallel)
+  // Stage 5 – generation (and optional no-RAG baseline in parallel)
   const gens: Promise<void>[] = [generate(run.id, 'generate', ragEnabled ? 'rag' : 'no-rag', q, context, signal)]
   if (run.compare) gens.push(generate(run.id, 'baseline', 'no-rag', q, [], signal))
   await Promise.all(gens)

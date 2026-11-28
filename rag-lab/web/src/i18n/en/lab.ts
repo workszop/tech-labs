@@ -55,7 +55,7 @@ export const lab = {
       characters: 'Characters',
       tokens: 'Tokens',
       tokensHint: 'counted with cl100k_base',
-      reused: 'unchanged — reuses cache',
+      reused: 'unchanged – reuses cache',
       docSize: (chars: string, tokens: string) => `${chars} chars · ${tokens} tok`,
     },
     chunking: {
@@ -348,7 +348,7 @@ export const lab = {
     compared: (n: number, time: string) => `${n} vectors · ${time}`,
     rankingBefore: 'Cosine similarity is a ',
     rankingBold: 'ranking signal',
-    rankingAfter: ', not a probability of being correct. Compare the scores of this question with each other — not with other questions or models.',
+    rankingAfter: ', not a probability of being correct. Compare the scores of this question with each other – not with other questions or models.',
     topK: (k: number, threshold: string | null) => `Top-${k}${threshold ? `, threshold ≥ ${threshold}` : ''} go into the context`,
     inContext: 'in context',
     noneAboveThreshold: 'No chunk passed the similarity threshold. The model will be told that nothing relevant was found.',
@@ -437,10 +437,10 @@ export const lab = {
       row: (title: string, n: number, score: string) => `${title}, chunk ${n}, similarity ${score}`,
       open: 'Open the chunk in the document',
     },
-    ragOffBadge: 'RAG off — no company documents used',
+    ragOffBadge: 'RAG off – no company documents used',
     reading: 'Reading the retrieved excerpts…',
     thinking: 'Thinking…',
-    cited: 'Cited in the answer — click to open the source',
+    cited: 'Cited in the answer – click to open the source',
     notCited: 'Retrieved but not cited',
     usage: (input: number, output: number) => `${input} in / ${output} out tokens`,
     openSource: (chunkId: string) => `Open source ${chunkId}`,
@@ -579,10 +579,10 @@ export const lab = {
     },
   },
   actions: {
-    sessionExpired: 'Your session expired. Enter your access code again — your local knowledge base is still here.',
+    sessionExpired: 'Your session expired. Enter your access code again – your local knowledge base is still here.',
     loggedOut: 'You are logged out. Your local knowledge base stays in this browser.',
     modelChanged: (indexModel: string, serverModel: string) =>
-      `Your index was built with "${indexModel}", but the server now uses "${serverModel}". Vectors from different models live in different spaces and cannot be compared — rebuild the index.`,
+      `Your index was built with "${indexModel}", but the server now uses "${serverModel}". Vectors from different models live in different spaces and cannot be compared – rebuild the index.`,
     dimensionsChanged: (indexDims: number, serverDims: number) => `Your index has ${indexDims}-dimensional vectors, the current model returns ${serverDims}. Rebuild the index.`,
     settingsChanged: (docs: number) =>
       `Settings changed since the last build (chunk size, overlap or embedding model), so the ${docs} document(s) already in the index are re-chunked too. Unchanged chunk texts reuse their cached embeddings.`,

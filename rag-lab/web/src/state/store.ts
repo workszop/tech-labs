@@ -1,6 +1,6 @@
 /**
- * Tiny global store (useSyncExternalStore). Everything the UI shows — chunk
- * lists, vectors, scores, prompts, answers — lives here and comes from real
+ * Tiny global store (useSyncExternalStore). Everything the UI shows – chunk
+ * lists, vectors, scores, prompts, answers – lives here and comes from real
  * operations; nothing is pre-baked.
  */
 import { useSyncExternalStore } from 'react'
