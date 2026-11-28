@@ -8,7 +8,8 @@ import type { PromptEcho, SessionInfo, ChatUsage, UsageInfo, ChatMode, Lang } fr
 import type { ChunkConfig, TextChunk } from '@/rag/chunker'
 import type { ChunkLabelOptions } from '@/rag/chunkHeader'
 import type { ChunkRecord, IndexMeta, IndexedDocRecord } from '@/rag/db'
-import { INITIAL_USER_TESTING, type UserTestingState } from './userTesting'
+import { INITIAL_USER_TESTING, canAdvance, type UserTestingState } from './userTesting'
+import { SCENARIOS } from '@/data/userTesting'
 
 export type StageStatus = 'waiting' | 'processing' | 'completed' | 'error' | 'skipped'
 
@@ -280,6 +281,19 @@ export function setUi(patch: Partial<AppState['ui']>) {
 }
 export function updateUserTesting(fn: (u: UserTestingState) => UserTestingState) {
   setState((s) => ({ ui: { ...s.ui, userTesting: fn(s.ui.userTesting) } }))
+}
+/**
+ * Next round of the user testing exercise, when every answer is rated. Reaching the reveal also
+ * records the guide step here: the guide is not mounted on this tab, and a reset must not untick it.
+ */
+export function advanceUserTesting() {
+  setState((s) => {
+    const u = s.ui.userTesting
+    if (!canAdvance(u, SCENARIOS.map((sc) => sc.id))) return {}
+    const round = (u.round + 1) as 2 | 3
+    const guideDone = round === 3 && !s.ui.guideDone.includes('usertest') ? [...s.ui.guideDone, 'usertest'] : s.ui.guideDone
+    return { ui: { ...s.ui, guideDone, userTesting: { ...u, round } } }
+  })
 }
 export function setSettings(patch: Partial<Settings>) {
   setState((s) => ({ settings: { ...s.settings, ...patch } }))

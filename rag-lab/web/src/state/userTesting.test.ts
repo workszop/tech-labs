@@ -100,3 +100,21 @@ describe('user testing state', () => {
     expect(resetUserTesting()).not.toBe(INITIAL_USER_TESTING)
   })
 })
+
+describe('advanceUserTesting (store)', () => {
+  it('records the guide step when the reveal is reached, so a later reset keeps it ticked', async () => {
+    const { getState, updateUserTesting, advanceUserTesting } = await import('./store')
+    updateUserTesting(() => ({ ...withThumbs(7), round: 2, tags: Object.fromEntries(ids.map((id) => [id, ['correct']])) }))
+    advanceUserTesting()
+    expect(getState().ui.userTesting.round).toBe(3)
+    updateUserTesting(() => resetUserTesting())
+    expect(getState().ui.guideDone).toContain('usertest')
+  })
+
+  it('does not advance before every answer is rated', async () => {
+    const { getState, updateUserTesting, advanceUserTesting } = await import('./store')
+    updateUserTesting(() => withThumbs(6))
+    advanceUserTesting()
+    expect(getState().ui.userTesting.round).toBe(1)
+  })
+})

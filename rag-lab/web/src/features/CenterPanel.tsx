@@ -18,14 +18,14 @@ const Loading = () => (
 )
 
 // In a narrow centre panel (1024 px window, Polish labels) the tabs drop their icons and tighten, so all six fit.
-const TAB = 'px-2 text-[12px] [&_svg]:hidden @[640px]:px-3 @[640px]:text-[13px] @[860px]:[&_svg]:block'
+const TAB = 'px-1.5 text-[12px] [&_svg]:hidden @[640px]:px-3 @[640px]:text-[13px] @[860px]:[&_svg]:block'
 
 export function CenterPanel() {
   const tab = useStore((s) => s.ui.centerTab)
   const tx = useT().shell.centerTabs
   return (
     <Tabs value={tab} onValueChange={(v) => setUi({ centerTab: v as CenterTab })} className="flex h-full min-h-0 flex-col">
-      <div className="scroll-thin @container flex shrink-0 items-center overflow-x-auto border-b bg-card px-3 py-2">
+      <div className="scroll-thin @container flex shrink-0 items-center overflow-x-auto border-b bg-card px-2 py-2">
         <TabsList>
           <TabsTrigger value="guide" className={TAB}><Compass /> {tx.guide}</TabsTrigger>
           <TabsTrigger value="usertest" data-testid="tab-usertest" className={TAB}><ThumbsUp /> {tx.usertest}</TabsTrigger>

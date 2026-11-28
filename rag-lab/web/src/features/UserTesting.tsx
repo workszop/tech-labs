@@ -2,7 +2,7 @@ import { ArrowRight, Check, MessageSquareText, RotateCcw, ThumbsDown, ThumbsUp, 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { updateUserTesting, useStore } from '@/state/store'
+import { advanceUserTesting, updateUserTesting, useStore } from '@/state/store'
 import { canAdvance, resetUserTesting, tagHits, thumbsSummary, toggleTag, toggleThumb, type Thumb } from '@/state/userTesting'
 import { FEEDBACK_TAGS, SCENARIOS, type Scenario } from '@/data/userTesting'
 import { useCorpus } from '@/data/corpus'
@@ -25,7 +25,7 @@ export function UserTesting() {
 
   const next = (
     <div className="flex flex-wrap items-center gap-3">
-      <Button variant="accent" size="sm" disabled={!ready} onClick={() => updateUserTesting((u) => ({ ...u, round: (u.round + 1) as 2 | 3 }))} data-testid="ut-next">
+      <Button variant="accent" size="sm" disabled={!ready} onClick={advanceUserTesting} data-testid="ut-next">
         {ut.round === 1 ? tx.next1 : tx.next2} <ArrowRight />
       </Button>
       {!ready && <span className="text-[12.5px] text-muted-foreground">{tx.rateAll(IDS.length)}</span>}
