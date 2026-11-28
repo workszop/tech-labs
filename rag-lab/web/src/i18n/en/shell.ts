@@ -356,14 +356,26 @@ export const shell = {
       sources: {
         module: 'Module 3 · Sources',
         title: 'Which document settles the complaint?',
-        body: 'Select the whole “Complaints and customers” folder: the procedure in force “Complaint handling”, its unapproved draft version 6, the complaints register export and the shipment record. Build the vector index and ask the guiding question. Note the deadlines the assistant gave and the documents it took them from.',
+        body: 'Select the whole “Complaints and customers” folder: the procedure in force “Complaint handling”, its unapproved draft version 6, the complaints register export and the shipment record. Build the vector index and ask the guiding question.\nWhat you should see: an answer with 24 hours and 7 days, and above it a yellow warning that the draft reached the context. Find the draft chunk in the sources: it says 12 hours and 3 days.',
         action: 'Select the “Complaints and customers” folder',
+      },
+      refund: {
+        module: 'Module 3 · Sources',
+        title: 'When does the draft win the search?',
+        body: 'Set top-k to 1, so only the best-matching chunk reaches the model, and ask up to what amount you can approve a refund yourself.\nWhat you should see: the model does not give the amount in force, or it mentions 300 zł from the draft. The draft chunk is closest to the question, and the 200 zł of the procedure in force never reached the model. On the “Retrieval” tab check which chunk is first and with what similarity.',
+        action: 'Set top-k 1 and ask about the refund',
       },
       outdated: {
         module: 'Module 3 · One change',
         title: 'Remove draft version 6 and ask again',
-        body: 'Change only one thing: remove draft version 6 from the index (bin icon next to the document, or the button below) and ask the same question. What changed in the answer and in the sources? Then decide whether the register with personal data and the shipment record belong in the knowledge base at all.',
-        action: 'Remove draft version 6 from the index',
+        body: 'Change only one thing: remove the draft from the index (button below or the bin icon next to the document) and ask both questions again, still at top-k 1.\nWhat you should see: the refund answer now says 200 zł from the procedure in force, and the guiding answer loses the warning and the mention of the draft. Lesson: unapproved documents do not belong in the base, even if the model sometimes spots them itself.',
+        action: 'Remove the draft and ask about the refund',
+      },
+      personal: {
+        module: 'Module 3 · Personal data',
+        title: 'Will the assistant give out a customer’s phone number?',
+        body: 'First ask for the phone number of the customer from complaint R-2026-311 (question button below) while the complaints register is in the base.\nWhat you should see: the assistant usually gives the number, because the register with personal data is in the index. Sometimes it refuses, as the chunk mentions personal data, but the number reached the model anyway: see it under “Inspect prompt sent to the LLM”. Then remove the register and ask again (main button): the assistant says it has no such information. Personal data is protected by deciding what not to put in the base, not by the prompt.',
+        action: 'Remove the register and ask again',
       },
       split: {
         module: 'Module 4 · Preparing documents',
@@ -371,17 +383,23 @@ export const shell = {
         body: 'Look at the split of “Complaint handling” at the default 400 tokens (works without a code). Find the rule “treated as a potential food safety hazard” and the paragraph “In that case… within 24 hours”. Are they in the same chunk? What does a chunk that starts with “In that case” know?',
         action: 'Show the split of “Complaint handling”',
       },
-      size: {
-        module: 'Module 5 · Splitting and diagnosis',
-        title: 'One change to the split',
-        body: 'Pick one change: chunk size 200, overlap 120 or the chunk label. Build the index again and ask the guiding question. In the “Retrieval” tab check which chunks went into the context.\nWrong chunk or wrong answer? If the context lacks the words that answer the question, retrieval failed. If they are there but the answer misses them, generation failed.',
-        action: 'Open retrieval',
+      chunkTopk: {
+        module: 'Module 4 · Splitting and top-k',
+        title: 'Small chunks, only one in the context',
+        body: 'The button sets 100-token chunks without overlap and top-k 1, rebuilds the index and asks the guiding question.\nWhat you should see: an answer only about the carrier (7 days), without the 24 hours for the quality department, because a small chunk carries only a piece of the procedure. Then set top-k 3 in the chat and ask the same question (question button below): the answer is complete again. Chunk size and top-k work together.',
+        action: 'Chunk 100 and top-k 1: ask',
       },
-      label: {
-        module: 'Module 5 · The fix',
-        title: 'Add a chunk label',
-        body: 'Turn on the chunk label (section heading plus version, date and status), build the index again and ask the guiding question. The chunk “In that case…” now carries the heading “Food safety hazard”, and draft version 6, if it is still indexed, says “DRAFT, NOT APPROVED” in every chunk.',
-        action: 'Turn on the chunk label',
+      diagnose: {
+        module: 'Module 5 · Diagnosis',
+        title: 'Wrong chunk or wrong answer?',
+        body: 'The button restores the default settings, adds the “Quality and batches” folder and asks what happens to the batch after a bulging can is reported.\nWhat you should see: an answer without the rule that the batch is always put on hold, even for one can. On the “Retrieval” tab check whether the chunk with the “Bulging cans” section of “Batch hold and release” is in the context. If it is not, retrieval failed, not the model.',
+        action: 'Add the “Quality and batches” folder and ask',
+      },
+      fixes: {
+        module: 'Module 5 · Fix',
+        title: 'Three fixes, one at a time',
+        body: 'Each press tries the next fix and asks the same batch question: first the chunk label with the section heading, then top-k 5, finally 200-token chunks.\nWhat you should see: each time the answer that the batch is always put on hold, even for one can, because the “Bulging cans” chunk reaches the context. Compare the tokens under the answers and decide which fix you would ship.',
+        action: 'Try the next fix',
       },
       usertest: {
         module: 'Module 6 · Evaluation',
@@ -392,13 +410,18 @@ export const shell = {
       tests: {
         module: 'Module 6 · Evaluation',
         title: 'Will the assistant pass four tests?',
-        body: 'Ask the four test questions at your chosen settings. Mark each one: correct, incomplete, wrong or should have refused, and note the evidence from the “Retrieval” tab. Only the dispatch system can answer the delivery question, and the customer’s phone is personal data. Then change one thing and ask them again.',
+        body: 'Ask the four test questions with your chosen setting and rate each one: correct, incomplete, wrong or should have refused. Take the evidence from the “Retrieval” tab.\nWhat to expect: the refund is 200 zł from the procedure in force. The batch question needs the “Quality and batches” folder in the base. Only the dispatch system record knows about the delivery, not the procedures. The phone number should not be given if you removed the register from the base.',
       },
       log: {
         module: 'Modules 6–7 · Evidence',
         title: 'Download the test log',
         body: 'The log holds every question of the conversation, the index settings, the chunks in context with their scores and the answer. It is your evidence for the team sheet and the pilot decision.',
         action: 'Download the test log (CSV)',
+      },
+      threshold: {
+        title: 'A similarity threshold that cuts off the right chunk',
+        body: 'The button puts draft version 6 back in the base, sets the similarity threshold to 0.6 and asks about the refund.\nWhat you should see: only the draft chunk reaches the model (similarity about 0.66), and the procedure in force (about 0.52) is cut off by the threshold. A threshold can drop the right document just like a top-k that is too small.',
+        action: 'Set threshold 0.6 and ask about the refund',
       },
       map: {
         title: 'Explore the vector map',

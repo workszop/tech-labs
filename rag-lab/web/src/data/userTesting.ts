@@ -61,14 +61,14 @@ export const SCENARIOS: Scenario[] = [
     text: {
       pl: {
         question: CASE.pl,
-        answer: 'Wybrzuszona puszka to zagrożenie bezpieczeństwa żywności. Zgłoszenie przekazujemy do działu jakości w ciągu 12 godzin, razem z zabezpieczoną próbką i numerem partii. Na odpowiedź dla klienta mamy 10 dni roboczych.',
-        cause: 'Do kontekstu trafił niezatwierdzony projekt wersji 6. Odpowiedź brzmi pewnie, ale terminy 12 godzin i 10 dni roboczych jeszcze nie obowiązują, a o kartonie i przewoźniku nie ma ani słowa.',
+        answer: 'Zgłoszenie przekazujemy do działu jakości w ciągu 12 godzin, razem z zabezpieczoną próbką i numerem partii. Zgnieciony karton to szkoda w transporcie: zgłaszamy ją przewoźnikowi w ciągu 3 dni od dostawy, ze zdjęciami.',
+        cause: 'Do kontekstu trafił niezatwierdzony projekt wersji 6. Odpowiedź brzmi pewnie i wygląda na kompletną, ale terminy 12 godzin i 3 dni jeszcze nie obowiązują. Obowiązują 24 godziny i 7 dni.',
         fix: 'Wybór dokumentów: usuńcie projekt z bazy albo włączcie etykietę fragmentu ze statusem „PROJEKT, NIEZATWIERDZONY”.',
       },
       en: {
         question: CASE.en,
-        answer: 'A bulging can is a food safety hazard. We pass the report to the quality department within 12 hours, together with a secured sample and the batch number. We have 10 working days to answer the customer.',
-        cause: 'The unapproved draft version 6 reached the context. The answer sounds confident, but the 12 hours and 10 working days are not in force yet, and the carton and the carrier are not mentioned at all.',
+        answer: 'The report goes to the quality department within 12 hours, together with a secured sample and the batch number. The crushed carton is transport damage: we report it to the carrier within 3 days of delivery, with photos.',
+        cause: 'The unapproved draft version 6 reached the context. The answer sounds confident and looks complete, but the 12 hours and 3 days are not in force yet. The rules in force are 24 hours and 7 days.',
         fix: 'Document selection: remove the draft from the knowledge base, or turn on the chunk label with the status "DRAFT, NOT APPROVED".',
       },
     },

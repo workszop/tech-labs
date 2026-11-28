@@ -376,14 +376,26 @@ export const shell = {
       sources: {
         module: 'Moduł 3 · Źródła',
         title: 'Który dokument rozstrzyga reklamację?',
-        body: 'Zaznaczcie cały folder „Reklamacje i klient”: obowiązującą procedurę „Obsługa reklamacji”, jej niezatwierdzony projekt wersji 6, eksport rejestru reklamacji i rekord przesyłki. Zbudujcie indeks wektorowy i zadajcie pytanie przewodnie. Zapiszcie terminy, które podał asystent, i dokumenty, z których je wziął.',
+        body: 'Zaznaczcie cały folder „Reklamacje i klient”: obowiązującą procedurę „Obsługa reklamacji”, jej niezatwierdzony projekt wersji 6, eksport rejestru reklamacji i rekord przesyłki. Zbudujcie indeks wektorowy i zadajcie pytanie przewodnie.\nCo powinniście zobaczyć: odpowiedź z terminami 24 godziny i 7 dni, a nad nią żółte ostrzeżenie, że do kontekstu trafił projekt. W źródłach znajdźcie fragment projektu: podaje 12 godzin i 3 dni.',
         action: 'Zaznacz folder „Reklamacje i klient”',
+      },
+      refund: {
+        module: 'Moduł 3 · Źródła',
+        title: 'Kiedy projekt wygrywa wyszukiwanie?',
+        body: 'Ustawcie top-k na 1, czyli do modelu trafia tylko najlepiej dopasowany fragment, i zapytajcie, do jakiej kwoty można samemu zatwierdzić zwrot.\nCo powinniście zobaczyć: model nie podaje obowiązującej kwoty albo mówi o 300 zł z projektu. Najbliżej pytania jest fragment projektu, a 200 zł z obowiązującej procedury nie dotarło do modelu. W karcie „Wyszukiwanie” sprawdźcie, który fragment jest pierwszy i z jakim podobieństwem.',
+        action: 'Ustaw top-k 1 i zapytaj o zwrot',
       },
       outdated: {
         module: 'Moduł 3 · Jedna zmiana',
         title: 'Usuńcie projekt wersji 6 i zapytajcie jeszcze raz',
-        body: 'Zmieńcie tylko jedną rzecz: usuńcie z indeksu projekt wersji 6 (ikona kosza przy dokumencie albo przycisk poniżej) i zadajcie to samo pytanie. Co się zmieniło w odpowiedzi i w źródłach? Potem zdecydujcie, czy rejestr z danymi osobowymi i rekord przesyłki w ogóle powinny być w bazie.',
-        action: 'Usuń projekt wersji 6 z indeksu',
+        body: 'Zmieńcie tylko jedną rzecz: usuńcie projekt z indeksu (przycisk poniżej albo ikona kosza przy dokumencie) i zadajcie oba pytania jeszcze raz, przy tym samym top-k 1.\nCo powinniście zobaczyć: przy zwrocie pojawia się 200 zł z obowiązującej procedury, a przy pytaniu przewodnim znika ostrzeżenie i wzmianka o projekcie. Wniosek: niezatwierdzone dokumenty nie powinny trafiać do bazy, nawet jeśli model czasem sam je rozpozna.',
+        action: 'Usuń projekt i zapytaj o zwrot',
+      },
+      personal: {
+        module: 'Moduł 3 · Dane osobowe',
+        title: 'Czy asystent poda telefon klienta?',
+        body: 'Najpierw zapytajcie o telefon klienta z reklamacji R-2026-311 (przycisk z pytaniem poniżej), dopóki rejestr reklamacji jest w bazie.\nCo powinniście zobaczyć: asystent zwykle podaje numer, bo rejestr z danymi osobowymi trafił do indeksu. Czasem odmawia, bo fragment mówi o danych osobowych, ale numer i tak dotarł do modelu: zobaczcie go w „Zobacz prompt wysłany do LLM”. Potem usuńcie rejestr i zapytajcie jeszcze raz (główny przycisk): asystent odpowiada, że nie ma takiej informacji. Danych osobowych nie chroni prompt, tylko decyzja, czego nie wkładać do bazy.',
+        action: 'Usuń rejestr i zapytaj jeszcze raz',
       },
       split: {
         module: 'Moduł 4 · Przygotowanie dokumentów',
@@ -391,17 +403,23 @@ export const shell = {
         body: 'Obejrzyjcie sam podział procedury „Obsługa reklamacji” przy domyślnym ustawieniu 400 tokenów (działa bez kodu). Znajdźcie regułę „traktuje się jako potencjalne zagrożenie” i akapit „W takim przypadku… w ciągu 24 godzin”. Czy są w tym samym fragmencie? Co wie fragment, który zaczyna się od „W takim przypadku”?',
         action: 'Pokaż podział procedury „Obsługa reklamacji”',
       },
-      size: {
-        module: 'Moduł 5 · Podział i diagnoza',
-        title: 'Jedna zmiana w podziale',
-        body: 'Wybierzcie jedną zmianę: rozmiar fragmentu 200, nakładanie 120 albo etykietę fragmentu. Zbudujcie indeks jeszcze raz i zadajcie pytanie przewodnie. W karcie „Wyszukiwanie” sprawdźcie, które fragmenty weszły do kontekstu.\nZły fragment czy zła odpowiedź? Jeśli w kontekście nie ma słów z odpowiedzią, zawiodło wyszukiwanie. Jeśli są, a odpowiedź ich nie podaje, zawiodło generowanie.',
-        action: 'Otwórz wyszukiwanie',
+      chunkTopk: {
+        module: 'Moduł 4 · Podział i top-k',
+        title: 'Małe fragmenty, jeden w kontekście',
+        body: 'Przycisk ustawia fragment 100 tokenów bez nakładania i top-k 1, buduje indeks jeszcze raz i zadaje pytanie przewodnie.\nCo powinniście zobaczyć: odpowiedź tylko o przewoźniku (7 dni), bez 24 godzin dla działu jakości, bo mały fragment niesie tylko kawałek procedury. Potem ustawcie top-k 3 w czacie i zadajcie to samo pytanie (przycisk z pytaniem poniżej): odpowiedź znów jest pełna. Rozmiar fragmentu i top-k działają razem.',
+        action: 'Fragment 100 i top-k 1: zapytaj',
       },
-      label: {
+      diagnose: {
+        module: 'Moduł 5 · Diagnoza',
+        title: 'Zły fragment czy zła odpowiedź?',
+        body: 'Przycisk przywraca ustawienia domyślne, dokłada folder „Jakość i partie” i pyta, co dzieje się z partią po zgłoszeniu wybrzuszonej puszki.\nCo powinniście zobaczyć: odpowiedź bez reguły, że partię wstrzymuje się zawsze, nawet przy jednej sztuce. W karcie „Wyszukiwanie” sprawdźcie, czy fragment z sekcją „Bombaż” procedury „Wstrzymanie i zwolnienie partii” jest w kontekście. Jeśli go nie ma, zawiodło wyszukiwanie, a nie model.',
+        action: 'Dodaj folder „Jakość i partie” i zapytaj',
+      },
+      fixes: {
         module: 'Moduł 5 · Poprawka',
-        title: 'Dołóżcie etykietę fragmentu',
-        body: 'Włączcie etykietę fragmentu (nagłówek sekcji oraz wersja, data i status), zbudujcie indeks jeszcze raz i zadajcie pytanie przewodnie. Fragment „W takim przypadku…” dostaje teraz nagłówek „Zagrożenie bezpieczeństwa żywności”, a projekt wersji 6, jeśli został w bazie, ma w każdym fragmencie „PROJEKT, NIEZATWIERDZONY”.',
-        action: 'Włącz etykietę fragmentu',
+        title: 'Trzy poprawki, każda osobno',
+        body: 'Każde naciśnięcie przycisku próbuje kolejnej poprawki i zadaje to samo pytanie o partię: najpierw etykieta z nagłówkiem sekcji, potem top-k 5, na koniec fragment 200 tokenów.\nCo powinniście zobaczyć: za każdym razem odpowiedź, że partię wstrzymuje się zawsze, także przy jednej sztuce, bo fragment z sekcji „Bombaż” trafia do kontekstu. Porównajcie tokeny pod odpowiedziami i zdecydujcie, którą poprawkę wybralibyście na produkcję.',
+        action: 'Wypróbuj następną poprawkę',
       },
       usertest: {
         module: 'Moduł 6 · Ocena',
@@ -412,13 +430,18 @@ export const shell = {
       tests: {
         module: 'Moduł 6 · Ocena',
         title: 'Czy asystent przejdzie cztery testy?',
-        body: 'Zadajcie cztery pytania testowe przy wybranym ustawieniu. Przy każdym oceńcie: poprawna, niepełna, błędna albo powinna być odmowa, i zapiszcie dowód z karty „Wyszukiwanie”. Pytanie o dostawę rozstrzyga tylko system wysyłek, a telefon klienta to dane osobowe. Potem zmieńcie jedną rzecz i zadajcie je ponownie.',
+        body: 'Zadajcie cztery pytania testowe przy wybranym ustawieniu i przy każdym oceńcie: poprawna, niepełna, błędna albo powinna być odmowa. Dowód zapiszcie z karty „Wyszukiwanie”.\nCzego się spodziewać: zwrot to 200 zł z obowiązującej procedury. Pytanie o partię wymaga folderu „Jakość i partie” w bazie. O dostawie mówi tylko rekord z systemu wysyłek, nie procedury. Numer telefonu nie powinien paść, jeśli rejestr usunęliście z bazy.',
       },
       log: {
         module: 'Moduł 6–7 · Dowody',
         title: 'Pobierzcie dziennik testów',
         body: 'Dziennik ma każde pytanie z rozmowy, ustawienia indeksu, fragmenty w kontekście z wynikami i odpowiedź. To Wasz dowód do karty zespołu i decyzji o pilotażu.',
         action: 'Pobierz dziennik testów (CSV)',
+      },
+      threshold: {
+        title: 'Próg podobieństwa, który odcina dobry fragment',
+        body: 'Przycisk przywraca projekt wersji 6 do bazy, ustawia próg podobieństwa 0,6 i pyta o zwrot.\nCo powinniście zobaczyć: do modelu trafia tylko fragment projektu (podobieństwo około 0,66), a obowiązująca procedura (około 0,52) odpada przez próg. Próg potrafi odciąć właściwy dokument tak samo jak za małe top-k.',
+        action: 'Ustaw próg 0,6 i zapytaj o zwrot',
       },
       map: {
         title: 'Obejrzyj mapę wektorów',

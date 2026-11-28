@@ -107,7 +107,7 @@ Once a month the complaints team gives the plant management a summary: the numbe
     version: "6",
     effectiveDate: "2026-11-02",
     status: "draft",
-    summary: "Draft for consultation: shorter deadlines and a higher refund limit. Not approved. Training document.",
+    summary: "Draft for consultation: shorter deadlines (12 hours for the quality department, 3 days for the carrier) and a higher refund limit. Not approved. Training document.",
     content: `Complaint handling – draft version 6
 
 Version 6 – DRAFT for consultation, 2 November 2026. Do not apply before it is approved by the quality department and the sales department.
@@ -116,9 +116,11 @@ Response time
 
 Every complaint is answered within 10 working days of submission.
 
-Food safety hazard
+Bulging can and a damaged delivery
 
-Reports about smell, a bulging can, hissing on opening or suspected poisoning are passed to the quality department within 12 hours, together with a secured sample and the batch number.
+A customer reports a bulging can, a crushed carton or other damage in a delivery? What we do and by when: the report goes to the quality department within 12 hours, together with a secured sample and the batch number.
+
+A crushed carton in a delivery is transport damage: we report it to the carrier within 3 days of delivery, with photos.
 
 Refund or replacement
 
@@ -536,7 +538,7 @@ I have a cold or a cut on my hand, may I work with open product? Tell the forema
 export const SUGGESTED_QUESTIONS: { question: string; hint: string }[] = [
   {
     question: "A customer reports a bulging can and a crushed carton in a delivery. What do we do and by when?",
-    hint: "Complaint handling: transport damage plus the food safety hazard. The action and the 24-hour deadline are in the paragraph “In that case…”, right after the rule. Draft version 6 says 12 hours."
+    hint: "Complaint handling: transport damage plus the food safety hazard. The action and the 24-hour deadline are in the paragraph “In that case…”, right after the rule. Draft version 6 says 12 hours and 3 days."
   },
   {
     question: "Up to what amount can I approve a refund myself?",

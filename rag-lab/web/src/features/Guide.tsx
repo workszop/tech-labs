@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
-import { ArrowRight, BookOpen, Check, Download, FileSearch, FlaskConical, FolderTree, GitCompare, Map as MapIcon, Scissors, Tag, ThumbsUp, Trash2 } from 'lucide-react'
+import { ArrowRight, BookOpen, Check, Coins, Download, FileSearch, FlaskConical, FolderTree, Gauge, GitCompare, Map as MapIcon, Microscope, Scissors, ShieldAlert, Tag, ThumbsUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { setSettings, setUi, useStore, type AppState, type QueryRun } from '@/state/store'
-import { ask, downloadTestLog, previewChunking, removeFromIndex, selectFolder, toggleSelect } from '@/state/actions'
+import { getState, setSettings, setUi, useStore, type AppState, type Settings } from '@/state/store'
+import { ask, buildIndex, downloadTestLog, previewChunking, removeFromIndex, selectFolder, toggleSelect } from '@/state/actions'
+import { BATCH_DOC, CHECKS, CURRENT, DRAFT, REGISTER, ragRuns, type GuideQuestions } from '@/state/guideChecks'
+import { getCorpus } from '@/data/corpus'
 import { revealPanel } from '@/lib/reveal'
 import { t, useT, type Dict } from '@/i18n'
 import { Badge } from '@/components/ui/badge'
@@ -22,40 +24,70 @@ type StepId = keyof Dict['shell']['guide']['steps']
 interface GuideStep {
   id: StepId
   icon: React.ReactNode
-  done: (s: AppState) => boolean
-  run?: () => void | Promise<void>
-  /** Show the guiding question as a one-click chip under the step. */
-  askGuiding?: boolean
+  done: (s: AppState, q: GuideQuestions) => boolean
+  run?: (q: GuideQuestions) => void | Promise<void>
+  /** Questions shown as one-click chips under the step. */
+  chips?: (q: GuideQuestions) => string[]
   topic?: string
 }
 
-const OUTDATED = 'proces-04-v6' // the unapproved draft that competes with the procedure in force
-const CURRENT = 'proces-04'
-const ragRuns = (s: AppState): QueryRun[] => Object.values(s.runs).filter((r) => r.ragEnabled && r.generate.status === 'completed' && !!r.index)
+const folderDocs = (folder: string) => getCorpus().documents.filter((d) => d.folder === folder).map((d) => d.id)
+const NO_LABELS = { labelSection: false, labelMeta: false }
+const DEFAULTS = { chunkSize: 400, overlap: 60, topK: 3, threshold: null, ...NO_LABELS }
+
+/**
+ * One workshop experiment: change settings and/or documents, rebuild the base when needed, come back
+ * to the guide and ask the step's question. The chat shows the answer and its sources.
+ */
+async function experiment(o: { settings?: Partial<Settings>; add?: string[]; remove?: string[]; ask?: string }) {
+  if (o.settings) setSettings(o.settings)
+  if (o.remove?.length) await removeFromIndex(o.remove)
+  const indexed = Object.keys(getState().index.documents)
+  const add = (o.add ?? []).filter((id) => !indexed.includes(id))
+  if (add.length) toggleSelect(add, true)
+  if (add.length || o.settings) await buildIndex()
+  setUi({ centerTab: 'guide' })
+  if (o.ask) askFromGuide(o.ask)
+}
+
+/** The case documents without the draft (step 3) and the register with personal data (step 4). */
+const complaintsNoDraft = () => folderDocs('complaints').filter((id) => id !== DRAFT && id !== REGISTER)
 
 const STEPS: GuideStep[] = [
   {
     id: 'sources',
     icon: <FolderTree />,
-    done: (s) => ragRuns(s).some((r) => r.index!.docIds.includes(OUTDATED)),
+    done: (s, q) => CHECKS.sources(s, q),
     run: () => {
+      setSettings(DEFAULTS)
       selectFolder('complaints')
       setUi({ centerTab: 'build', mobileTab: 'lab' })
       revealPanel('docs')
     },
-    askGuiding: true,
+    chips: (q) => [q.guiding],
     topic: 'failures',
+  },
+  {
+    id: 'refund',
+    icon: <Coins />,
+    done: (s, q) => CHECKS.refund(s, q),
+    run: (q) => experiment({ settings: { topK: 1 }, add: folderDocs('complaints'), ask: q.refund }),
+    chips: (q) => [q.refund],
+    topic: 'cosine',
   },
   {
     id: 'outdated',
     icon: <Trash2 />,
-    done: (s) => {
-      const runs = ragRuns(s).sort((a, b) => a.createdAt - b.createdAt)
-      const firstWith = runs.find((r) => r.index!.docIds.includes(OUTDATED))
-      return !!firstWith && runs.some((r) => r.createdAt > firstWith.createdAt && !r.index!.docIds.includes(OUTDATED) && r.index!.docIds.includes(CURRENT))
-    },
-    run: () => removeFromIndex([OUTDATED]),
-    askGuiding: true,
+    done: (s, q) => CHECKS.outdated(s, q),
+    run: (q) => experiment({ remove: [DRAFT], ask: q.refund }),
+    chips: (q) => [q.refund, q.guiding],
+  },
+  {
+    id: 'personal',
+    icon: <ShieldAlert />,
+    done: (s, q) => CHECKS.personal(s, q),
+    run: (q) => experiment({ remove: [REGISTER], ask: q.phone }),
+    chips: (q) => [q.phone],
   },
   {
     id: 'split',
@@ -71,22 +103,35 @@ const STEPS: GuideStep[] = [
     topic: 'chunking',
   },
   {
-    id: 'size',
+    id: 'chunkTopk',
     icon: <FileSearch />,
-    done: (s) => new Set(ragRuns(s).filter((r) => r.index!.docIds.includes(CURRENT)).map((r) => `${r.index!.chunkSize}/${r.index!.overlap}/${r.index!.labels}`)).size >= 2,
-    run: () => setUi({ centerTab: 'retrieval', mobileTab: 'lab' }),
-    askGuiding: true,
-    topic: 'cosine',
+    done: (s, q) => CHECKS.chunkTopk(s, q),
+    // First half of the experiment; the second (top-k 3) is the chip after changing top-k in the chat.
+    run: (q) => experiment({ settings: { ...NO_LABELS, chunkSize: 100, overlap: 0, topK: 1 }, add: complaintsNoDraft(), ask: q.guiding }),
+    chips: (q) => [q.guiding],
+    topic: 'chunking',
   },
   {
-    id: 'label',
+    id: 'diagnose',
+    icon: <Microscope />,
+    done: (s, q) => CHECKS.diagnose(s, q),
+    run: (q) => experiment({ settings: DEFAULTS, add: [...complaintsNoDraft(), ...folderDocs('quality')], ask: q.batch }),
+    chips: (q) => [q.batch],
+    topic: 'failures',
+  },
+  {
+    id: 'fixes',
     icon: <Tag />,
-    done: (s) => ragRuns(s).some((r) => r.index!.labels !== 'none'),
-    run: () => {
-      setSettings({ labelSection: true, labelMeta: true })
-      setUi({ centerTab: 'build', mobileTab: 'lab' })
+    done: (s, q) => CHECKS.fixes(s, q),
+    // Each press tries the next fix not tried yet: section label, then top-k 5, then chunk size 200.
+    run: (q) => {
+      const runs = ragRuns(getState()).filter((r) => r.question === q.batch && r.index!.docIds.includes(BATCH_DOC))
+      const add = [...complaintsNoDraft(), ...folderDocs('quality')]
+      if (!runs.some((r) => r.index!.labels.includes('section'))) return experiment({ settings: { ...DEFAULTS, labelSection: true }, add, ask: q.batch })
+      if (!runs.some((r) => r.topK >= 5)) return experiment({ settings: { ...DEFAULTS, topK: 5 }, add, ask: q.batch })
+      return experiment({ settings: { ...DEFAULTS, chunkSize: 200 }, add, ask: q.batch })
     },
-    askGuiding: true,
+    chips: (q) => [q.batch],
   },
   {
     id: 'usertest',
@@ -114,6 +159,14 @@ const STEPS: GuideStep[] = [
 
 /** Extra explorations outside the workshop flow. */
 const EXTRAS: GuideStep[] = [
+  {
+    id: 'threshold',
+    icon: <Gauge />,
+    done: (s, q) => ragRuns(s).some((r) => r.question === q.refund && r.threshold != null && r.index!.docIds.includes(DRAFT)),
+    run: (q) => experiment({ settings: { ...DEFAULTS, threshold: 0.6 }, add: [DRAFT], ask: q.refund }),
+    chips: (q) => [q.refund],
+    topic: 'cosine',
+  },
   {
     id: 'map',
     icon: <MapIcon />,
@@ -145,15 +198,18 @@ export function Guide() {
   const tx = useT().shell.guide
   const explainers = useExplainers()
   const sticky = state.ui.guideDone
-  const isDone = (st: GuideStep) => sticky.includes(st.id) || st.done(state)
+  // The step questions, in the current language (tests: refund, batch, delivery, phone).
+  const q: GuideQuestions = { guiding: tx.guiding, refund: tx.tests[0].question, batch: tx.tests[1].question, phone: tx.tests[3].question }
+  const isDone = (st: GuideStep) => sticky.includes(st.id) || st.done(state, q)
   const doneCount = STEPS.filter(isDone).length
   const nextIdx = STEPS.findIndex((st) => !isDone(st))
   const doneLabel = useT().shell.common.status.completed
 
   // A step that was done once stays ticked, even after the team changes the index again.
   useEffect(() => {
-    const newly = [...STEPS, ...EXTRAS].filter((st) => !sticky.includes(st.id) && st.done(state)).map((st) => st.id)
+    const newly = [...STEPS, ...EXTRAS].filter((st) => !sticky.includes(st.id) && st.done(state, q)).map((st) => st.id)
     if (newly.length) setUi({ guideDone: [...sticky, ...newly] })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- q follows the language, which is part of state
   }, [state, sticky])
 
   const chip = (key: string, label: React.ReactNode, q: string) => (
@@ -170,10 +226,8 @@ export function Guide() {
     const topic = st.topic && explainers[st.topic] ? st.topic : null
     const chips =
       st.id === 'tests'
-        ? tx.tests.map((q) => chip(q.question, <><span className="font-semibold">{q.kind}:</span> {q.question}</>, q.question))
-        : st.askGuiding
-          ? [chip('home', <>{tx.ask}: {tx.guiding}</>, tx.guiding)]
-          : []
+        ? tx.tests.map((x) => chip(x.question, <><span className="font-semibold">{x.kind}:</span> {x.question}</>, x.question))
+        : (st.chips?.(q) ?? []).map((x) => chip(x, <>{tx.ask}: {x}</>, x))
     return (
       <li
         key={st.id}
@@ -200,7 +254,7 @@ export function Guide() {
         {(showAction || topic) && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-dashed px-4 py-2.5">
             {showAction && (
-              <Button size="xs" variant={isNext ? 'accent' : 'outline'} onClick={() => void st.run!()}>
+              <Button size="xs" variant={isNext ? 'accent' : 'outline'} onClick={() => void st.run!(q)}>
                 {text.action} <ArrowRight />
               </Button>
             )}

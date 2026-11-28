@@ -82,7 +82,7 @@ Raz w miesiącu obsługa reklamacji przekazuje dyrekcji zakładu zestawienie: li
     version: "6",
     effectiveDate: "2026-11-02",
     status: "draft",
-    summary: "Projekt do konsultacji: krótsze terminy i wyższy limit zwrotu. Niezatwierdzony. Dokument szkoleniowy.",
+    summary: "Projekt do konsultacji: krótsze terminy (12 godzin dla działu jakości, 3 dni dla przewoźnika) i wyższy limit zwrotu. Niezatwierdzony. Dokument szkoleniowy.",
     content: `Obsługa reklamacji – projekt wersji 6
 
 Wersja 6 – PROJEKT do konsultacji z 2 listopada 2026. Nie stosować przed zatwierdzeniem przez dział jakości i dział sprzedaży.
@@ -91,9 +91,11 @@ Termin odpowiedzi
 
 Na każdą reklamację odpowiadamy w ciągu 10 dni roboczych od zgłoszenia.
 
-Zagrożenie bezpieczeństwa żywności
+Wybrzuszona puszka i uszkodzona dostawa
 
-Zgłoszenia dotyczące zapachu, wybrzuszenia puszki, syku przy otwieraniu lub podejrzenia zatrucia przekazujemy do działu jakości w ciągu 12 godzin, razem z zabezpieczoną próbką i numerem partii.
+Klient zgłasza wybrzuszoną puszkę, zgnieciony karton albo inne uszkodzenie w dostawie? Co robimy i w jakim terminie: zgłoszenie przekazujemy do działu jakości w ciągu 12 godzin, razem z zabezpieczoną próbką i numerem partii.
+
+Zgnieciony karton w dostawie to szkoda w transporcie: zgłaszamy ją przewoźnikowi w ciągu 3 dni od dostawy, ze zdjęciami.
 
 Zwrot lub wymiana
 
@@ -511,7 +513,7 @@ Mam katar albo skaleczoną rękę, czy mogę pracować przy otwartym produkcie? 
 export const PL_QUESTIONS: { question: string; hint: string }[] = [
   {
     question: "Klient zgłasza wybrzuszoną puszkę i zgnieciony karton w dostawie. Co robimy i w jakim terminie?",
-    hint: "Obsługa reklamacji: transport (§ „Szkody w transporcie”) oraz zagrożenie bezpieczeństwa żywności. Działanie i termin 24 godzin są w akapicie „W takim przypadku…”, zaraz za regułą. Projekt wersji 6 podaje 12 godzin."
+    hint: "Obsługa reklamacji: transport (§ „Szkody w transporcie”) oraz zagrożenie bezpieczeństwa żywności. Działanie i termin 24 godzin są w akapicie „W takim przypadku…”, zaraz za regułą. Projekt wersji 6 podaje 12 godzin i 3 dni."
   },
   {
     question: "Do jakiej kwoty mogę sama zatwierdzić zwrot?",

@@ -36,11 +36,15 @@ const META = {
 const TRAINING = [
   { id: 'proces-04-v6', folder: 'complaints', status: 'draft', version: '6', date: '2026-11-02', owner: ['obsługa reklamacji', 'Complaints'],
     title: ['Obsługa reklamacji – projekt wersji 6', 'Complaint handling – draft version 6'],
-    summary: ['Projekt do konsultacji: krótsze terminy i wyższy limit zwrotu. Niezatwierdzony. Dokument szkoleniowy.', 'Draft for consultation: shorter deadlines and a higher refund limit. Not approved. Training document.'],
+    summary: ['Projekt do konsultacji: krótsze terminy (12 godzin dla działu jakości, 3 dni dla przewoźnika) i wyższy limit zwrotu. Niezatwierdzony. Dokument szkoleniowy.', 'Draft for consultation: shorter deadlines (12 hours for the quality department, 3 days for the carrier) and a higher refund limit. Not approved. Training document.'],
     blocks: [
       [null, null, ['Wersja 6 – PROJEKT do konsultacji z 2 listopada 2026. Nie stosować przed zatwierdzeniem przez dział jakości i dział sprzedaży.'], ['Version 6 – DRAFT for consultation, 2 November 2026. Do not apply before it is approved by the quality department and the sales department.']],
       ['Termin odpowiedzi', 'Response time', ['Na każdą reklamację odpowiadamy w ciągu 10 dni roboczych od zgłoszenia.'], ['Every complaint is answered within 10 working days of submission.']],
-      ['Zagrożenie bezpieczeństwa żywności', 'Food safety hazard', ['Zgłoszenia dotyczące zapachu, wybrzuszenia puszki, syku przy otwieraniu lub podejrzenia zatrucia przekazujemy do działu jakości w ciągu 12 godzin, razem z zabezpieczoną próbką i numerem partii.'], ['Reports about smell, a bulging can, hissing on opening or suspected poisoning are passed to the quality department within 12 hours, together with a secured sample and the batch number.']],
+      ['Wybrzuszona puszka i uszkodzona dostawa', 'Bulging can and a damaged delivery', [
+        'Klient zgłasza wybrzuszoną puszkę, zgnieciony karton albo inne uszkodzenie w dostawie? Co robimy i w jakim terminie: zgłoszenie przekazujemy do działu jakości w ciągu 12 godzin, razem z zabezpieczoną próbką i numerem partii.',
+        'Zgnieciony karton w dostawie to szkoda w transporcie: zgłaszamy ją przewoźnikowi w ciągu 3 dni od dostawy, ze zdjęciami.'], [
+        'A customer reports a bulging can, a crushed carton or other damage in a delivery? What we do and by when: the report goes to the quality department within 12 hours, together with a secured sample and the batch number.',
+        'A crushed carton in a delivery is transport damage: we report it to the carrier within 3 days of delivery, with photos.']],
       ['Zwrot lub wymiana', 'Refund or replacement', ['Zwrot do 300 zł zatwierdza pracownik obsługi reklamacji, a wyższe kwoty kierownik sprzedaży.', 'Pozostałe zasady bez zmian względem wersji 5.'], ['A refund up to 300 zł is approved by the complaints officer, higher amounts by the sales manager.', 'All other rules are unchanged from version 5.']],
     ] },
   { id: 'rejestr-reklamacji', folder: 'complaints', status: 'current', version: '2026.10', date: '2026-10-31', owner: ['obsługa reklamacji', 'Complaints'],
@@ -122,7 +126,7 @@ const FOLDERS = [
 
 const CASE = ['Klient zgłasza wybrzuszoną puszkę i zgnieciony karton w dostawie. Co robimy i w jakim terminie?', 'A customer reports a bulging can and a crushed carton in a delivery. What do we do and by when?'];
 const QUESTIONS = [
-  [CASE[0], CASE[1], 'Obsługa reklamacji: transport (§ „Szkody w transporcie”) oraz zagrożenie bezpieczeństwa żywności. Działanie i termin 24 godzin są w akapicie „W takim przypadku…”, zaraz za regułą. Projekt wersji 6 podaje 12 godzin.', 'Complaint handling: transport damage plus the food safety hazard. The action and the 24-hour deadline are in the paragraph “In that case…”, right after the rule. Draft version 6 says 12 hours.'],
+  [CASE[0], CASE[1], 'Obsługa reklamacji: transport (§ „Szkody w transporcie”) oraz zagrożenie bezpieczeństwa żywności. Działanie i termin 24 godzin są w akapicie „W takim przypadku…”, zaraz za regułą. Projekt wersji 6 podaje 12 godzin i 3 dni.', 'Complaint handling: transport damage plus the food safety hazard. The action and the 24-hour deadline are in the paragraph “In that case…”, right after the rule. Draft version 6 says 12 hours and 3 days.'],
   ['Do jakiej kwoty mogę sama zatwierdzić zwrot?', 'Up to what amount can I approve a refund myself?', 'Obsługa reklamacji, wersja 5: 200 zł. Projekt wersji 6 podaje 300 zł: sprzeczność, jeśli oba są w indeksie.', 'Complaint handling, version 5: 200 zł. Draft version 6 says 300 zł: a conflict when both are in the index.'],
   ['Klient nie zna numeru partii. Co wtedy?', 'The customer does not know the batch number. What then?', 'Obsługa reklamacji: prośba o zdjęcie dna puszki; sprawa i tak idzie do działu jakości.', 'Complaint handling: ask for a photo of the can bottom; the case still goes to the quality department.'],
   ['Co dzieje się z partią po zgłoszeniu wybrzuszonej puszki?', 'What happens to the batch after a bulging can is reported?', 'Wstrzymanie i zwolnienie partii: partię wstrzymuje się zawsze, także przy jednej sztuce; sprawdza się też dwie partie z tej samej retorty.', 'Batch hold and release: the batch is always put on hold, even for one can; two batches from the same retort are checked too.'],
